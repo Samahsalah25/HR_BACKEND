@@ -18,8 +18,13 @@ const employeeRoutes=require('./Admin/routes/employeeRoutes.js')
 const hrRoutes=require('./Admin/routes/hrRoutes.js')
 const requestRoutes = require('./Admin/routes/requestRoutes.js');
 const licenceRoute=require('.//Admin/routes/licenceRoutes.js')
+const taskRoute=require('./Admin/routes/taskRoutes.js')
+const branchRoute=require('./Admin/routes/branchRoutes.js')
+const attendanceRoute=require('./Admin/routes/attendanceRoutes.js');
+const setupAttendanceCron=require('./cron/attendanceCron.js');
 
 const app = express();
+
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Middlewares
@@ -38,6 +43,9 @@ app.use('/api/admin',employeeRoutes)
 app.use('/api/hr',hrRoutes)
 app.use('/api/requests', requestRoutes);
 app.use('/api/licence', licenceRoute);
+app.use('/api/tasks' ,taskRoute)
+app.use('/api/branch',branchRoute)
+app.use('/api/attendance' ,attendanceRoute);
 
 
 // DB + Server
@@ -46,9 +54,9 @@ const PORT = process.env.PORT || 4000;
 (async () => {
   try {
     await connectDB();
-
+setupAttendanceCron();
     // 👇 هنا هتعمل seedAdmin (لكن خليه يرجّع قيمة بدل ما يعمل process.exit)
-    await seedAdmin();
+    
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);

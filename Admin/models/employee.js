@@ -22,7 +22,7 @@ const employeeSchema = new mongoose.Schema(
     },
 
     workHoursPerWeek: { type: Number },
-    workplace: { type: String },
+    workplace: { type: mongoose.Schema.Types.ObjectId, ref: "Branch" },
     salary: {
       base: { type: Number, default: 0 },
       housingAllowance: { type: Number, default: 0 },
