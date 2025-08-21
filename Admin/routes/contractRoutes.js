@@ -5,10 +5,10 @@ const {
   createContract,
   deleteContract,
 } = require('../controllers/contractController');
-
-
-router.get('/', getContracts);
-router.post('/', createContract);
-router.delete('/:id', deleteContract);
+const authorizeRoles=require('../middlesware/roleMiddleware');
+const authenticate = require("../middlesware/authenticate");
+router.get('/',authenticate,authorizeRoles('ADMIN'), getContracts);
+router.post('/',authenticate,authorizeRoles('ADMIN'), createContract);
+router.delete('/:id',authenticate,authorizeRoles('ADMIN'), deleteContract);
 
 module.exports = router;

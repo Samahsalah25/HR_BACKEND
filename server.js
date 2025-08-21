@@ -22,6 +22,7 @@ const taskRoute=require('./Admin/routes/taskRoutes.js')
 const branchRoute=require('./Admin/routes/branchRoutes.js')
 const attendanceRoute=require('./Admin/routes/attendanceRoutes.js');
 const setupAttendanceCron=require('./cron/attendanceCron.js');
+const leaveRoute=require('./Admin/routes/leaveRoutes.js')
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use('/api/departments', departmentRoutes);
 app.use('/api/residencies', residencyRoutes);
 app.use('/api/contracts', contractRoutes);
 app.use('/api/admin',employeeRoutes)
+app.use('/api/leaves' ,leaveRoute)
 app.use('/api/hr',hrRoutes)
 app.use('/api/requests', requestRoutes);
 app.use('/api/licence', licenceRoute);

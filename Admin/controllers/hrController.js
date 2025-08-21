@@ -69,9 +69,9 @@ const createEmployee = async (req, res) => {
       manager,
       employmentType,
       contractStart,
-      contractDurationId, // هنبعت _id للـ Contract
+      contractDurationId,
       residencyStart,
-      residencyDurationId, // هنبعت _id للـ ResidencyYear
+      residencyDurationId,
       workHoursPerWeek,
       workplace,
       salary,
@@ -82,8 +82,10 @@ const createEmployee = async (req, res) => {
       return res.status(403).json({ message: 'ليس لديك صلاحية' });
     }
 
-    const user = await User.create({ name, email, password, role:"EMPLOYEE" });
+    // إنشاء المستخدم
+    const user = await User.create({ name, email, password, role: "EMPLOYEE" });
 
+    // إنشاء الموظف
     let employee = await Employee.create({
       name,
       jobTitle,
@@ -128,21 +130,33 @@ const createEmployee = async (req, res) => {
       employee.residency.end = end;
     }
 
-    await employee.save(); // حفظ التغييرات
+    await employee.save();
 
+    // جلب رصيد الإجازات الافتراضي للشركة
+    const companyLeaves = await LeaveBalance.findOne({employee:null}); // سجل واحد يحتوي على كل أنواع الإجازات
+    if (!companyLeaves) {
+      return res.status(500).json({ message: 'رصيد الإجازات الافتراضي للشركة غير محدد' });
+    }
+
+    // إنشاء رصيد الإجازات للموظف الجديد بناءً على رصيد الشركة
     await LeaveBalance.create({
       employee: employee._id,
-      annual: 21,  // عدد الأيام المبدئي
-      sick: 7,
-      unpaid: 0
+      annual: companyLeaves.annual,
+      sick: companyLeaves.sick,
+      marriage: companyLeaves.marriage,
+      emergency: companyLeaves.emergency,
+      maternity: companyLeaves.maternity,
+      unpaid: companyLeaves.unpaid
     });
 
     res.status(201).json({ user, employee });
+
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'حدث خطأ أثناء إنشاء الموظف' });
+    res.status(500).json({ message: 'حدث خطأ أثناء إنشاء الموظف', error: error.message });
   }
 };
+
 
 // get contrcsts state
 const getContractsStats  = async (req, res) => {
@@ -292,4 +306,73 @@ const deleteEmployee = async (req, res) => {
   }
 };
 
-module.exports = { getAllEmployees ,createEmployee ,getContractsStats ,getAllContracts , getEmployeeById ,deleteEmployee}; 
+const getEmployeesByBranch = async (req, res) => {
+  try {
+    if (req.user.role !== 'HR' && req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'ليس لديك صلاحية' });
+    }
+
+    let employees;
+
+    if (req.user.role === 'ADMIN') {
+      employees = await Employee.find()
+        .populate("department", "name")
+        .populate("workplace", "name")
+        .populate("contract.duration")
+        .populate("residency.duration")
+        .populate("user", "email");
+    } else {
+      const hrEmployee = await Employee.findOne({ user: req.user._id });
+      if (!hrEmployee) {
+        return res.status(404).json({ message: 'لم يتم العثور على بيانات الـ HR' });
+      }
+
+      employees = await Employee.find({ workplace: hrEmployee.workplace })
+        .populate("department", "name")
+        .populate("workplace", "name")
+        .populate("contract.duration")
+        .populate("residency.duration")
+        .populate("user", "email");
+    }
+
+    // helper لتنسيق التاريخ
+    const formatDate = (date) => {
+      if (!date) return null;
+      const d = new Date(date);
+      const day = d.getDate().toString().padStart(2, "0");
+      const month = (d.getMonth() + 1).toString().padStart(2, "0");
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    };
+
+    // عمل فورمات للبيانات
+    const formatted = employees.map(emp => {
+      return {
+        _id: emp._id,
+        name: emp.name,
+        email: emp.user?.email || "",
+        department: emp.department?.name || "غير محدد",
+        jobTitle: emp.jobTitle || "",
+        contractStart: formatDate(emp.contract?.start),
+        contractEnd: formatDate(emp.contract?.end),
+        contractDuration: emp.contract?.duration 
+          ? `${emp.contract.duration.duration} ${emp.contract.duration.unit === "years" ? "سنة" : "شهر"}`
+          : null,
+        residencyStart: formatDate(emp.residency?.start),
+        residencyEnd: formatDate(emp.residency?.end),
+        residencyDuration: emp.residency?.duration 
+          ? `${emp.residency.duration.year} سنة`
+          : null
+      }
+    });
+
+    res.json(formatted);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+
+
+module.exports = { getAllEmployees ,createEmployee ,getContractsStats ,getAllContracts , getEmployeeById ,deleteEmployee ,getEmployeesByBranch}; 

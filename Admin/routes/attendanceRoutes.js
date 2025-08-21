@@ -1,16 +1,52 @@
 // routes/attendanceRoutes.js
 const express = require('express');
 const router = express.Router();
-const { checkIn ,checkOut ,getTodayAttendance } = require('../controllers/attendanceController');
+const { checkIn ,checkOut ,getTodayAttendance ,dailyState ,dailyStateBranch 
+    ,dailyAttendanceTable  ,dailyAttendanceTableOnebranch
+     ,getMonthlyAttendanceForEmployee 
+     ,monthlyReport
+    ,monthlyReportoneBranch ,dailyEmployeeAttendance  ,monthlyEmployeeAttendance} = require('../controllers/attendanceController');
 const authenticate=require('../middlesware/authenticate');
+const getClientTime=require('../middlesware/clientTime');
 
+const authorizeRoles=require('../middlesware/roleMiddleware');
 // تسجيل الحضور (Check-In)
-router.post('/checkin', authenticate, checkIn);
+
+router.post('/checkin', authenticate,getClientTime, checkIn);
 
 // لاحقاً ممكن نضيف:
 router.post('/checkout', authenticate, checkOut);
 
-//
-router.get("/today/:id", authenticate, getTodayAttendance);
+//daily state and percent  لكل الفروع هنا
+router.get('/dailyState' ,authenticate,authorizeRoles('HR'),dailyState) ;
 
+//  لفرع معين بقي   النسب
+router.get('/dailyStateOnrbrach' ,authenticate,authorizeRoles('HR'),dailyStateBranch) ;
+
+//dailyAttendanceTable   لكل الفروع 
+router.get('/dailyAttendanceTable' ,authenticate,authorizeRoles('HR'),dailyAttendanceTable)
+
+//  هنجيب جدول الحضور لفرع معين
+ router.get('/dailyAttendanceTableOnebranch' ,authenticate ,authorizeRoles('HR'),dailyAttendanceTableOnebranch)
+
+
+
+
+// تسجيل حضور اليوم جه امتي ومشي امتي
+router.get("/today/:id", authenticate,authorizeRoles('HR'), getTodayAttendance);   //done
+
+
+// سجل الحضور الشهري لموظف معين
+router.get('/getMonthlyAttendanceForEmployee/:id' ,authenticate ,authorizeRoles('HR'),getMonthlyAttendanceForEmployee)
+//////////////////////////////////////////////////////////////////////
+//تقرير شهري لكل الحضور  بتاع كل الفروع
+router.get('/monthlyReport' ,authenticate,authorizeRoles('HR') ,monthlyReport)
+//  تقرير شهري لفرع معين 
+router.get('/monthreportonebranch' ,authenticate ,authorizeRoles('HR') ,monthlyReportoneBranch)
+
+//  بيانات تاخير موظف معين من حيث بقي الحضور والتاخير
+router.get('/dailyEmployeeAttendance/:id' ,authenticate , authorizeRoles('HR'),dailyEmployeeAttendance ); //
+
+//  بيانات تاخير الموظف الشهري
+ router.get('/monthlyEmployeeAttendance/:id' ,authenticate, authorizeRoles('HR'),monthlyEmployeeAttendance)
 module.exports = router;

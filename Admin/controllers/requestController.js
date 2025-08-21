@@ -184,20 +184,26 @@ exports.approveRequest = async (req, res) => {
       const leaveBalance = await LeaveBalance.findOne({ employee: r.employee._id });
       if (!leaveBalance) return res.status(404).json({ message: 'رصيد الإجازات غير موجود' });
 
-      switch (r.leave.leaveType) {
-        case 'سنوية':
-          leaveBalance.annual -= leaveDays;
-          break;
-        case 'مرضية':
-          leaveBalance.sick -= leaveDays;
-          break;
-        case 'بدون مرتب':
-          leaveBalance.unpaid -= leaveDays;
-          break;
-        default:
-          break;
+      const leaveMap = {
+        'سنوية': 'annual',
+        'مرضية': 'sick',
+        'زواج': 'marriage',
+        'طارئة': 'emergency',
+        'ولادة': 'maternity',
+        'بدون مرتب': 'unpaid'
+      };
+
+      const balanceField = leaveMap[r.leave.leaveType];
+
+      if (!balanceField) {
+        return res.status(400).json({ message: `نوع الإجازة غير معروف: ${r.leave.leaveType}` });
       }
 
+      if (leaveBalance[balanceField] < leaveDays) {
+        return res.status(400).json({ message: 'الرصيد غير كافي' });
+      }
+
+      leaveBalance[balanceField] -= leaveDays;
       await leaveBalance.save();
     }
 
@@ -206,7 +212,6 @@ exports.approveRequest = async (req, res) => {
       const emp = r.employee;
       if (!emp.salary || typeof emp.salary !== 'object') emp.salary = {};
 
-      // نضمن القيم الإفتراضية
       emp.salary.base = emp.salary.base || 0;
       emp.salary.housingAllowance = emp.salary.housingAllowance || 0;
       emp.salary.transportAllowance = emp.salary.transportAllowance || 0;
@@ -231,6 +236,7 @@ exports.approveRequest = async (req, res) => {
     res.status(500).json({ message: 'خطأ أثناء الموافقة', error: e.message });
   }
 };
+
 
 // =============== Reject (HR/Admin) ===============
 exports.rejectRequest = async (req, res) => {

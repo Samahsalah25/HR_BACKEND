@@ -4,6 +4,7 @@ const path = require('path');
 const multer = require('multer');
 const Task = require('../models/Task');
 const Employee = require('../models/employee');
+const { log } = require('console');
 
 // ===== Multer config (ملف واحد باسم attachment) =====
 const UPLOAD_DIR = path.resolve(__dirname, '..', 'uploads', 'tasks');
@@ -80,6 +81,65 @@ const getAlltasks = async (req, res) => {
   }
 };
 
+//  هنا هنجيب كل التاسكات الخاصه بالفرع بتاعي
+const getAllTasksForMyBranch = async (req, res) => {
+  try {
+    console.log(req.user._id);
+    
+    // أولاً، جلب بيانات المستخدم مع الفرع
+    const user = await Employee.findOne({ user: req.user._id }).populate('workplace');
+    console.log("Found user:", user);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'المستخدم غير موجود'
+      });
+    }
+
+    if (!user.workplace) {
+      return res.status(400).json({
+        success: false,
+        message: 'المستخدم ليس مرتبطًا بأي فرع'
+      });
+    }
+
+    const branchId = user.workplace._id;
+
+    // جلب كل الموظفين في نفس الفرع
+    const myBranchEmployees = await Employee.find({ workplace: branchId }).select('_id');
+    const employeeIds = myBranchEmployees.map(e => e._id);
+
+    // جلب المهام الخاصة بهم فقط
+    const tasks = await Task.find({ assignedTo: { $in: employeeIds } })
+      .populate({
+        path: 'assignedTo',
+        select: 'fullName department',
+        populate: { path: 'user', select: 'name email' }
+      })
+      .populate('assignedBy', 'fullName email')
+      .sort({ createdAt: -1 });
+
+    // تعديل التواريخ علشان input type="date"
+    const formattedTasks = tasks.map(task => ({
+      ...task.toObject(),
+      dueDate: task.dueDate ? task.dueDate.toISOString().split("T")[0] : null,
+      createdAt: task.createdAt ? task.createdAt.toISOString().split("T")[0] : null,
+      updatedAt: task.updatedAt ? task.updatedAt.toISOString().split("T")[0] : null
+    }));
+
+    res.json({ success: true, data: formattedTasks });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: 'خطأ في استرجاع المهام',
+      error: error.message
+    });
+  }
+};
+
+
 // GET tasks by employee
 const taskByemployee = async (req, res) => {
   try {
@@ -100,15 +160,12 @@ const taskByemployee = async (req, res) => {
 // POST create new task (ملف واحد: attachment)
 const createTasks = async (req, res) => {
   try {
-   console.log("Headers:", req.headers);
-console.log("Body:", req.body);
-console.log("File:", req.file);
+   
 
     const {
       title,
       description,
-      assignedTo,
-    
+      assignedTo,    
       dueDate,
   
     } = req.body || {};
@@ -302,6 +359,58 @@ const tasksOverview = async (req, res) => {
   }
 };
 
+// GET task statistics لفرع معين بس 
+const tasksOverviewForMyBranch = async (req, res) => {
+  try {
+    // جلب بيانات المستخدم الحالي مع الفرع
+    const user = await Employee.findOne({ user: req.user._id }).populate("workplace");
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "المستخدم غير موجود"
+      });
+    }
+
+    if (!user.workplace) {
+      return res.status(400).json({
+        success: false,
+        message: "المستخدم ليس مرتبطًا بأي فرع"
+      });
+    }
+
+    const branchId = user.workplace._id;
+
+    // جلب كل الموظفين في نفس الفرع
+    const myBranchEmployees = await Employee.find({ workplace: branchId }).select("_id");
+    const employeeIds = myBranchEmployees.map(e => e._id);
+
+    // حساب الإحصائيات للمهام الخاصة بهم فقط
+    const totalTasks = await Task.countDocuments({ assignedTo: { $in: employeeIds } });
+    const completedTasks = await Task.countDocuments({ assignedTo: { $in: employeeIds }, status: "مكتملة" });
+    const inProgressTasks = await Task.countDocuments({ assignedTo: { $in: employeeIds }, status: "قيد العمل" });
+    const overdueTasks = await Task.countDocuments({ assignedTo: { $in: employeeIds }, status: "متأخرة" });
+
+    const stats = {
+      total: totalTasks,
+      completed: completedTasks,
+      inProgress: inProgressTasks,
+      overdue: overdueTasks,
+      completionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
+      nonCompletionRate: totalTasks > 0 ? Math.round(((overdueTasks+inProgressTasks) / totalTasks) * 100) : 0
+    };
+
+    res.json({ success: true, data: stats });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "خطأ في استرجاع إحصائيات المهام",
+      error: error.message
+    });
+  }
+};
+
 
 // single task by id
 const getTaskById = async (req, res) => {
@@ -332,14 +441,89 @@ const getTaskById = async (req, res) => {
   }
 };
 
+// get tasksState ( نسبة التاسكات المكتملة والغير مكتملة خلال شهر وسنة)
+
+
+const getTasksStats = async (req, res) => {
+  try {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    const endOfYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(now);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // helper function
+    const calculateStats = (tasks) => {
+      const total = tasks.length;
+      const completed = tasks.filter(t => t.status === "مكتملة").length;
+      const inProgress = tasks.filter(t => t.status === "قيد العمل").length;
+      const overdue = tasks.filter(t => t.status === "متأخرة").length;
+      const notCompleted = inProgress + overdue;
+
+      return {
+        total,
+        completed,
+        inProgress,
+        overdue,
+        notCompleted,
+        percentages: {
+          completed: total ? ((completed / total) * 100).toFixed(2) : "0.00",
+          inProgress: total ? ((inProgress / total) * 100).toFixed(2) : "0.00",
+          overdue: total ? ((overdue / total) * 100).toFixed(2) : "0.00",
+          notCompleted: total ? ((notCompleted / total) * 100).toFixed(2) : "0.00"
+        }
+      };
+    };
+
+    // اجمالي
+    const allTasks = await Task.find();
+    const allStats = calculateStats(allTasks);
+
+    // الشهر
+    const monthlyTasks = await Task.find({
+      assignDate: { $gte: startOfMonth, $lte: endOfMonth }
+    });
+    const monthlyStats = calculateStats(monthlyTasks);
+
+    // السنة
+    const yearlyTasks = await Task.find({
+      assignDate: { $gte: startOfYear, $lte: endOfYear }
+    });
+    const yearlyStats = calculateStats(yearlyTasks);
+
+    // اليوم
+    const dailyTasks = await Task.find({
+      assignDate: { $gte: startOfDay, $lte: endOfDay }
+    });
+    const dailyStats = calculateStats(dailyTasks);
+
+    res.json({
+      all: allStats,
+      monthly: monthlyStats,
+      yearly: yearlyStats,
+      daily: dailyStats
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server Error" });
+  }
+};
+
 
 module.exports = {
   upload,          // استخدم في الراوتر: upload.single('attachment')
   getAlltasks,
+  getAllTasksForMyBranch,
   getTaskById,
   createTasks,
   taskByemployee,
   updateTask,
   deleteTask,
-  tasksOverview
+  tasksOverview ,
+  getTasksStats ,tasksOverviewForMyBranch
 };

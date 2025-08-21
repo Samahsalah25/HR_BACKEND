@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const {getAllEmployees ,createEmployee ,getContractsStats ,getAllContracts,getEmployeeById ,deleteEmployee} = require('../controllers/hrController');
+const {getAllEmployees ,createEmployee ,getContractsStats ,getAllContracts,getEmployeeById ,deleteEmployee ,getEmployeesByBranch} = require('../controllers/hrController');
 const  authenticate = require('../middlesware/authenticate');
 
 // Login (يوزر يدخل)
@@ -8,6 +8,8 @@ const  authenticate = require('../middlesware/authenticate');
 
 // جلب كل الموظفين اللي رولهم Employee
 router.get('/', authenticate, getAllEmployees);
+
+router.get('/getEmployeesByBranch' ,authenticate ,getEmployeesByBranch)
 // get contrcacts
 router.get('/getContractsStats' ,authenticate,getContractsStats) ;
 router.get('/getAllContracts' ,authenticate ,getAllContracts)
