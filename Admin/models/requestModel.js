@@ -33,7 +33,7 @@ const requestSchema = new mongoose.Schema({
   leave: {
     leaveType: { 
       type: String, 
-      enum: ['سنوية', 'مرضية', 'بدون مرتب', 'أخرى'] 
+      enum: ['اعتيادية', 'مرضية', 'زواج', 'طارئة' ,'ولادة' ,'غير مدفوعة'] 
     },
     startDate: Date,
     endDate: Date,

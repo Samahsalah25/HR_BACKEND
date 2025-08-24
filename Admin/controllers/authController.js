@@ -59,3 +59,33 @@ exports.logout = (req, res) => {
   });
   res.json({ message: 'Logged out successfully' });
 };
+// controllers/authController.js
+exports.getMe = async (req, res) => {
+  try {
+    // الـ middleware تبع الـ auth بيحط req.user من التوكن
+    const user = await User.findById(req.user.id)
+      .populate({
+        path: 'employee',
+        populate: [
+          { path: 'department', select: 'name' },
+          { path: 'workplace', select: 'name location' },
+          { path: 'manager', select: 'name jobTitle' }
+        ]
+      });
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    res.json({
+      success: true,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        employee: user.employee
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

@@ -2,6 +2,7 @@ const Employee = require('../models/employee');
 const User = require('../models/user');
 const Department = require('../models/depaertment'); // لاحظ spelling
 const LeaveBalance=require('../models/leaveBalanceModel')
+const mongoose=require('mongoose')
 const getAllEmployees = async (req, res) => {
   try {
     const employees = await Employee.find()
@@ -57,7 +58,11 @@ const getAllEmployees = async (req, res) => {
 
 //Hr can create employee
 
+
 const createEmployee = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const {
       name,
@@ -74,19 +79,30 @@ const createEmployee = async (req, res) => {
       residencyDurationId,
       workHoursPerWeek,
       workplace,
-      salary,
-      role
+      salary
     } = req.body;
 
     if (req.user.role !== 'HR') {
       return res.status(403).json({ message: 'ليس لديك صلاحية' });
     }
 
+    // تحقق من البريد الإلكتروني
+    const existingUser = await User.findOne({ email }).session(session);
+    if (existingUser) {
+      return res.status(400).json({ message: `البريد الإلكتروني ${email} مستخدم بالفعل` });
+    }
+
+    // تحقق من رقم الموظف
+    const existingEmployee = await Employee.findOne({ employeeNumber }).session(session);
+    if (existingEmployee) {
+      return res.status(400).json({ message: `رقم الموظف ${employeeNumber} مستخدم بالفعل` });
+    }
+
     // إنشاء المستخدم
-    const user = await User.create({ name, email, password, role: "EMPLOYEE" });
+    const user = await User.create([{ name, email, password, role: "EMPLOYEE" }], { session });
 
     // إنشاء الموظف
-    let employee = await Employee.create({
+    let employee = await Employee.create([{
       name,
       jobTitle,
       employeeNumber,
@@ -104,15 +120,12 @@ const createEmployee = async (req, res) => {
       workHoursPerWeek,
       workplace,
       salary,
-      user: user._id
-    });
+      user: user[0]._id
+    }], { session });
 
-    // جلب الـ populated documents عشان نحسب الـ end
-    employee = await Employee.findById(employee._id)
-      .populate('contract.duration')
-      .populate('residency.duration');
+    employee = employee[0];
 
-    // حساب الـ end للـ contract
+    // حساب end
     if (employee.contract.start && employee.contract.duration) {
       const end = new Date(employee.contract.start);
       if (employee.contract.duration.unit === 'years') {
@@ -123,23 +136,21 @@ const createEmployee = async (req, res) => {
       employee.contract.end = end;
     }
 
-    // حساب الـ end للإقامة
     if (employee.residency.start && employee.residency.duration) {
       const end = new Date(employee.residency.start);
       end.setFullYear(end.getFullYear() + employee.residency.duration.year);
       employee.residency.end = end;
     }
 
-    await employee.save();
+    await employee.save({ session });
 
-    // جلب رصيد الإجازات الافتراضي للشركة
-    const companyLeaves = await LeaveBalance.findOne({employee:null}); // سجل واحد يحتوي على كل أنواع الإجازات
+    // رصيد الإجازات
+    const companyLeaves = await LeaveBalance.findOne({ employee: null }).session(session);
     if (!companyLeaves) {
-      return res.status(500).json({ message: 'رصيد الإجازات الافتراضي للشركة غير محدد' });
+      throw new Error("رصيد الإجازات الافتراضي للشركة غير محدد");
     }
 
-    // إنشاء رصيد الإجازات للموظف الجديد بناءً على رصيد الشركة
-    await LeaveBalance.create({
+    await LeaveBalance.create([{
       employee: employee._id,
       annual: companyLeaves.annual,
       sick: companyLeaves.sick,
@@ -147,11 +158,16 @@ const createEmployee = async (req, res) => {
       emergency: companyLeaves.emergency,
       maternity: companyLeaves.maternity,
       unpaid: companyLeaves.unpaid
-    });
+    }], { session });
 
-    res.status(201).json({ user, employee });
+    await session.commitTransaction();
+    session.endSession();
+
+    res.status(201).json({ user: user[0], employee });
 
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     console.error(error);
     res.status(500).json({ message: 'حدث خطأ أثناء إنشاء الموظف', error: error.message });
   }
@@ -374,5 +390,99 @@ const getEmployeesByBranch = async (req, res) => {
 };
 
 
+//update employee here
+// Update Employee
+const updateEmployee = async (req, res) => {
+  try {
+    const { id } = req.params; // ID الموظف من البارامز
+    const {
+      name,
+      jobTitle,
+      employeeNumber,
+      department,
+      manager,
+      employmentType,
+      contractStart,
+      contractDurationId,
+      residencyStart,
+      residencyDurationId,
+      workHoursPerWeek,
+      workplace,
+      salary,
+      role
+    } = req.body;
 
-module.exports = { getAllEmployees ,createEmployee ,getContractsStats ,getAllContracts , getEmployeeById ,deleteEmployee ,getEmployeesByBranch}; 
+    // HR/Admin فقط يقدروا يعدلوا
+    if (!['HR', 'ADMIN'].includes(req.user.role)) {
+      return res.status(403).json({ message: "ليس لديك صلاحية" });
+    }
+
+    // جلب الموظف
+    let employee = await Employee.findById(id)
+      .populate("contract.duration")
+      .populate("residency.duration")
+      .populate("user");
+
+    if (!employee) {
+      return res.status(404).json({ message: "الموظف غير موجود" });
+    }
+
+    // تحديث البيانات
+    if (name) {
+      employee.name = name;
+      if (employee.user) employee.user.name = name; // لو عايزة تحدث كمان الـ user
+    }
+    if (jobTitle) employee.jobTitle = jobTitle;
+    if (employeeNumber) employee.employeeNumber = employeeNumber;
+    if (department) employee.department = department;
+    if (manager) employee.manager = manager;
+    if (employmentType) employee.employmentType = employmentType;
+    if (workHoursPerWeek) employee.workHoursPerWeek = workHoursPerWeek;
+    if (workplace) employee.workplace = workplace;
+    if (salary) employee.salary = salary;
+
+    // --- العقد ---
+    if (contractStart) employee.contract.start = contractStart;
+    if (contractDurationId) employee.contract.duration = contractDurationId;
+
+    // --- الإقامة ---
+    if (residencyStart) employee.residency.start = residencyStart;
+    if (residencyDurationId) employee.residency.duration = residencyDurationId;
+
+    await employee.populate([
+  { path: "contract.duration" },
+  { path: "residency.duration" }
+]);
+
+    // حساب الـ end للـ contract
+    if (employee.contract.start && employee.contract.duration) {
+      const end = new Date(employee.contract.start);
+      if (employee.contract.duration.unit === "years") {
+        end.setFullYear(end.getFullYear() + employee.contract.duration.duration);
+      } else {
+        end.setMonth(end.getMonth() + employee.contract.duration.duration);
+      }
+      employee.contract.end = end;
+    }
+
+    // حساب الـ end للإقامة
+    if (employee.residency.start && employee.residency.duration) {
+      const end = new Date(employee.residency.start);
+      end.setFullYear(end.getFullYear() + employee.residency.duration.year);
+      employee.residency.end = end;
+    }
+
+    await employee.save();
+    if (employee.user) await employee.user.save(); 
+
+    res.json({ message: "تم تحديث بيانات الموظف بنجاح", employee });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "خطأ أثناء تحديث الموظف", error: error.message });
+  }
+};
+
+
+
+
+module.exports = { getAllEmployees ,createEmployee ,getContractsStats ,getAllContracts , getEmployeeById ,deleteEmployee ,getEmployeesByBranch ,updateEmployee}; 

@@ -21,8 +21,10 @@ const licenceRoute=require('.//Admin/routes/licenceRoutes.js')
 const taskRoute=require('./Admin/routes/taskRoutes.js')
 const branchRoute=require('./Admin/routes/branchRoutes.js')
 const attendanceRoute=require('./Admin/routes/attendanceRoutes.js');
-const setupAttendanceCron=require('./cron/attendanceCron.js');
 const leaveRoute=require('./Admin/routes/leaveRoutes.js')
+const setupAttendanceCron=require('./cron/attendanceCron.js');
+const startTaskStatusCron=require('./cron/tasksCorn.js')
+
 
 const app = express();
 
@@ -40,7 +42,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/residencies', residencyRoutes);
 app.use('/api/contracts', contractRoutes);
-app.use('/api/admin',employeeRoutes)
+app.use('/api/employees',employeeRoutes)
 app.use('/api/leaves' ,leaveRoute)
 app.use('/api/hr',hrRoutes)
 app.use('/api/requests', requestRoutes);
@@ -57,7 +59,7 @@ const PORT = process.env.PORT || 4000;
   try {
     await connectDB();
 setupAttendanceCron();
-    // 👇 هنا هتعمل seedAdmin (لكن خليه يرجّع قيمة بدل ما يعمل process.exit)
+   startTaskStatusCron();
     
 
     app.listen(PORT, () => {

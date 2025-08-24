@@ -4,11 +4,21 @@ const {
   getContracts,
   createContract,
   deleteContract,
+  updateContract ,getContractById 
 } = require('../controllers/contractController');
 const authorizeRoles=require('../middlesware/roleMiddleware');
 const authenticate = require("../middlesware/authenticate");
-router.get('/',authenticate,authorizeRoles('ADMIN'), getContracts);
-router.post('/',authenticate,authorizeRoles('ADMIN'), createContract);
-router.delete('/:id',authenticate,authorizeRoles('ADMIN'), deleteContract);
+const  {
+  createContractSchema,
+  updateContractSchema
+}= require('../validations/contractvalidation');
+const validate=require('../middlesware/validate');
+
+
+router.get('/',authenticate,authorizeRoles('HR'), getContracts);
+router.get('/:id',authenticate,authorizeRoles('HR'), getContractById);
+router.post('/',authenticate,authorizeRoles('ADMIN') ,validate(createContractSchema), createContract);
+router.patch('/:id' ,authenticate ,authorizeRoles('ADMIN'),validate(updateContractSchema),updateContract)
+router.delete('/:id',authenticate,authorizeRoles('HR'), deleteContract);
 
 module.exports = router;

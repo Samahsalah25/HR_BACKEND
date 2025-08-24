@@ -41,5 +41,28 @@ const createCompanyLeaves = async (req, res) => {
     });
   }
 };
+const getCompanyLeaves = async (req, res) => {
+  try {
+    const companyLeaves = await LeaveBalance.findOne({ employee: null });
+    if (!companyLeaves) {
+      return res.status(404).json({
+        success: false,
+        message: "لم يتم إعداد الإجازات الافتراضية للشركة بعد"
+      });
+    }
 
-module.exports = { createCompanyLeaves };
+    res.json({
+      success: true,
+      data: companyLeaves
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "حدث خطأ أثناء جلب الإجازات",
+      error: error.message
+    });
+  }
+};
+
+
+module.exports = { createCompanyLeaves ,getCompanyLeaves  };

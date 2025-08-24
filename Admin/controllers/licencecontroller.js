@@ -70,3 +70,36 @@ exports.getRecords = async (req, res) => {
     res.status(500).json({ message: 'خطأ أثناء جلب السجلات' });
   }
 };
+
+// Get single record
+exports.getRecordById = async (req, res) => {
+  try {
+    const record = await licence.findById(req.params.id);
+    if (!record) return res.status(404).json({ message: "السجل غير موجود" });
+    res.json(record);
+  } catch (err) {
+    res.status(500).json({ message: 'خطأ أثناء جلب السجل', error: err.message });
+  }
+};
+
+// Update Record
+exports.updateRecord = async (req, res) => {
+  try {
+    const record = await licence.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!record) return res.status(404).json({ message: "السجل غير موجود" });
+    res.json(record);
+  } catch (err) {
+    res.status(500).json({ message: 'خطأ أثناء تحديث السجل', error: err.message });
+  }
+};
+
+// Delete Record
+exports.deleteRecord = async (req, res) => {
+  try {
+    const record = await licence.findByIdAndDelete(req.params.id);
+    if (!record) return res.status(404).json({ message: "السجل غير موجود" });
+    res.json({ message: "تم حذف السجل بنجاح" });
+  } catch (err) {
+    res.status(500).json({ message: 'خطأ أثناء حذف السجل', error: err.message });
+  }
+};

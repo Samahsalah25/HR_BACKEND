@@ -8,14 +8,15 @@ const { checkIn ,checkOut ,getTodayAttendance ,dailyState ,dailyStateBranch
     ,monthlyReportoneBranch ,dailyEmployeeAttendance  ,monthlyEmployeeAttendance} = require('../controllers/attendanceController');
 const authenticate=require('../middlesware/authenticate');
 const getClientTime=require('../middlesware/clientTime');
-
 const authorizeRoles=require('../middlesware/roleMiddleware');
+const validate=require('../middlesware/validate');
+const locationSchema=require('../validations/attendance');
 // تسجيل الحضور (Check-In)
 
-router.post('/checkin', authenticate,getClientTime, checkIn);
+router.post('/checkin', authenticate,getClientTime, validate(locationSchema), checkIn);
 
 // لاحقاً ممكن نضيف:
-router.post('/checkout', authenticate, checkOut);
+router.post('/checkout', authenticate, validate(locationSchema), checkOut);
 
 //daily state and percent  لكل الفروع هنا
 router.get('/dailyState' ,authenticate,authorizeRoles('HR'),dailyState) ;

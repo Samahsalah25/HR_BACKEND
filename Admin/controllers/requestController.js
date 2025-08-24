@@ -29,9 +29,9 @@ exports.createRequest = [
       if (!type) return res.status(400).json({ message: 'نوع الطلب مطلوب' });
 
       // المستخدم لازم يكون موظف
-      if (req.user.role !== 'EMPLOYEE') {
-        return res.status(403).json({ message: 'هذا الإجراء متاح للموظفين فقط' });
-      }
+      // if (req.user.role !== 'EMPLOYEE') {
+      //   return res.status(403).json({ message: 'هذا الإجراء متاح للموظفين فقط' });
+      // }
 
       // جيب Employee المرتبط باليوزر الحالي
       const employeeDoc = await Employee.findOne({ user: req.user._id });
@@ -128,6 +128,61 @@ exports.getRequests = async (req, res) => {
   }
 };
 
+// =============== Get requests for my branch (HR only) ===============
+exports.getBranchRequests = async (req, res) => {
+  try {
+    const { status = 'الكل', type, page = 1, limit = 20 } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
+
+    // جيب فرع المستخدم الحالي
+    const hrEmployee = await Employee.findOne({ user: req.user._id }).select('workplace');
+    if (!hrEmployee) return res.status(404).json({ message: 'لا توجد بيانات الموظف' });
+    const branchId = hrEmployee.workplace;
+
+    // بناء الاستعلام
+    const query = {};
+    if (status !== 'الكل') query.status = status;
+    if (type) query.type = type;
+
+    // فلتر على الموظفين في نفس الفرع
+    query['employee'] = await Employee.find({ workplace: branchId }).select('_id');
+
+    const [items, total] = await Promise.all([
+      Request.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit))
+        .populate({
+          path: 'employee',
+          select: 'name department jobTitle contract.start contract.end',
+          populate: { path: 'department', select: 'name' }
+        }),
+      Request.countDocuments(query)
+    ]);
+
+    // جدول مختصر
+    const table = items.map(r => ({
+      id: r._id,
+      employeeName: r.employee?.name || '-',
+      department: r.employee?.department?.name || null,
+      type: r.type,
+      submittedAt: r.createdAt,
+      status: r.status,
+      decisionDate: r.decidedAt || null
+    }));
+
+    res.json({
+      page: Number(page),
+      limit: Number(limit),
+      total,
+      items: table
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: 'خطأ أثناء جلب طلبات الفرع', error: e.message });
+  }
+};
+
 // =============== Get single (تفاصيل الطلب) ===============
 exports.getRequestById = async (req, res) => {
   try {
@@ -185,7 +240,7 @@ exports.approveRequest = async (req, res) => {
       if (!leaveBalance) return res.status(404).json({ message: 'رصيد الإجازات غير موجود' });
 
       const leaveMap = {
-        'سنوية': 'annual',
+        'اعتيادية': 'annual',
         'مرضية': 'sick',
         'زواج': 'marriage',
         'طارئة': 'emergency',
@@ -290,42 +345,25 @@ exports.forwardRequest = async (req, res) => {
 // =============== Add Note (HR/Admin) ===============
 exports.addNote = async (req, res) => {
   try {
-    if (!isHRorAdmin(req.user)) return res.status(403).json({ message: 'غير مسموح' });
-
     const { text } = req.body;
-    if (!text) return res.status(400).json({ message: 'النص مطلوب' });
+    const requestId = req.params.id;
 
-    const r = await Request.findById(req.params.id);
-    if (!r) return res.status(404).json({ message: 'الطلب غير موجود' });
+    const request = await Request.findById(requestId);
+    if (!request) return res.status(404).json({ message: 'الطلب غير موجود' });
 
-    r.notes.push({ text, by: req.user._id });
-    await r.save();
+    // إضافة الملاحظة
+    request.notes.push({
+      text,
+      by: req.user._id,   // الشخص اللي بيضيف الملاحظة
+      at: new Date()
+    });
 
-    res.json({ message: 'تمت إضافة الملاحظة', request: r });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: 'خطأ أثناء إضافة الملاحظة' });
-  }
-};
+    await request.save();
 
-// =============== Add Note (HR/Admin) ===============
-exports.addNote = async (req, res) => {
-  try {
-    if (!isHRorAdmin(req.user)) return res.status(403).json({ message: 'غير مسموح' });
-
-    const { text } = req.body;
-    if (!text) return res.status(400).json({ message: 'النص مطلوب' });
-
-    const r = await Request.findById(req.params.id);
-    if (!r) return res.status(404).json({ message: 'الطلب غير موجود' });
-
-    r.notes.push({ text, by: req.user._id });
-    await r.save();
-
-    res.json({ message: 'تمت إضافة الملاحظة', request: r });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: 'خطأ أثناء إضافة الملاحظة' });
+    res.json({ message: 'تمت إضافة الملاحظة', notes: request.notes });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'حدث خطأ أثناء إضافة الملاحظة', error: err.message });
   }
 };
 
@@ -333,28 +371,92 @@ exports.addNote = async (req, res) => {
 
 exports.getRequestsByType = async (req, res) => {
   try {
-    const { type } = req.query; 
+    const { status, type } = req.query;
+
+    // بناء الفلتر بدون تقيد بالفرع
     const filter = {};
-    if (type) filter.type = type; 
+    if (status && status !== 'الكل') filter.status = status;
+    if (type) filter.type = type;
 
+    // جلب الطلبات
     const requests = await Request.find(filter)
-      .populate('employee', 'name') 
-      .sort({ createdAt: -1 }); 
+      .populate({
+        path: 'employee',
+        select: 'name workplace',
+        populate: { path: 'workplace', select: 'name' } // لإظهار اسم الفرع
+      })
+      .sort({ createdAt: -1 });
 
-   
-    const result = requests.map(r => ({
-      employeeName: r.employee.name,
-      requestType: r.type,
-      submittedAt: r.createdAt,
-      status: r.status
-    }));
+    // إعداد النتيجة حسب الحالة
+    const result = requests.map(r => {
+      const base = {
+        employeeName: r.employee.name,
+        requestType: r.type,
+        submittedAt: r.createdAt,
+        status: r.status
+      };
+      if (r.status === 'مقبول') base.decisionDate = r.decidedAt;
+      if (r.status === 'مرفوض') base.rejectionDate = r.decidedAt;
+      return base;
+    });
 
     res.json(result);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'خطأ أثناء جلب الطلبات' });
+    res.status(500).json({ message: 'خطأ أثناء جلب الطلبات', error: err.message });
   }
 };
+
+
+exports.getRequestsByWorkplace = async (req, res) => {
+  try {
+    const { status, type } = req.query;
+
+  
+    const currentEmployee = await Employee.findOne({ user: req.user._id }).select('workplace');
+    if (!currentEmployee) return res.status(404).json({ message: 'الموظف غير موجود' });
+
+
+    const employeesInWorkplace = await Employee.find({ 
+      workplace: currentEmployee.workplace 
+    }).select('_id');
+
+    const employeeIds = employeesInWorkplace.map(emp => emp._id);
+
+
+    const filter = { employee: { $in: employeeIds } };
+    if (status && status !== 'الكل') filter.status = status;
+    if (type) filter.type = type;
+
+
+    const requests = await Request.find(filter)
+      .populate({
+        path: 'employee',
+        select: 'name workplace',
+        populate: { path: 'workplace', select: 'name' } 
+      })
+      .sort({ createdAt: -1 });
+
+
+    const result = requests.map(r => {
+      const base = {
+        employeeName: r.employee.name,
+        requestType: r.type,
+        submittedAt: r.createdAt,
+        status: r.status
+      };
+      if (r.status === 'مقبول') base.decisionDate = r.decidedAt;
+      if (r.status === 'مرفوض') base.rejectionDate = r.decidedAt;
+      return base;
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'خطأ أثناء جلب الطلبات', error: err.message });
+  }
+};
+
 
 //  get requests to one employee by id
 
