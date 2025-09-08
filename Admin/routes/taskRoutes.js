@@ -8,7 +8,8 @@ const {
   taskByemployee,
   updateTask,
   deleteTask,getTaskById,
-  tasksOverview,getTasksStats ,tasksOverviewForMyBranch
+  tasksOverview,getTasksStats ,tasksOverviewForMyBranch ,
+   getTasksForMeOrCreated
 } = require('../controllers/tasksController');
 const authenticate = require('../middlesware/authenticate');
 const authorizeRoles=require('../middlesware/roleMiddleware');
@@ -20,6 +21,8 @@ const  {
 
 // Routes
 router.get('/', authenticate,authorizeRoles('HR'), getAlltasks);
+// التاسكات اللي كريتيها والخاصه به
+router.get('/my-tasks', authenticate, getTasksForMeOrCreated);
 //  الخاص بالفرع بتاعي بس
 router.get('/getAllTasksForMyBranch' , authenticate ,authorizeRoles('HR') ,getAllTasksForMyBranch )
 
@@ -27,17 +30,20 @@ router.get('/tasksOverview', authenticate,authorizeRoles('HR'), tasksOverview);
 //  هنا الخاص بالفرع بتاعي بس 
 router.get('/tasksOverviewForMyBranch', authenticate,authorizeRoles('HR'), tasksOverviewForMyBranch);
 
-router.get('/taskbyemployee/:id', authenticate, authorizeRoles('HR'),taskByemployee);
+router.get('/taskbyemployee/:id',taskByemployee);
+
+
 
 // tasks state  النسب خلال المكتملة خلال الشهر واالسنة
 router.get('/getTasksStats' ,authenticate, authorizeRoles('HR') ,getTasksStats)
 
-router.get('/:id',authenticate ,authorizeRoles('HR'),getTaskById)
+router.get('/:id',getTaskById)
 
-router.post('/', authenticate,upload.single('attachments'),authorizeRoles('HR'),validate(createTaskSchema), createTasks);
+router.post('/', authenticate,upload.single('attachments'),authorizeRoles('HR','Manager' ,'EMPLOYEE'),validate(createTaskSchema), createTasks);
 
-router.patch('/:id', authenticate, upload.single('attachments'),authorizeRoles('HR'),validate(updateTaskSchema), updateTask);
+router.patch('/:id',  upload.single('attachments'),validate(updateTaskSchema), updateTask);
 
-router.delete('/:id', authenticate, deleteTask);
+router.delete('/:id', authenticate,  authorizeRoles('HR') ,deleteTask);
+
 
 module.exports = router;

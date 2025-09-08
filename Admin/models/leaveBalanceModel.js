@@ -8,7 +8,9 @@ const leaveBalanceSchema = new mongoose.Schema({
   marriage: { type: Number, default: 3 },     // إجازة زواج
   emergency: { type: Number, default: 5 },    // إجازة طارئة
   maternity: { type: Number, default: 90 },   // إجازة ولادة
-  unpaid: { type: Number, default: 0 },       // إجازة غير مدفوعة
+  unpaid: { type: Number, default: 0 },   // إجازة غير مدفوعة
+  remaining: { type: Number, default: 0 } // الرصيد المتبقي
+    
 }, { timestamps: true });
 
 module.exports = mongoose.model("LeaveBalance", leaveBalanceSchema);

@@ -15,9 +15,15 @@ const createTaskSchema = Joi.object({
     'string.length': 'assignedTo يجب أن يكون معرف MongoDB صالح',
     'any.required': 'يجب اختيار الموظف'
   }),
+   assignDate: Joi.date().iso().optional().messages({
+    'date.format': 'تاريخ الإسناد يجب أن يكون بصيغة ISO (YYYY-MM-DD)'
+  }),
   dueDate: Joi.date().iso().required().messages({
     'date.format': 'التاريخ يجب أن يكون بصيغة ISO (YYYY-MM-DD)',
     'any.required': 'حقل تاريخ الاستحقاق مطلوب'
+  }) ,
+    completedDate:Joi.date().iso().optional().messages({
+    'date.format': 'تاريخ الإسناد يجب أن يكون بصيغة ISO (YYYY-MM-DD)'
   }),
   attachment: Joi.object({
     originalname: Joi.string().required().messages({
@@ -29,6 +35,7 @@ const createTaskSchema = Joi.object({
     path: Joi.string().required().messages({
       'any.required': 'مسار الملف مطلوب'
     }),
+     priority: Joi.string().valid('عالية', 'متوسطة', 'منخفضة').default('متوسطة'),
   }).optional()
 });
 
@@ -46,6 +53,10 @@ const updateTaskSchema = Joi.object({
   assignDate: Joi.date().iso().optional().messages({
     'date.format': 'تاريخ الإسناد يجب أن يكون بصيغة ISO (YYYY-MM-DD)'
   }),
+   
+    completedDate:Joi.date().iso().optional().messages({
+    'date.format': 'تاريخ الإسناد يجب أن يكون بصيغة ISO (YYYY-MM-DD)'
+  }),
   attachment: Joi.object({
     originalname: Joi.string().required().messages({
       'any.required': 'اسم الملف الأصلي مطلوب'
@@ -56,6 +67,7 @@ const updateTaskSchema = Joi.object({
     path: Joi.string().required().messages({
       'any.required': 'مسار الملف مطلوب'
     }),
+     priority: Joi.string().valid('عالية', 'متوسطة', 'منخفضة').default('متوسطة'),
   }).optional()
 });
 

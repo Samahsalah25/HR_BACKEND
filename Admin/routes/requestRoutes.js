@@ -24,7 +24,7 @@ const validate=require('../middlesware/validate');
 router.post('/', authenticate,authorizeRoles('HR','EMPLOYEE'),validate(createRequestSchema), createRequest);
 
 // عرض الطلبات (الموظف : طلباته، HR/Admin : الكل + فلترة)
-router.get('/', authenticate,authorizeRoles("HR"),getRequests);
+router.get('/',getRequests);
 
 // هنا كل الطلبات بالفلتر الكل او المرفةض اة اة بس التابع للفرع بتاعي فقك  فلتر هنا حسب نوع الطلب ايه
 router.get('/bybranch',authenticate ,authorizeRoles('HR') ,getBranchRequests)
@@ -36,13 +36,13 @@ router.get('/requestsType',authenticate ,authorizeRoles('HR') ,getRequestsByType
 router.get('/requestsTypeoneBranch',authenticate ,authorizeRoles('HR') ,getRequestsByWorkplace)
 
 //  هنا هنعرض كل طلبات لموظف معين بال Id
-router.get('/getrequests/:id' ,authenticate ,authorizeRoles('HR'),getRequestsByEmployee )
+router.get('/getrequests/:id' ,authenticate ,authorizeRoles('HR' ,'EMPLOYEE'),getRequestsByEmployee )
 // معين تفاصيل طلب
-router.get('/:id', authenticate,authorizeRoles('HR')  ,getRequestById);
+router.get('/:id' ,getRequestById);
 
 // HR/Admin: اعتماد / رفض / تحويل / إضافة ملاحظة
 router.patch('/:id/approve', authenticate,authorizeRoles('HR') ,validate(updateRequestSchema) ,approveRequest);
-router.patch('/:id/reject', authenticate,authorizeRoles('HR'),validate(updateRequestSchema), rejectRequest);
+router.patch('/:id/reject' , authenticate,authorizeRoles('HR'), rejectRequest);
 router.patch('/:id/forward', authenticate,authorizeRoles('HR'),validate(updateRequestSchema), forwardRequest);
 router.post('/:id/notes', authenticate,authorizeRoles('HR') ,validate(addNoteSchema),addNote);
 

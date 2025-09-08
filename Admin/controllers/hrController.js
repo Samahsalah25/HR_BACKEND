@@ -3,6 +3,8 @@ const User = require('../models/user');
 const Department = require('../models/depaertment'); // لاحظ spelling
 const LeaveBalance=require('../models/leaveBalanceModel')
 const mongoose=require('mongoose')
+const Contract=require('../models/Contract') ;
+const ResidencyYear =require('../models/ResidencyYear')
 const getAllEmployees = async (req, res) => {
   try {
     const employees = await Employee.find()
@@ -82,10 +84,6 @@ const createEmployee = async (req, res) => {
       salary
     } = req.body;
 
-    if (req.user.role !== 'HR') {
-      return res.status(403).json({ message: 'ليس لديك صلاحية' });
-    }
-
     // تحقق من البريد الإلكتروني
     const existingUser = await User.findOne({ email }).session(session);
     if (existingUser) {
@@ -96,6 +94,17 @@ const createEmployee = async (req, res) => {
     const existingEmployee = await Employee.findOne({ employeeNumber }).session(session);
     if (existingEmployee) {
       return res.status(400).json({ message: `رقم الموظف ${employeeNumber} مستخدم بالفعل` });
+    }
+
+    // استرجاع البيانات المرتبطة بالعقد والإقامة
+    const contractDuration = await Contract.findById(contractDurationId).session(session);
+    if (!contractDuration) {
+      return res.status(400).json({ message: "لم يتم العثور على مدة العقد." });
+    }
+
+    const residencyDuration = await ResidencyYear.findById(residencyDurationId).session(session);
+    if (!residencyDuration) {
+      return res.status(400).json({ message: "لم يتم العثور على مدة الإقامة." });
     }
 
     // إنشاء المستخدم
@@ -110,12 +119,12 @@ const createEmployee = async (req, res) => {
       manager,
       employmentType,
       contract: {
-        start: contractStart,
-        duration: contractDurationId
+        start: contractStart || null,
+        duration: contractDuration._id // استخدام ObjectId الخاص بالعقد
       },
       residency: {
-        start: residencyStart,
-        duration: residencyDurationId
+        start: residencyStart || null,
+        duration: residencyDuration._id // استخدام ObjectId الخاص بالإقامة
       },
       workHoursPerWeek,
       workplace,
@@ -125,20 +134,21 @@ const createEmployee = async (req, res) => {
 
     employee = employee[0];
 
-    // حساب end
-    if (employee.contract.start && employee.contract.duration) {
+    // حساب تاريخ النهاية للعقد
+    if (employee.contract.start && contractDuration) {
       const end = new Date(employee.contract.start);
-      if (employee.contract.duration.unit === 'years') {
-        end.setFullYear(end.getFullYear() + employee.contract.duration.duration);
-      } else {
-        end.setMonth(end.getMonth() + employee.contract.duration.duration);
+      if (contractDuration.unit === 'years') {
+        end.setFullYear(end.getFullYear() + contractDuration.duration);
+      } else if (contractDuration.unit === 'months') {
+        end.setMonth(end.getMonth() + contractDuration.duration);
       }
       employee.contract.end = end;
     }
 
-    if (employee.residency.start && employee.residency.duration) {
+    // حساب تاريخ النهاية للإقامة
+    if (employee.residency.start && residencyDuration) {
       const end = new Date(employee.residency.start);
-      end.setFullYear(end.getFullYear() + employee.residency.duration.year);
+      end.setFullYear(end.getFullYear() + residencyDuration.year);
       employee.residency.end = end;
     }
 
@@ -149,7 +159,8 @@ const createEmployee = async (req, res) => {
     if (!companyLeaves) {
       throw new Error("رصيد الإجازات الافتراضي للشركة غير محدد");
     }
-
+const totalLeaveBalance = companyLeaves.annual + companyLeaves.sick + companyLeaves.marriage +
+                          companyLeaves.emergency + companyLeaves.maternity + companyLeaves.unpaid;
     await LeaveBalance.create([{
       employee: employee._id,
       annual: companyLeaves.annual,
@@ -157,7 +168,8 @@ const createEmployee = async (req, res) => {
       marriage: companyLeaves.marriage,
       emergency: companyLeaves.emergency,
       maternity: companyLeaves.maternity,
-      unpaid: companyLeaves.unpaid
+      unpaid: companyLeaves.unpaid ,
+        remaining: totalLeaveBalance 
     }], { session });
 
     await session.commitTransaction();
@@ -168,7 +180,9 @@ const createEmployee = async (req, res) => {
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-    console.error(error);
+ 
+  console.error("Error details:", error);
+
     res.status(500).json({ message: 'حدث خطأ أثناء إنشاء الموظف', error: error.message });
   }
 };
@@ -253,46 +267,69 @@ const getAllContracts = async (req, res) => {
     res.status(500).json({ message: 'خطأ أثناء جلب العقود' });
   }
 };
-
-//get one employee
+// controllers/hrController.js
 const getEmployeeById = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const employee = await Employee.findById(id)
-      .populate('user', 'name email role')
-      .populate('department', 'name')
-      .populate('contract.duration')
-      .populate('residency.duration');
+    const employee = await Employee.findById(req.params.id)
+      .populate("user", "email role")
+      .populate("department", "name")
+      .populate("manager", "name")
+      .populate("contract.duration", "duration unit")
+      .populate("residency.duration", "duration unit")
+      .populate("workplace", "name");
 
     if (!employee) {
-      return res.status(404).json({ message: 'الموظف غير موجود' });
+      return res.status(404).json({ message: "الموظف غير موجود" });
     }
 
-    // صياغة الريسبونس
+    // ✅ هنا هنرجع نسخة كاملة للـ frontend
     const result = {
       id: employee._id,
       name: employee.name,
-      email: employee.user.email,
-      role: employee.user.role,
-      department: employee.department ? employee.department.name : null,
+      email: employee.user?.email,
+      role: employee.user?.role,
+      employeeNumber: employee.employeeNumber,
       jobTitle: employee.jobTitle,
-      contractStart: employee.contract.start,
-      contractEnd: employee.contract.end,
-      contractDuration: employee.contract.duration
-        ? `${employee.contract.duration.duration} ${employee.contract.duration.unit === 'years' ? 'سنة' : 'شهر'}`
+
+      department: employee.department?._id || null,
+      departmentName: employee.department?.name || null,
+
+      manager: employee.manager?._id || null,
+      managerName: employee.manager?.name || null,
+
+      employmentType: employee.employmentType,
+
+      contractStart: employee.contract?.start,
+      contractEnd: employee.contract?.end,
+      contractDurationId: employee.contract?.duration?._id || null,
+      contractDuration: employee.contract?.duration
+        ? `${employee.contract.duration.duration} ${employee.contract.duration.unit === "years" ? "سنة" : "شهر"}`
         : null,
-      residencyStart: employee.residency.start,
-      residencyEnd: employee.residency.end,
-      residencyDuration: employee.residency.duration
-        ? `${employee.residency.duration.year} سنة`
-        : null
+
+      residencyStart: employee.residency?.start,
+      residencyEnd: employee.residency?.end,
+      residencyDurationId: employee.residency?.duration?._id || null,
+      residencyDuration: employee.residency?.duration
+        ? `${employee.residency.duration.duration} ${employee.residency.duration.unit === "years" ? "سنة" : "شهر"}`
+        : null,
+
+      workplace: employee.workplace?._id || null,
+      workplaceName: employee.workplace?.name || null,
+
+      workHoursPerWeek: employee.workHoursPerWeek,
+
+      salary: {
+        base: employee.salary?.base || 0,
+        housingAllowance: employee.salary?.housingAllowance || 0,
+        transportAllowance: employee.salary?.transportAllowance || 0,
+        otherAllowance: employee.salary?.otherAllowance || 0,
+      },
     };
 
     res.json(result);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'حدث خطأ أثناء جلب بيانات الموظف' });
+  } catch (err) {
+    console.error("❌ خطأ في getEmployeeById:", err);
+    res.status(500).json({ message: "حصل خطأ في السيرفر" });
   }
 };
 
@@ -389,6 +426,27 @@ const getEmployeesByBranch = async (req, res) => {
   }
 };
 
+// GET /api/managers
+const getManagerss = async (req, res) => {
+  try {
+    const managers = await Employee.find()
+      .populate({
+        path: "user",
+        match: { role: "Manager" }, // فلتر بس على اليوزر اللي رولهم Manager
+        select: "role name email", // الحقول اللي تهمك من اليوزر
+      })
+      .select("name jobTitle"); // الحقول اللي تهمك من الامبلوي
+
+    // هنا ممكن يرجع موظفين كتير user بتاعهم null لأن match فشل، فنفلترهم
+    const filtered = managers.filter(emp => emp.user !== null);
+
+    res.json(filtered);
+  } catch (err) {
+    console.error("Error fetching managers:", err);
+    res.status(500).json({ message: "Error fetching managers" });
+  }
+};
+
 
 //update employee here
 // Update Employee
@@ -413,9 +471,9 @@ const updateEmployee = async (req, res) => {
     } = req.body;
 
     // HR/Admin فقط يقدروا يعدلوا
-    if (!['HR', 'ADMIN'].includes(req.user.role)) {
-      return res.status(403).json({ message: "ليس لديك صلاحية" });
-    }
+    // if (!['HR', 'ADMIN'].includes(req.user.role)) {
+    //   return res.status(403).json({ message: "ليس لديك صلاحية" });
+    // }
 
     // جلب الموظف
     let employee = await Employee.findById(id)
@@ -424,7 +482,8 @@ const updateEmployee = async (req, res) => {
       .populate("user");
 
     if (!employee) {
-      return res.status(404).json({ message: "الموظف غير موجود" });
+    return res.status(404).json({ message: "الموظف غير موجود" });
+
     }
 
     // تحديث البيانات
@@ -477,12 +536,13 @@ const updateEmployee = async (req, res) => {
 
     res.json({ message: "تم تحديث بيانات الموظف بنجاح", employee });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "خطأ أثناء تحديث الموظف", error: error.message });
+   console.error("Update employee error:", error);
+res.status(500).json({ message: "خطأ أثناء تحديث الموظف", error: error.message });
+
   }
 };
 
 
 
 
-module.exports = { getAllEmployees ,createEmployee ,getContractsStats ,getAllContracts , getEmployeeById ,deleteEmployee ,getEmployeesByBranch ,updateEmployee}; 
+module.exports = { getAllEmployees ,createEmployee ,getContractsStats ,getManagerss ,getAllContracts , getEmployeeById ,deleteEmployee ,getEmployeesByBranch ,updateEmployee}; 

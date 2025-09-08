@@ -1,7 +1,7 @@
 const User = require('../models/user');
 const generateToken = require('../../utlis/generateToken');
-const setTokenCookie = require('../../utlis/setTokenCookie');
-
+const setTokenCookie= require('../../utlis/setTokenCookie');
+const Employee=require('../models/employee')
 // @desc Register user
 exports.register = async (req, res) => {
   try {
@@ -29,13 +29,18 @@ exports.register = async (req, res) => {
 // @desc Login user
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { employeeNumber, password } = req.body;
 
-    const user = await User.findOne({ email });
-    if (!user) return res.status(401).json({ message: 'Invalid credentials' });
+    // نجيب الـ Employee برقم التعريفي
+    const employee = await Employee.findOne({ employeeNumber }).populate('user');
+    if (!employee || !employee.user) {
+      return res.status(401).json({ message: 'الرقم التعريفي او كلمة المرور غير صحيحة' });
+    }
+
+    const user = employee.user;
 
     const isMatch = await user.matchPassword(password);
-    if (!isMatch) return res.status(401).json({ message: 'Invalid credentials' });
+    if (!isMatch) return res.status(401).json({ message: 'الرقم التعريفي او كلمة المرور غير صحيحة' });
 
     const token = generateToken(user._id, user.role);
     setTokenCookie(res, token);
@@ -43,8 +48,8 @@ exports.login = async (req, res) => {
     res.json({
       _id: user._id,
       name: user.name,
-      email: user.email,
-      role: user.role
+      role: user.role,
+      employeeNumber: employee.employeeNumber
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

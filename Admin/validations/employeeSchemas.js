@@ -96,6 +96,11 @@ const updateEmployeeSchema = Joi.object({
   jobTitle: Joi.string().allow("").messages({
     "string.base": "المسمى الوظيفي يجب أن يكون نص"
   }),
+   email: Joi.string().email().required().messages({
+    "string.empty": "البريد الإلكتروني مطلوب",
+    "string.email": "البريد الإلكتروني غير صالح",
+    "any.required": "البريد الإلكتروني مطلوب"
+  }),
   employeeNumber: Joi.string().messages({
     "string.base": "رقم الموظف يجب أن يكون نص"
   }),

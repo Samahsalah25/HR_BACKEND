@@ -88,8 +88,8 @@ leave: Joi.object({
     claimDate: Joi.date().optional(),
     description: Joi.string().allow('', null)
   }).optional()
-}).min(1).messages({
-  'object.min': 'يجب إرسال حقل واحد على الأقل للتعديل'
+}).min(0).messages({
+  'object.min': 'يجب إرسال حقل زيرو على الأقل للتعديل'
 });
 
 const addNoteSchema = Joi.object({

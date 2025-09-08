@@ -15,7 +15,7 @@ const  {
 const validate=require('../middlesware/validate');
 
 
-router.get('/',authenticate,authorizeRoles('HR'), getContracts);
+router.get('/', getContracts);
 router.get('/:id',authenticate,authorizeRoles('HR'), getContractById);
 router.post('/',authenticate,authorizeRoles('ADMIN') ,validate(createContractSchema), createContract);
 router.patch('/:id' ,authenticate ,authorizeRoles('ADMIN'),validate(updateContractSchema),updateContract)

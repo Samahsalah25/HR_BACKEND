@@ -22,18 +22,26 @@ const taskRoute=require('./Admin/routes/taskRoutes.js')
 const branchRoute=require('./Admin/routes/branchRoutes.js')
 const attendanceRoute=require('./Admin/routes/attendanceRoutes.js');
 const leaveRoute=require('./Admin/routes/leaveRoutes.js')
+const meetingRouts=require('./Admin/routes/meetingRoute.js')
 const setupAttendanceCron=require('./cron/attendanceCron.js');
 const startTaskStatusCron=require('./cron/tasksCorn.js')
 
 
 const app = express();
 
+app.use('/uploads/tasks', express.static(path.join(__dirname, 'Admin', 'uploads', 'tasks')));
+app.use('/uploads/requests', express.static(path.join(__dirname, 'uploads/requests')));
 
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Middlewares
 app.use(cookieParser());
 app.use(helmet());
-app.use(cors());
+const corsOptions = {
+  origin: "http://localhost:5173", // الدومين/البورت بتاع الفرونت
+  credentials: true //  عشان يسمح بالكوكيز
+};
+
+app.use(cors(corsOptions));
+
 app.use(express.json());
 app.use(morgan('dev'));
 
@@ -50,6 +58,7 @@ app.use('/api/licence', licenceRoute);
 app.use('/api/tasks' ,taskRoute)
 app.use('/api/branch',branchRoute)
 app.use('/api/attendance' ,attendanceRoute);
+app.use('/api/meeting' ,meetingRouts);
 
 
 // DB + Server

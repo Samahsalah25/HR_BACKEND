@@ -150,15 +150,27 @@ const checkOut = async (req, res) => {
       return res.status(400).json({ message: "لم يتم تسجيل حضور لهذا اليوم" });
     }
 
+    // تسجيل وقت الانصراف
     attendance.checkOut = now;
+
+  
+    if (attendance.checkIn) {
+      const workedMs = attendance.checkOut - attendance.checkIn; // الفرق بالملي ثانية
+      attendance.workedtime = Math.floor(workedMs / 60000);   // نحولها لدقايق
+    }
+
     await attendance.save();
 
-    res.status(200).json({ message: "تم تسجيل الانصراف", attendance });
+    res.status(200).json({ 
+      message: "تم تسجيل الانصراف", 
+      attendance 
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "حدث خطأ أثناء تسجيل الانصراف" });
   }
 };
+
 
 //
 
@@ -244,14 +256,17 @@ const dailyState = async (req, res) => {
     });
 
     // اجازات النهاردة (مقبولة بس)
-    const leaves = await Request.find({
-      type: "إجازة",
-      status: "مقبول",
-      "leave.startDate": { $lte: endOfDay },
-      "leave.endDate": { $gte: startOfDay }
-    }).populate("employee");
+ 
+const leaves = await Request.find({
+  type: "إجازة",
+  status: "مقبول",
+  "leave.startDate": { $lte: endOfDay },
+  "leave.endDate": { $gte: startOfDay }
+}).populate("employee");
 
-    const leaveEmployeeIds = leaves.map(l => l.employee._id.toString());
+const leaveEmployeeIds = leaves
+  .filter(l => l.employee) // تجاهل الطلبات اللي الموظف بتاعها اتحذف
+  .map(l => l.employee._id.toString());
 
     // حساب الحالات
     const present = attendances.filter(
@@ -539,29 +554,35 @@ const getMonthlyAttendanceForEmployee = async (req, res) => {
 
 //  تقرير شهري لكل الموظفين في الشركة ناو 
 
-const { DateTime } = require('luxon');
+
+
+const { DateTime } = require("luxon"); // لو بتستخدمي Luxon
+// افترضنا إن LeaveBalance, Employee, Attendance موجودين ومستورَدِين
 
 const monthlyReport = async (req, res) => {
   try {
-    // Use Luxon to define the dates in UTC
     const nowUTC = DateTime.utc();
     const year = nowUTC.year;
-    const month = nowUTC.month; // Luxon months are 1-12
-
-    // Define the start and end of the month and year in UTC
     const startOfMonth = nowUTC.startOf('month').toJSDate();
     const endOfMonth = nowUTC.endOf('month').toJSDate();
-    const startOfYear = nowUTC.startOf('year').toJSDate();
-    const endOfYear = nowUTC.endOf('year').toJSDate();
 
-    // Get the base leave balance (employee: null)
+    // الرصيد الاساسي للشركة (document where employee: null)
     const baseLeaveBalance = await LeaveBalance.findOne({ employee: null });
-
     if (!baseLeaveBalance) {
       return res.status(404).json({ message: "لم يتم العثور على الرصيد الأساسي للإجازات" });
     }
 
-    // Get all employees across all branches
+    // حساب totalBase (مجموع كل الأنواع) — لو انتي عايزة بس annual غيري السطر ده ل lb.annual
+    const baseTotalAllTypes = (
+      (baseLeaveBalance.annual || 0) +
+      (baseLeaveBalance.sick || 0) +
+      (baseLeaveBalance.marriage || 0) +
+      (baseLeaveBalance.emergency || 0) +
+      (baseLeaveBalance.maternity || 0) +
+      (baseLeaveBalance.unpaid || 0)
+    );
+
+    // جلب الموظفين
     const employees = await Employee.find()
       .populate("department")
       .populate("workplace")
@@ -570,7 +591,7 @@ const monthlyReport = async (req, res) => {
     const reports = [];
 
     for (const employee of employees) {
-      // Find attendance for the employee within the month, in UTC
+      // حضور الشهر
       const attendances = await Attendance.find({
         employee: employee._id,
         date: { $gte: startOfMonth, $lte: endOfMonth }
@@ -581,37 +602,46 @@ const monthlyReport = async (req, res) => {
       const absent = attendances.filter(a => a.status === "غائب").length;
       const attendedDays = present + late;
 
-      // Get the employee's specific leave balance
-      const employeeLeaveBalance = await LeaveBalance.findOne({ employee: employee._id });
+      // جلب LeaveBalance للموظف (إن وجد)
+      const lb = await LeaveBalance.findOne({ employee: employee._id });
 
-      let totalLeaveBalance = 0;
-      if (employeeLeaveBalance) {
-        totalLeaveBalance = employeeLeaveBalance.annual + employeeLeaveBalance.sick + employeeLeaveBalance.marriage +
-                            employeeLeaveBalance.emergency + employeeLeaveBalance.maternity + employeeLeaveBalance.unpaid;
-      } else {
-        totalLeaveBalance = baseLeaveBalance.annual + baseLeaveBalance.sick + baseLeaveBalance.marriage +
-                            baseLeaveBalance.emergency + baseLeaveBalance.maternity + baseLeaveBalance.unpaid;
-      }
-      
+      // إذا لم يوجد LeaveBalance للموظف نعتبره يأخذ القيم من base
+      let totalLeaveBalance = baseTotalAllTypes;
+      let remainingLeave = baseTotalAllTypes;
       let totalLeaveTaken = 0;
 
-      // Calculate all used leaves for the year, in UTC
-      const allLeaveRequests = await Request.find({
-        employee: employee._id,
-        type: "إجازة",
-        status: "مقبول",
-        "leave.startDate": { $lte: endOfYear },
-        "leave.endDate": { $gte: startOfYear }
-      });
+      if (lb) {
+        // calc employee total (sum الأنواع عند الموظف) — هذا يعكس الرصيد المتبقي بتقسيم الأنواع
+        const employeeTotalAllTypes = (
+          (lb.annual || 0) +
+          (lb.sick || 0) +
+          (lb.marriage || 0) +
+          (lb.emergency || 0) +
+          (lb.maternity || 0) +
+          (lb.unpaid || 0)
+        );
 
-      allLeaveRequests.forEach(req => {
-        const start = req.leave.startDate < startOfYear ? startOfYear : req.leave.startDate;
-        const end = req.leave.endDate > endOfYear ? endOfYear : req.leave.endDate;
-        const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-        totalLeaveTaken += diffDays;
-      });
+        totalLeaveBalance = baseTotalAllTypes; // ثابت: نأخذ Base كمرجع للكُل (طلبك)
 
-      const remainingLeave = totalLeaveBalance - totalLeaveTaken;
+        // إذا فيه حقل remaining مستخدم (مفضّل) خليه مصدرنا الأول
+        if (typeof lb.remaining === "number") {
+          remainingLeave = lb.remaining;
+          totalLeaveTaken = totalLeaveBalance - remainingLeave;
+        } else {
+          // fallback: لو مفيش remaining، نحسب remaining من مجموع الحقول الحالية عند الموظف
+          remainingLeave = employeeTotalAllTypes;
+          totalLeaveTaken = totalLeaveBalance - remainingLeave;
+        }
+      } else {
+        // لا يوجد رصيد موظف، نعامل الموظف كأنه لم يستخدم شي
+        totalLeaveBalance = baseTotalAllTypes;
+        remainingLeave = baseTotalAllTypes;
+        totalLeaveTaken = 0;
+      }
+
+      // تأكد عدم الحصول على أرقام سالبة
+      if (totalLeaveTaken < 0) totalLeaveTaken = 0;
+      if (remainingLeave < 0) remainingLeave = 0;
 
       reports.push({
         _id: employee._id,
@@ -619,21 +649,11 @@ const monthlyReport = async (req, res) => {
         email: employee.user?.email || "",
         department: employee.department?.name || "N/A",
         jobTitle: employee.jobTitle || "",
-        
-        attendance: {
-          present: attendedDays,
-          late,
-          absent
-        },
-        leaves: {
-          total: totalLeaveBalance,
-          taken: totalLeaveTaken,
-          remaining: remainingLeave
-        },
+        attendance: { present: attendedDays, late, absent },
+        leaves: { total: totalLeaveBalance, taken: totalLeaveTaken, remaining: remainingLeave }
       });
     }
 
-    // Use Luxon to format the month name for the response
     const formattedMonth = nowUTC.setLocale('ar-EG').toLocaleString({ month: 'long' });
 
     res.json({
@@ -645,17 +665,18 @@ const monthlyReport = async (req, res) => {
         emergency: baseLeaveBalance.emergency,
         maternity: baseLeaveBalance.maternity,
         unpaid: baseLeaveBalance.unpaid,
-        total: baseLeaveBalance.annual + baseLeaveBalance.sick + baseLeaveBalance.marriage + 
-               baseLeaveBalance.emergency + baseLeaveBalance.maternity + baseLeaveBalance.unpaid
+        total: baseTotalAllTypes
       },
       reports
     });
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server Error" });
+    res.status(500).json({ error: "Server Error", details: err.message });
   }
 };
+
+
 
 
  // تقرير شهري لكل الحضور الخاص بفرع الاتش ار مانجر دا بس 

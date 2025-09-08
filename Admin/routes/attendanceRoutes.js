@@ -38,10 +38,10 @@ router.get("/today/:id", authenticate,authorizeRoles('HR'), getTodayAttendance);
 
 
 // سجل الحضور الشهري لموظف معين
-router.get('/getMonthlyAttendanceForEmployee/:id' ,authenticate ,authorizeRoles('HR'),getMonthlyAttendanceForEmployee)
+router.get('/getMonthlyAttendanceForEmployee/:id' ,getMonthlyAttendanceForEmployee)
 //////////////////////////////////////////////////////////////////////
 //تقرير شهري لكل الحضور  بتاع كل الفروع
-router.get('/monthlyReport' ,authenticate,authorizeRoles('HR') ,monthlyReport)
+router.get('/monthlyReport'  ,monthlyReport)
 //  تقرير شهري لفرع معين 
 router.get('/monthreportonebranch' ,authenticate ,authorizeRoles('HR') ,monthlyReportoneBranch)
 

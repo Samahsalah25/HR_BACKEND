@@ -11,7 +11,7 @@ const {
 }=require('../validations/departmentValidation');
 
 router.post('/', authenticate,authorizeRoles('HR') ,validate(createDepartmentSchema),createDepartment);
-router.get('/',authenticate,authorizeRoles('HR'), getDepartments);
+router.get('/', getDepartments);
 router.get('/:id',authenticate,authorizeRoles('HR'), getDepartmentById);
 router.patch('/:id',authenticate,authorizeRoles('HR') ,validate(updateDepartmentSchema), updateDepartment);
 router.delete('/:id',authenticate,authorizeRoles('HR'), deleteDepartment);

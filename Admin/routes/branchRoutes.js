@@ -11,7 +11,7 @@ const {
 }=require('../validations/branchvalidation');
 // Routes (Admin only)
 router.post("/", authenticate,authorizeRoles('ADMIN'),validate(createBranchSchema), createBranch);
-router.get("/", authenticate,authorizeRoles('ADMIN'), getBranches);
+router.get("/", getBranches);
 router.patch("/:id", authenticate,authorizeRoles('ADMIN') ,validate(updateBranchSchema), updateBranch);
 router.delete("/:id", authenticate,authorizeRoles('ADMIN'), deleteBranch);
 

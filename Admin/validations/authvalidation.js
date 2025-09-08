@@ -1,10 +1,9 @@
 const Joi = require("joi");
 
 const loginSchema = Joi.object({
-  email: Joi.string().email().required().messages({
-    "string.empty": "البريد الإلكتروني مطلوب",
-    "string.email": "البريد الإلكتروني غير صالح",
-    "any.required": "البريد الإلكتروني مطلوب"
+  employeeNumber: Joi.string().required().messages({
+    "string.empty": "رقم التعريفي مطلوب",
+    "any.required": "رقم التعريفي مطلوب"
   }),
   password: Joi.string().min(6).required().messages({
     "string.empty": "كلمة المرور مطلوبة",
@@ -13,4 +12,4 @@ const loginSchema = Joi.object({
   })
 });
 
-module.exports=loginSchema;
+module.exports = loginSchema;
