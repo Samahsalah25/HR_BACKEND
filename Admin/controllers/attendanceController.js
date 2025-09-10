@@ -890,21 +890,21 @@ const monthlyEmployeeAttendance = async (req, res) => {
 
     attendances.forEach(a => {
       if (a.status === "متأخر") {
-        const delay = a.lateMinutes;
+  const delay = a.lateMinutes;
 
-        // تنسيق التاريخ باللغة العربية
-        const attendanceDate = DateTime.fromJSDate(a.date).setLocale('ar-EG').toFormat('dd/MM/yyyy');
-        
-        // هنا التعديل: تنسيق وقت الحضور باللغة الإنجليزية
-        const checkInTime = DateTime.fromJSDate(a.checkIn).setLocale('en-US').toFormat('HH:mm');
+   // تنسيق التاريخ باللغة العربية
+   const attendanceDate = DateTime.fromJSDate(a.date).setLocale('ar-EG').toFormat('dd/MM/yyyy');
+  
+  // هنا التعديل: تنسيق وقت الحضور باللغة الإنجليزية
+   const checkInTime = DateTime.fromJSDate(a.checkIn).setLocale('en-US').toFormat('HH:mm');
 
-        dailyDelays.push({
-          employeeName: employee.name,
-          date: attendanceDate,
-          checkIn: checkInTime,
-          officialStart,
-          delayMinutes: delay,
-          allowedLateMinutes
+   dailyDelays.push({
+   employeeName: employee.name,
+  date: attendanceDate,
+  checkIn: checkInTime,
+   officialStart,
+  delayMinutes: delay,
+   allowedLateMinutes
         });
 
         totalMonthlyDelay += delay;

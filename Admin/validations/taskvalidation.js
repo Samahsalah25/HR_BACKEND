@@ -10,6 +10,8 @@ const createTaskSchema = Joi.object({
     'string.empty': 'حقل الوصف مطلوب',
     'any.required': 'حقل الوصف مطلوب'
   }),
+   priority: Joi.string().valid('عالية', 'متوسطة', 'منخفضة').default('متوسطة'),
+   status: Joi.string().valid('قيد العمل', 'مكتملة', 'متأخرة').optional(),
   assignedTo: Joi.string().length(24).hex().required().messages({
     'string.empty': 'يجب اختيار الموظف',
     'string.length': 'assignedTo يجب أن يكون معرف MongoDB صالح',
@@ -35,7 +37,7 @@ const createTaskSchema = Joi.object({
     path: Joi.string().required().messages({
       'any.required': 'مسار الملف مطلوب'
     }),
-     priority: Joi.string().valid('عالية', 'متوسطة', 'منخفضة').default('متوسطة'),
+    
   }).optional()
 });
 
@@ -47,12 +49,14 @@ const updateTaskSchema = Joi.object({
   description: Joi.string().trim().optional().messages({
     'string.empty': 'حقل الوصف لا يمكن أن يكون فارغًا'
   }),
+    priority: Joi.string().valid('عالية', 'متوسطة', 'منخفضة').default('متوسطة'),
   dueDate: Joi.date().iso().optional().messages({
     'date.format': 'التاريخ يجب أن يكون بصيغة ISO (YYYY-MM-DD)'
   }),
   assignDate: Joi.date().iso().optional().messages({
     'date.format': 'تاريخ الإسناد يجب أن يكون بصيغة ISO (YYYY-MM-DD)'
   }),
+     status: Joi.string().valid('قيد العمل', 'مكتملة', 'متأخرة').optional(),
    
     completedDate:Joi.date().iso().optional().messages({
     'date.format': 'تاريخ الإسناد يجب أن يكون بصيغة ISO (YYYY-MM-DD)'
@@ -67,7 +71,7 @@ const updateTaskSchema = Joi.object({
     path: Joi.string().required().messages({
       'any.required': 'مسار الملف مطلوب'
     }),
-     priority: Joi.string().valid('عالية', 'متوسطة', 'منخفضة').default('متوسطة'),
+   
   }).optional()
 });
 

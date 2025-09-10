@@ -9,6 +9,15 @@ const objectId = (value, helpers) => {
   return value;
 };
 
+// Helper: validate time format HH:mm
+const timeString = (value, helpers) => {
+  const regex = /^([01]\d|2[0-3]):([0-5]\d)$/; // HH:mm
+  if (!regex.test(value)) {
+    return helpers.error("string.pattern.base", { name: "HH:mm" });
+  }
+  return value;
+};
+
 exports.meetingValidationSchema = Joi.object({
   title: Joi.string().required().messages({
     "string.empty": "اسم الاجتماع مطلوب",
@@ -16,12 +25,17 @@ exports.meetingValidationSchema = Joi.object({
   subTitle: Joi.string().allow(null, "").optional(),
   description: Joi.string().allow(null, "").optional(),
 
-  startTime: Joi.date().required().messages({
-    "date.base": "وقت البداية غير صالح",
+  day: Joi.date().required().messages({
+    "date.base": "اليوم غير صالح",
+    "any.required": "اليوم مطلوب",
+  }),
+
+  startTime: Joi.string().pattern(/^([01]\d|2[0-3]):([0-5]\d)$/).required().messages({
+    "string.pattern.base": "وقت البداية يجب أن يكون بالشكل HH:mm",
     "any.required": "وقت البداية مطلوب",
   }),
-  endTime: Joi.date().greater(Joi.ref("startTime")).required().messages({
-    "date.greater": "وقت النهاية يجب أن يكون بعد وقت البداية",
+  endTime: Joi.string().pattern(/^([01]\d|2[0-3]):([0-5]\d)$/).required().messages({
+    "string.pattern.base": "وقت النهاية يجب أن يكون بالشكل HH:mm",
     "any.required": "وقت النهاية مطلوب",
   }),
 
@@ -46,27 +60,16 @@ exports.meetingValidationSchema = Joi.object({
       path: Joi.string(),
     })
   ).optional(),
-
-  repeat: Joi.object({
-    isRepeated: Joi.boolean().default(false),
-    frequency: Joi.string().valid("daily", "weekly", "monthly", "custom").allow(null),
-    sameTime: Joi.boolean().default(true),
-
-    customTimes: Joi.when("sameTime", {
-      is: false,
-      then: Joi.array().items(
-        Joi.object({
-          occurrenceNumber: Joi.number().required(),
-          startTime: Joi.date().required(),
-          endTime: Joi.date().greater(Joi.ref("startTime")).required(),
-        })
-      ).min(1).required(),
-      otherwise: Joi.forbidden(), // لو sameTime = true مينفعش يرفع customTimes
-    }),
-  }).default({ isRepeated: false }),
-
-
-
+repeat: Joi.object({
+  isRepeated: Joi.boolean().default(false),
+  frequency: Joi.string().valid("daily", "weekly", "monthly").allow(null),
+  sameTime: Joi.boolean().default(true),
+  repeatEndDate: Joi.date().min('now').optional().default(() => {
+    const now = new Date();
+    now.setMonth(now.getMonth() + 6); // مدة افتراضية 6 شهور
+    return now;
+  })
+}).default({ isRepeated: false })
+,
   status: Joi.string().valid("confirmed", "cancelled").default("confirmed"),
 });
-

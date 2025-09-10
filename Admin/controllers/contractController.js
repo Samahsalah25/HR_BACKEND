@@ -11,7 +11,7 @@ exports.getContracts = async (req, res) => {
   }
 };
 
-// @desc Create a new contract
+// Create a new contract
 
 exports.createContract = async (req, res) => {
   try {
@@ -30,7 +30,7 @@ exports.createContract = async (req, res) => {
 };
 
 
-// @desc Delete a contract
+//  Delete a contract
 exports.deleteContract = async (req, res) => {
   try {
     const contract = await Contract.findById(req.params.id);

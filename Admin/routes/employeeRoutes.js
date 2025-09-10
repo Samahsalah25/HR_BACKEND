@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createEmployee ,employeeStatus ,employeeOverview ,getMyAttendanceRecord ,getMyRequests ,getMyTasks} = require('../controllers/employee');
+const { createEmployee ,employeeStatus ,employeeOverview ,getMyAttendanceRecord ,getEmployees ,getMyAttendanceThroughMonth  ,getMyRequests ,getMyTasks} = require('../controllers/employee');
 const authenticate=require('../middlesware/authenticate');
 const authorizeRoles=require('../middlesware/roleMiddleware');
 const validate=require('../middlesware/validate');
@@ -14,11 +14,17 @@ router.post('/',authenticate,authorizeRoles('HR'), validate(createEmployeeSchema
 //here get workstartTime and date:
 router.get('/status' ,authenticate ,employeeStatus)
 
+// get employees to meating or tasks
+router.get('/all' ,authenticate ,getEmployees)
+
 // my enfoo
 router.get('/myinfo' ,authenticate ,employeeOverview)
 
 //سجلات الحضور هنا بتاعت الموظف
 router.get('/myattendance' ,authenticate ,getMyAttendanceRecord)
+
+//  هنا سجلات حضور الموظف خلال الشهر اللي احنا فيه 
+router.get('/myattendancThroughMonth' ,authenticate ,getMyAttendanceThroughMonth )
 //getMyTasks
 router.get('/getMyTasks' ,authenticate ,getMyTasks)
 //getMyRequests

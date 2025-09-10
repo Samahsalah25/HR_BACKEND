@@ -184,6 +184,77 @@ const totalLeaveBalance = companyLeaves.annual + companyLeaves.sick + companyLea
     res.status(500).json({ message: "حدث خطأ أثناء إنشاء الموظف", error: error.message });
   }
 };
+
+
+//هنجيت هنا علشان نختاره وقت الميتنج او وقت المهام
+ exports.getEmployees = async (req, res) => {
+  try {
+    // هجيب الـ Employee اللي بيمثل اليوزر الحالي
+    const currentEmp = await Employee.findOne({ user: req.user._id })
+      .populate("department")
+      .populate("workplace")
+      .populate("user", "name email role");
+
+    if (!currentEmp) {
+      return res.status(404).json({ success: false, message: "الموظف غير موجود" });
+    }
+
+    let employees = [];
+
+    if (req.user.role === "HR") {
+      // HR يشوف الكل
+      employees = await Employee.find()
+        .populate("department", "name")
+        .populate("workplace", "name location")
+        .populate("manager", "name jobTitle")
+        .populate("user", "name email role");
+    } 
+    else if (req.user.role === "Manager") {
+      // Manager يشوف موظفين القسم + مدراء الأقسام التانية
+      employees = await Employee.find({
+        $or: [
+          { department: currentEmp.department }, // موظفين قسمه
+          { "user.role": "Manager" }             // مدراء
+        ]
+      })
+        .populate("department", "name")
+        .populate("workplace", "name location")
+        .populate("manager", "name jobTitle")
+        .populate("user", "name email role");
+    } 
+    else if (req.user.role === "EMPLOYEE") {
+      // EMPLOYEE يشوف نفسه + زمايله في نفس القسم (مش HR/Manager)
+      employees = await Employee.find({
+        department: currentEmp.department
+      })
+        .populate("department", "name")
+        .populate("workplace", "name location")
+        .populate("manager", "name jobTitle")
+        .populate("user", "name email role");
+
+      // فلترة: استبعد HR & Manager
+      employees = employees.filter(emp => 
+        emp.user.role !== "HR" && emp.user.role !== "Manager"
+      );
+    }
+
+    res.json({
+      success: true,
+      count: employees.length,
+      data: employees
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "خطأ في استرجاع الموظفين",
+      error: error.message
+    });
+  }
+};
+
+
+
+
 exports.employeeStatus = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -356,6 +427,90 @@ exports.getMyAttendanceRecord = async (req, res) => {
   }
 };
 
+// سجلات حضور الموظف للشهر الحالي اللي احنا فيه
+exports.getMyAttendanceThroughMonth = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // نجيب الموظف المرتبط باليوزر
+    const employee = await Employee.findOne({ user: userId });
+    if (!employee) {
+      return res.status(404).json({ error: "الموظف غير مرتبط بالحساب" });
+    }
+
+    // أول وآخر يوم في الشهر الحالي
+    const today = new Date();
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    // limit ديناميكي من query param أو افتراضي 30
+    const limit = parseInt(req.query.limit) || 30;
+
+    // جلب السجلات من الشهر الحالي
+    const records = await Attendance.find({
+      employee: employee._id,
+      date: { $gte: startOfMonth, $lte: endOfMonth }
+    })
+    .sort({ date: -1 }) // الأحدث أولاً
+    .limit(limit);
+
+    // اسم الشهر الحالي مع السنة
+    const monthName = today.toLocaleDateString("ar-EG", { month: "long", year: "numeric" });
+
+    // تنسيق البيانات
+    const formattedRecords = records.map((rec) => {
+      const day = new Date(rec.date).toLocaleDateString("ar-EG", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        numberingSystem: "latn"
+      });
+
+      // وقت الدخول والخروج
+      const checkIn = rec.checkIn
+        ? rec.checkIn.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })
+        : "لم يتم تسجيل حضور";
+
+      const checkOut = rec.checkOut
+        ? rec.checkOut.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })
+        : "لم يتم تسجيل الانصراف";
+
+      // الوقت اللي اشتغله
+      let workedTime = "لم يكتمل اليوم";
+      if (rec.checkIn && rec.checkOut) {
+        const diffMs = rec.checkOut - rec.checkIn;
+        const diffMins = Math.floor(diffMs / 60000);
+        const hours = Math.floor(diffMins / 60);
+        const mins = diffMins % 60;
+        workedTime = `${hours} س, ${mins} د`;
+      } else if (!rec.checkIn) {
+        workedTime = "0 س, 0 د";
+      }
+
+      // الحالة
+      let status = "غير محدد";
+      if (!rec.checkIn) status = "غائب";
+      else if (rec.status === "حاضر") status = "بدون تأخير";
+      else if (rec.status === "متأخر") status = "بتأخير";
+      else if (rec.status === "غائب") status = "غائب";
+
+      return {
+        day,
+        employeeCheckIn: checkIn,
+        employeeCheckOut: checkOut,
+        workedTime,
+        status,
+      };
+    });
+
+    res.json({ month: monthName, records: formattedRecords });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "خطأ في السيرفر" });
+  }
+};
+
 
 
 function formatTime(date) {
@@ -365,7 +520,6 @@ function formatTime(date) {
     hour12: true
   });
 }
-
 
 exports.getMyTasks = async (req, res) => {
   try {
@@ -381,13 +535,16 @@ exports.getMyTasks = async (req, res) => {
 
     // بناء فلترة الـ query
     let filter = { assignedTo: employee._id, assignDate: { $gte: fromDate } };
-    if (statusFilter) filter.status = statusFilter;
+    if (statusFilter && statusFilter !== "الكل") {
+      filter.status = statusFilter;
+    }
 
     // جلب المهام حسب الفلترة
     const tasks = await Task.find(filter).sort({ assignDate: -1 });
 
     let inProgressCount = 0;
     let completedCount = 0;
+    let overdueCount = 0;
 
     const formattedTasks = tasks.map(task => {
       const assignDay = new Date(task.assignDate).toLocaleDateString('ar-EG', {
@@ -416,7 +573,7 @@ exports.getMyTasks = async (req, res) => {
           numberingSystem: 'latn'
         })}`;
       } else if (task.status === "متأخرة") {
-        inProgressCount++;
+        overdueCount++;
         endInfo = `المهام متأخرة منذ: ${new Date(task.dueDate).toLocaleDateString('ar-EG', {
           day: 'numeric',
           month: 'long',
@@ -426,7 +583,7 @@ exports.getMyTasks = async (req, res) => {
       }
 
       return {
-        _id:task._id,
+        _id: task._id,
         title: task.title,
         status: task.status,
         priority: task.priority || 'متوسطة',
@@ -438,8 +595,10 @@ exports.getMyTasks = async (req, res) => {
     });
 
     res.json({
+      totalCount: tasks.length,   // 👈 العدد الكلي للمهام
       inProgressCount,
       completedCount,
+      overdueCount,
       tasks: formattedTasks
     });
 
@@ -449,6 +608,8 @@ exports.getMyTasks = async (req, res) => {
   }
 };
 
+
+
 exports.getMyRequests = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -456,17 +617,21 @@ exports.getMyRequests = async (req, res) => {
     const employee = await Employee.findOne({ user: userId });
     if (!employee) return res.status(404).json({ error: "الموظف غير مرتبط بالحساب" });
 
-    const periodDays = parseInt(req.query.period) || 90;
-    const fromDate = new Date();
-    fromDate.setDate(fromDate.getDate() - periodDays);
+    // نبدأ بالفلتر الأساسي
+    let filter = { employee: employee._id };
 
-    const statusFilter = req.query.status;
+    // لو اتبعت فلتر بالتاريخ (period بالأيام)
+    if (req.query.period) {
+      const periodDays = parseInt(req.query.period);
+      const fromDate = new Date();
+      fromDate.setDate(fromDate.getDate() - periodDays);
+      filter.createdAt = { $gte: fromDate };
+    }
 
-    let filter = { 
-      employee: employee._id,
-      createdAt: { $gte: fromDate }
-    };
-    if (statusFilter) filter.status = statusFilter;
+    // لو اتبعت فلتر بالحالة
+    if (req.query.status) {
+      filter.status = req.query.status;
+    }
 
     const requests = await Request.find(filter)
       .populate('employee', 'name jobTitle')
@@ -482,7 +647,7 @@ exports.getMyRequests = async (req, res) => {
       else if (reqItem.status === "محول") forwardedCount++;
 
       return {
-        _id:reqItem._id ,
+        _id: reqItem._id,
         employeeName: reqItem.employee.name,
         jobTitle: reqItem.employee.jobTitle,
         type: reqItem.type,
@@ -500,11 +665,12 @@ exports.getMyRequests = async (req, res) => {
         rejected: rejectedCount,
         forwarded: forwardedCount
       },
+      total: requests.length, // العدد الكلي للطلبات اللي رجعت
       requests: formattedRequests
     });
-
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "خطأ في السيرفر" });
   }
 };
+

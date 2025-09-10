@@ -227,7 +227,7 @@ const taskByemployee = async (req, res) => {
 //
 const createTasks = async (req, res) => {
   try {
-    const { title, description, assignedTo, dueDate } = req.body || {};
+    const { title, description, assignedTo, dueDate ,priority,assignDate } = req.body || {};
 
     if (!title || !description || !assignedTo || !dueDate) {
       cleanupUploadedFile(req);
@@ -327,10 +327,11 @@ const createTasks = async (req, res) => {
       title,
       description,
       assignedTo,
+      assignDate,
       assignedBy: req.user.id,
       dueDate: parsedDueDate,
       attachments ,
-       priority: req.body.priority 
+       priority,
     });
 
     await task.save();
@@ -362,55 +363,121 @@ const createTasks = async (req, res) => {
 // PATCH update task (يدعم إضافة/استبدال مرفق واحد إضافي)
 const updateTask = async (req, res) => {
   try {
+    console.log("updateTask reached");
+
     const taskId = req.params.id;
-    const { title, description, dueDate, assignDate } = req.body || {};
+    const { title, description, dueDate, assignDate, priority, status } = req.body || {};
 
     const task = await Task.findById(taskId);
+    console.log("Task found:", task);
+
     if (!task) {
       cleanupUploadedFile(req);
       return res.status(404).json({ success: false, message: 'المهمة غير موجودة' });
     }
 
-    if (title) task.title = title;
-    if (description) task.description = description;
+    const userId = req.user._id;
+    const userRole = req.user.role;
+    console.log('user', userId);
+    console.log('role', userRole);
 
-    if (dueDate) {
-      const parsedDueDate = parseISODate(dueDate);
-      if (!parsedDueDate) {
-        cleanupUploadedFile(req);
-        return res.status(400).json({ success: false, message: 'تاريخ الاستحقاق غير صالح' });
+    // جلب الموظف المرتبط باليوزر الحالي
+    const currentEmployee = await Employee.findOne({ user: userId });
+    if (!currentEmployee) {
+      return res.status(403).json({ success: false, message: 'الموظف غير موجود' });
+    }
+    const currentEmployeeId = currentEmployee._id;
+
+    const assignedById = task.assignedBy; // User ID
+    const assignedToId = task.assignedTo; // Employee ID
+    console.log("assignedById:", assignedById);
+    console.log("assignedToId:", assignedToId);
+
+    // صلاحيات التعديل
+    let canEditAll = false;
+    let canEditStatusOnly = false;
+
+    if (userRole === "EMPLOYEE") {
+      if (assignedById.equals(userId)) {
+        canEditAll = true; // هو اللي عمل المهمة
+      } else if (assignedToId.equals(currentEmployeeId)) {
+        canEditStatusOnly = true; // مسنودة له
       }
-      task.dueDate = parsedDueDate;
+    } else {
+      canEditAll = true; // Roles أخرى
     }
 
-    if (assignDate) {
-      const parsedAssign = parseISODate(assignDate);
-      if (!parsedAssign) {
-        cleanupUploadedFile(req);
-        return res.status(400).json({ success: false, message: 'تاريخ الإسناد غير صالح' });
-      }
-      task.assignDate = parsedAssign;
+    if (!canEditAll && !canEditStatusOnly) {
+      cleanupUploadedFile(req);
+      return res.status(403).json({ success: false, message: 'غير مسموح لك بتحديث هذه المهمة' });
     }
 
-    // 📌 مرفق جديد كـ URL مش path
-   if (req.file) {
-  task.attachments = [{
-    filename: req.file.filename,
-    originalname: req.file.originalname,
-    path: `/uploads/tasks/${req.file.filename}`
-  }];
-}
+    // تحديث الحقول
+    if (canEditAll) {
+      if (title) task.title = title;
+      if (description) task.description = description;
+      if (dueDate) {
+        const parsedDueDate = parseISODate(dueDate);
+        if (!parsedDueDate) {
+          cleanupUploadedFile(req);
+          return res.status(400).json({ success: false, message: 'تاريخ الاستحقاق غير صالح' });
+        }
+        task.dueDate = parsedDueDate;
+      }
+      if (assignDate) {
+        const parsedAssign = parseISODate(assignDate);
+        if (!parsedAssign) {
+          cleanupUploadedFile(req);
+          return res.status(400).json({ success: false, message: 'تاريخ الإسناد غير صالح' });
+        }
+        task.assignDate = parsedAssign;
+      }
+      if (priority) task.priority = priority;
+    }
 
+    // يمكن للموظف أو أي دور آخر تحديث الحالة
+    if (status) {
+      const allowedStatuses = ["قيد العمل", "مكتملة", "متأخرة"];
+      if (!allowedStatuses.includes(status)) {
+        cleanupUploadedFile(req);
+        return res.status(400).json({
+          success: false,
+          message: `الستاتس غير صالح، القيم المسموحة: ${allowedStatuses.join(', ')}`
+        });
+      }
+      task.status = status;
+
+      // تحديث completedDate تلقائيًا عند الحالة مكتملة
+      if (status === "مكتملة") {
+        task.completedDate = new Date();
+         task.progressPercentage = 100;
+      } else {
+        task.completedDate = null;
+      }
+    }
+
+    // تحديث المرفقات إذا موجودة
+    if (req.file) {
+      task.attachments = [{
+        filename: req.file.filename,
+        originalname: req.file.originalname,
+        path: `/uploads/tasks/${req.file.filename}`
+      }];
+    }
 
     await task.save();
+    console.log("Task after save:", task);
 
+    // Populate للعرض النهائي
     await task.populate([
       { path: 'assignedBy', select: 'name email' },
-      { path: 'assignedTo', populate: { path: 'user', select: 'name email role' } }
+      { path: 'assignedTo', select: 'name email' }
     ]);
 
     res.json({ success: true, message: 'تم تحديث المهمة بنجاح', data: task });
+
   } catch (error) {
+    console.error("Error updating task:", error);
     cleanupUploadedFile(req);
     res.status(400).json({
       success: false,
@@ -537,7 +604,7 @@ const getTaskById = async (req, res) => {
     const taskId = req.params.id;
 
     const task = await Task.findById(taskId)
-      .populate('assignedTo', 'name email') // أو زوّدي أي فيلد موجود عندك في Employee
+      .populate('assignedTo', 'name email jobTitle') // أو زوّدي أي فيلد موجود عندك في Employee
       .populate('assignedBy', 'name email'); // من User
 
     if (!task) {

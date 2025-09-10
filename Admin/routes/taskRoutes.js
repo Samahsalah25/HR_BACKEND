@@ -41,7 +41,7 @@ router.get('/:id',getTaskById)
 
 router.post('/', authenticate,upload.single('attachments'),authorizeRoles('HR','Manager' ,'EMPLOYEE'),validate(createTaskSchema), createTasks);
 
-router.patch('/:id',  upload.single('attachments'),validate(updateTaskSchema), updateTask);
+router.patch('/:id',authenticate,  upload.single('attachments'),validate(updateTaskSchema), updateTask);
 
 router.delete('/:id', authenticate,  authorizeRoles('HR') ,deleteTask);
 

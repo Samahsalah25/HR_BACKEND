@@ -69,22 +69,17 @@ const taskSchema = new mongoose.Schema({
 // Middleware to update status based on progress and due date
 taskSchema.pre('save', function(next) {
   const now = new Date();
-  
-  // If progress is 100%, mark as completed
-  if (this.progressPercentage >= 100) {
-    this.status = 'مكتملة';
+
+  // إذا تم تعديل status يدويًا، لا تعدله
+  if (!this.isModified('status')) {
+    if (this.progressPercentage >= 100) this.status = 'مكتملة';
+    else if (now > this.dueDate && this.status !== 'مكتملة') this.status = 'متأخرة';
+    else if (this.progressPercentage < 100) this.status = 'قيد العمل';
   }
-  // If due date passed and not completed, mark as overdue
-  else if (now > this.dueDate && this.status !== 'مكتملة') {
-    this.status = 'متأخرة';
-  }
-  // Otherwise, keep as in progress
-  else if (this.progressPercentage < 100) {
-    this.status = 'قيد العمل';
-  }
-  
+
   this.lastUpdated = now;
   next();
 });
+
 
 module.exports = mongoose.model('Task', taskSchema);
