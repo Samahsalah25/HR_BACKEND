@@ -43,9 +43,9 @@ router.get('/getrequests/:id' ,authenticate ,authorizeRoles('HR' ,'EMPLOYEE'),ge
 router.get('/:id' ,getRequestById);
 
 // HR/Admin: اعتماد / رفض / تحويل / إضافة ملاحظة
-router.patch('/:id/approve', authenticate,authorizeRoles('HR') ,validate(updateRequestSchema) ,approveRequest);
+router.patch('/:id/approve', authenticate,authorizeRoles('HR')  ,approveRequest);
 router.patch('/:id/reject' , authenticate,authorizeRoles('HR'), rejectRequest);
-router.patch('/:id/forward', authenticate,authorizeRoles('HR'),validate(updateRequestSchema), forwardRequest);
+router.patch('/:id/forward', authenticate,authorizeRoles('HR'), forwardRequest);
 router.post('/:id/notes', authenticate,authorizeRoles('HR') ,validate(addNoteSchema),addNote);
 
 router.patch('/:id' ,authenticate ,updateRequest)

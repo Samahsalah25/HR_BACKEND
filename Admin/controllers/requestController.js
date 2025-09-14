@@ -3,6 +3,7 @@ const Employee = require('../models/employee');
 const multer = require('multer');
 const path = require('path');
 const LeaveBalance=require('../models/leaveBalanceModel')
+const Notification = require('../models/notification');
 // هل المستخدم HR/Admin؟
 const isHRorAdmin = (user) => ['HR', 'ADMIN'].includes(user.role);
 
@@ -370,6 +371,16 @@ if (r.type === 'إجازة' && r.leave?.startDate && r.leave?.endDate) {
     }
 
     await r.save();
+    // ======== إنشاء Notification للموظف ========
+    await Notification.create({
+      employee: r.employee._id,
+      type: 'request',
+      message: `تمت الموافقة على طلبك (${r.type})`,
+      link: `/requests/${r._id}`, // لينك اختياري يفتح صفحة الطلب
+      read: false
+    });
+
+
 
     res.json({ message: 'تمت الموافقة على الطلب', request: r });
   } catch (e) {
@@ -395,7 +406,13 @@ if (!req.user || !req.user._id) {
     r.decidedBy = req.user._id;
     // r.rejectionReason = reason || null;
     await r.save();
-
+  await Notification.create({
+      employee: r.employee, // أو r.employee._id لو populate موجود
+      type: 'request',
+      message: `تم رفض طلبك (${r.type})`,
+      link: `/requests/${r._id}`, // اختياري
+      read: false
+    });
     res.json({ message: 'تم رفض الطلب', request: r });
   } catch (e) {
     console.error(e);
