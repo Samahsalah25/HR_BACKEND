@@ -48,10 +48,10 @@ exports.meetingValidationSchema = Joi.object({
     }),
     otherwise: Joi.string().optional().allow(null, ""),
   }),
+  repeatOriginId: Joi.string().custom(objectId, "ObjectId validation").optional().allow(null)
+,
 
-  participants: Joi.array().items(Joi.string().custom(objectId, "ObjectId validation")).min(1).messages({
-    "array.min": "يجب اختيار مشارك واحد على الأقل",
-  }),
+  
 
   attachments: Joi.array().items(
     Joi.object({
@@ -60,16 +60,45 @@ exports.meetingValidationSchema = Joi.object({
       path: Joi.string(),
     })
   ).optional(),
-repeat: Joi.object({
-  isRepeated: Joi.boolean().default(false),
-  frequency: Joi.string().valid("daily", "weekly", "monthly").allow(null),
-  sameTime: Joi.boolean().default(true),
-  repeatEndDate: Joi.date().min('now').optional().default(() => {
-    const now = new Date();
-    now.setMonth(now.getMonth() + 6); // مدة افتراضية 6 شهور
-    return now;
-  })
-}).default({ isRepeated: false })
-,
+participants: Joi.alternatives().try(
+  Joi.array().items(Joi.string().custom(objectId, "ObjectId validation")),
+  Joi.string() // لو جاي سترينج من FormData
+).custom((value, helpers) => {
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value); // نحول النص Array
+    } catch {
+      return helpers.error("any.invalid");
+    }
+  }
+  return value;
+}).messages({
+  "array.min": "يجب اختيار مشارك واحد على الأقل",
+}),
+
+repeat: Joi.alternatives().try(
+  Joi.object({
+    isRepeated: Joi.boolean().default(false),
+    frequency: Joi.string().valid("daily", "weekly", "monthly").allow(null),
+    sameTime: Joi.boolean().default(true),
+    repeatEndDate: Joi.date().min("now").optional().default(() => {
+      const now = new Date();
+      now.setMonth(now.getMonth() + 6);
+      return now;
+    }),
+  }),
+  Joi.string()
+).custom((value, helpers) => {
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return helpers.error("any.invalid");
+    }
+  }
+  return value;
+}).default({ isRepeated: false }),
+
+
   status: Joi.string().valid("confirmed", "cancelled").default("confirmed"),
 });

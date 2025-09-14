@@ -432,12 +432,12 @@ const getManagerss = async (req, res) => {
     const managers = await Employee.find()
       .populate({
         path: "user",
-        match: { role: "Manager" }, // فلتر بس على اليوزر اللي رولهم Manager
-        select: "role name email", // الحقول اللي تهمك من اليوزر
+        match: { role: "Manager" }, 
+        select: "role name email", 
       })
-      .select("name jobTitle"); // الحقول اللي تهمك من الامبلوي
+      .select("name jobTitle"); 
 
-    // هنا ممكن يرجع موظفين كتير user بتاعهم null لأن match فشل، فنفلترهم
+    
     const filtered = managers.filter(emp => emp.user !== null);
 
     res.json(filtered);
@@ -452,7 +452,7 @@ const getManagerss = async (req, res) => {
 // Update Employee
 const updateEmployee = async (req, res) => {
   try {
-    const { id } = req.params; // ID الموظف من البارامز
+    const { id } = req.params;    
     const {
       name,
       jobTitle,

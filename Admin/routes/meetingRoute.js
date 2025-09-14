@@ -5,13 +5,16 @@ const authenticate=require('../middlesware/authenticate');
 const authorizeRoles=require('../middlesware/roleMiddleware');
 const validate=require('../middlesware/validate');
 const {meetingValidationSchema  }=require('../validations/meetingValidation');
+const multer = require("multer");
 
+const upload = multer({ dest: "uploads/meetings" });
 
-router.post('/' ,authenticate ,validate(meetingValidationSchema) ,createMeeting);
+router.post('/' ,authenticate ,   upload.single("attachments"), validate(meetingValidationSchema) ,createMeeting);
 
 
 router.get('/my' ,authenticate ,getMyMeetings)
 router.get('/:id' ,authenticate ,getMeetingById);
-router.patch('/:id' ,authenticate ,validate(meetingValidationSchema) , updateMeeting)
+router.patch('/:id' ,authenticate , upload.single("attachments") ,validate(meetingValidationSchema) , updateMeeting)
 router.delete('/:id' ,authenticate ,deleteMeeting)
+
 module.exports = router;

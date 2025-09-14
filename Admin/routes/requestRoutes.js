@@ -11,7 +11,9 @@ const {
 getRequestsByType ,
  getRequestsByEmployee ,
  getRequestsByWorkplace ,
-  addNote
+  addNote ,
+  updateRequest ,
+  deleteRequest 
 } = require('../controllers/requestController');
 
 const authenticate  = require('../middlesware/authenticate'); 
@@ -46,4 +48,6 @@ router.patch('/:id/reject' , authenticate,authorizeRoles('HR'), rejectRequest);
 router.patch('/:id/forward', authenticate,authorizeRoles('HR'),validate(updateRequestSchema), forwardRequest);
 router.post('/:id/notes', authenticate,authorizeRoles('HR') ,validate(addNoteSchema),addNote);
 
+router.patch('/:id' ,authenticate ,updateRequest)
+router.delete('/:id' ,authenticate,deleteRequest )
 module.exports = router;

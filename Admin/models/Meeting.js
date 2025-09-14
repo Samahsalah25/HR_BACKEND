@@ -13,6 +13,8 @@ const meetingSchema = new mongoose.Schema({
   attachments: [{ filename: String, originalname: String, path: String }],
 repeat: {
   isRepeated: { type: Boolean, default: false },
+  repeatOriginId: { type: mongoose.Schema.Types.ObjectId, ref: "Meeting", default: null }
+,
   frequency: { type: String, enum: ["daily", "weekly", "monthly"], default: null },
   sameTime: { type: Boolean, default: true }, // لو عايزين نغير الساعة لكل occurrence
   repeatEndDate: { type: Date, default: () => {

@@ -20,24 +20,80 @@ const upload = multer({ storage });
 
 // =============== Create (الموظف ينشئ طلب) ===============
 // =============== Create Request ===============
+// exports.createRequest = [
+//   upload.array('attachments'), // لو فيه ملفات
+//   async (req, res) => {
+//     try {
+//       const { type, leave, complaint, appeal, allowance, insurance } = req.body;
+
+//       if (!type) return res.status(400).json({ message: 'نوع الطلب مطلوب' });
+
+//      // المستخدم لازم يكون موظف
+//       // if (req.user.role !== 'EMPLOYEE') {
+//       //   return res.status(403).json({ message: 'هذا الإجراء متاح للموظفين فقط' });
+//       // }
+
+//       // جيب Employee المرتبط باليوزر الحالي
+//       const employeeDoc = await Employee.findOne({ user: req.user._id });
+//       if (!employeeDoc) return res.status(404).json({ message: 'لم يتم العثور على بيانات الموظف' });
+
+//       // تجهيز المرفقات (لو موجودة)
+//       let attachments = [];
+//       if (req.files && req.files.length > 0) {
+//         attachments = req.files.map(file => ({
+//           filename: file.originalname,
+//           url: `/uploads/requests/${file.filename}`
+//         }));
+//       }
+
+//       // تحقق من النوع لو String أو Object
+//       const leaveData = leave && typeof leave === 'string' ? JSON.parse(leave) : leave;
+//       const complaintData = complaint && typeof complaint === 'string' ? JSON.parse(complaint) : complaint;
+//       const appealData = appeal && typeof appeal === 'string' ? JSON.parse(appeal) : appeal;
+//       const allowanceData = allowance && typeof allowance === 'string' ? JSON.parse(allowance) : allowance;
+//       const insuranceData = insurance && typeof insurance === 'string' ? JSON.parse(insurance) : insurance;
+
+//       // إنشاء الطلب
+//       const request = await Request.create({
+//         employee: employeeDoc._id,
+//         type,
+//         leave: leaveData,
+//         complaint: complaintData,
+//         appeal: appealData,
+//         allowance: allowanceData,
+//         insurance: insuranceData,
+//         attachments
+//       });
+
+//       res.status(201).json({ message: 'تم إنشاء الطلب بنجاح', request });
+//     } catch (e) {
+//       console.error(e);
+//       res.status(500).json({ message: 'خطأ أثناء إنشاء الطلب', error: e.message });
+//     }
+//   }
+// ];
 exports.createRequest = [
-  upload.array('attachments'), // لو فيه ملفات
+  upload.array('attachments'),
   async (req, res) => {
     try {
-      const { type, leave, complaint, appeal, allowance, insurance } = req.body;
+      const { 
+        type, 
+        leave, 
+        complaint, 
+        appeal, 
+        allowance, 
+        insurance, 
+        custody, 
+        custodyClearance, 
+        expense,
+        invoice
+      } = req.body;
 
       if (!type) return res.status(400).json({ message: 'نوع الطلب مطلوب' });
 
-     // المستخدم لازم يكون موظف
-      // if (req.user.role !== 'EMPLOYEE') {
-      //   return res.status(403).json({ message: 'هذا الإجراء متاح للموظفين فقط' });
-      // }
-
-      // جيب Employee المرتبط باليوزر الحالي
       const employeeDoc = await Employee.findOne({ user: req.user._id });
       if (!employeeDoc) return res.status(404).json({ message: 'لم يتم العثور على بيانات الموظف' });
 
-      // تجهيز المرفقات (لو موجودة)
       let attachments = [];
       if (req.files && req.files.length > 0) {
         attachments = req.files.map(file => ({
@@ -46,24 +102,56 @@ exports.createRequest = [
         }));
       }
 
-      // تحقق من النوع لو String أو Object
+      // Parse البيانات لو جايه كـ JSON string
       const leaveData = leave && typeof leave === 'string' ? JSON.parse(leave) : leave;
       const complaintData = complaint && typeof complaint === 'string' ? JSON.parse(complaint) : complaint;
       const appealData = appeal && typeof appeal === 'string' ? JSON.parse(appeal) : appeal;
       const allowanceData = allowance && typeof allowance === 'string' ? JSON.parse(allowance) : allowance;
       const insuranceData = insurance && typeof insurance === 'string' ? JSON.parse(insurance) : insurance;
+      const custodyData = custody && typeof custody === 'string' ? JSON.parse(custody) : custody;
+      const custodyClearanceData = custodyClearance && typeof custodyClearance === 'string' ? JSON.parse(custodyClearance) : custodyClearance;
+      const expenseData = expense && typeof expense === 'string' ? JSON.parse(expense) : expense;
+      const invoiceData = invoice && typeof invoice === 'string' ? JSON.parse(invoice) : invoice;
 
-      // إنشاء الطلب
-      const request = await Request.create({
+      // تجهيز الداتا الأساسية
+      let requestData = {
         employee: employeeDoc._id,
         type,
-        leave: leaveData,
-        complaint: complaintData,
-        appeal: appealData,
-        allowance: allowanceData,
-        insurance: insuranceData,
         attachments
-      });
+      };
+
+      // إدخال التفاصيل حسب النوع
+      switch (type) {
+        case 'إجازة':
+          requestData.leave = leaveData;
+          break;
+        case 'شكوى':
+          requestData.complaint = complaintData;
+          break;
+        case 'اعتراض':
+          requestData.appeal = appealData;
+          break;
+        case 'بدل':
+          requestData.allowance = allowanceData;
+          break;
+        case 'مطالبة تأمينية':
+          requestData.insurance = insuranceData;
+          break;
+        case 'عهدة':
+          requestData.custody = custodyData;
+          break;
+        case 'تصفية عهدة':
+          requestData.custodyClearance = custodyClearanceData;
+          break;
+        case 'مصروف/فاتورة':
+          requestData.expense = expenseData;
+          break;
+        default:
+          return res.status(400).json({ message: 'نوع الطلب غير مدعوم' });
+      }
+
+      // إنشاء الطلب
+      const request = await Request.create(requestData);
 
       res.status(201).json({ message: 'تم إنشاء الطلب بنجاح', request });
     } catch (e) {
@@ -474,3 +562,122 @@ exports.getRequestsByEmployee = async (req, res) => {
     res.status(500).json({ message: 'خطأ أثناء جلب الطلبات' });
   }
 };
+
+//update request 
+exports.updateRequest = [
+  upload.array('attachments'),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { type, leave, complaint, appeal, allowance, insurance, custody, custodyClearance, expense } = req.body;
+
+      const request = await Request.findById(id);
+      if (!request) return res.status(404).json({ message: 'الطلب غير موجود' });
+
+ // جلب الموظف اللي في الطلب
+const employeeDoc = await Employee.findById(request.employee._id).populate('user');
+
+// التأكد إن اليوزر الحالي هو نفس اليوزر المرتبط بالموظف
+if (String(employeeDoc.user._id) !== String(req.user._id)) {
+  return res.status(403).json({ message: 'غير مسموح بتعديل هذا الطلب' });
+}
+      // تحديث المرفقات
+      if (req.files && req.files.length > 0) {
+        const attachments = req.files.map(file => ({
+          filename: file.originalname,
+          url: `/uploads/requests/${file.filename}`
+        }));
+        request.attachments = [...request.attachments, ...attachments];
+      }
+
+      // تحديث النوع
+      if (type) request.type = type;
+
+      // Parse البيانات لو جايه كـ JSON string
+      const leaveData = leave && typeof leave === 'string' ? JSON.parse(leave) : leave;
+      const complaintData = complaint && typeof complaint === 'string' ? JSON.parse(complaint) : complaint;
+      const appealData = appeal && typeof appeal === 'string' ? JSON.parse(appeal) : appeal;
+      const allowanceData = allowance && typeof allowance === 'string' ? JSON.parse(allowance) : allowance;
+      const insuranceData = insurance && typeof insurance === 'string' ? JSON.parse(insurance) : insurance;
+      const custodyData = custody && typeof custody === 'string' ? JSON.parse(custody) : custody;
+      const custodyClearanceData = custodyClearance && typeof custodyClearance === 'string' ? JSON.parse(custodyClearance) : custodyClearance;
+      const expenseData = expense && typeof expense === 'string' ? JSON.parse(expense) : expense;
+
+      // تحديث التفاصيل حسب النوع
+      switch (type || request.type) {
+        case 'إجازة':
+          request.leave = leaveData || request.leave;
+          break;
+        case 'شكوى':
+          request.complaint = complaintData || request.complaint;
+          break;
+        case 'اعتراض':
+          request.appeal = appealData || request.appeal;
+          break;
+        case 'بدل':
+          request.allowance = allowanceData || request.allowance;
+          break;
+        case 'مطالبة تأمينية':
+          request.insurance = insuranceData || request.insurance;
+          break;
+        case 'عهدة':
+          request.custody = custodyData || request.custody;
+          break;
+        case 'تصفية عهدة':
+          request.custodyClearance = custodyClearanceData || request.custodyClearance;
+          break;
+        case 'مصروف/فاتورة':
+          request.expense = expenseData || request.expense;
+          break;
+        default:
+          return res.status(400).json({ message: 'نوع الطلب غير مدعوم' });
+      }
+
+      // حفظ التعديلات
+      await request.save();
+
+      res.status(200).json({ message: 'تم تعديل الطلب بنجاح', request });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ message: 'خطأ أثناء تعديل الطلب', error: e.message });
+    }
+  }
+];
+
+
+// DELETE /api/requests/:id
+exports.deleteRequest = async (req, res) => {
+  try {
+    // جلب الطلب
+    const request = await Request.findById(req.params.id).populate({
+      path: "employee",
+      populate: { path: "user" }
+    });
+
+    if (!request) {
+      return res.status(404).json({ message: "الطلب غير موجود" });
+    }
+
+    const employeeDoc = await Employee.findById(request.employee._id).populate('user');
+    // التحقق من صاحب الطلب
+    if (String(employeeDoc.user._id) !== String(req.user._id)) {
+      return res.status(403).json({ message: "غير مسموح بحذف هذا الطلب" });
+    }
+
+
+    await request.deleteOne();
+
+    res.status(200).json({ message: "تم حذف الطلب بنجاح" });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: "خطأ أثناء حذف الطلب", error: e.message });
+  }
+};
+
+
+
+
+
+
+
+

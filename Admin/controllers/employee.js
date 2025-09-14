@@ -259,6 +259,35 @@ exports.employeeStatus = async (req, res) => {
   try {
     const userId = req.user.id;
 
+    // دالة مساعدة لتنسيق الوقت
+    function formatTime(timeStr) {
+      if (!timeStr) return null;
+
+      // لو القيمة جاية كـ String زي "09:00"
+      if (typeof timeStr === "string") {
+        const [hours, minutes] = timeStr.split(":").map(Number);
+        const date = new Date();
+        date.setHours(hours, minutes, 0, 0);
+
+        return date.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true
+        });
+      }
+
+      // لو أصلاً Date
+      if (timeStr instanceof Date) {
+        return timeStr.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true
+        });
+      }
+
+      return null;
+    }
+
     // نجيب الموظف المرتبط باليوزر
     const employee = await Employee.findOne({ user: userId }).populate("workplace");
     if (!employee) {
@@ -279,7 +308,12 @@ exports.employeeStatus = async (req, res) => {
     });
 
     res.json({
-      today: formatArabicDate(new Date()), // 🟢 التاريخ بالصيغة المظبوطة
+      today: new Date().toLocaleDateString("ar-EG", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+      }),
       officialCheckIn: formatTime(branch?.workStart),
       officialCheckOut: formatTime(branch?.workEnd),
       employeeCheckIn: attendance?.checkIn

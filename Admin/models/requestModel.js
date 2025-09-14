@@ -12,75 +12,94 @@ const attachmentSchema = new mongoose.Schema({
 }, { _id: false });
 
 const requestSchema = new mongoose.Schema({
-  // صاحب الطلب (من Employee)
   employee: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
 
-  // نوع الطلب (بالعربي)
   type: {
     type: String,
-    enum: ['إجازة', 'شكوى', 'اعتراض', 'بدل', 'مطالبة تأمينية'],
+    enum: [
+      'إجازة',
+      'شكوى',
+      'اعتراض',
+      'بدل',
+      'مطالبة تأمينية',
+      'عهدة',
+      'تصفية عهدة',
+      'مصروف/فاتورة'
+    ],
     required: true
   },
 
-  // الحالة
   status: {
     type: String,
     enum: ['قيد المراجعة', 'مقبول', 'مرفوض', 'محول'],
     default: 'قيد المراجعة'
   },
 
-  // تفاصيل حسب النوع:
   leave: {
-    leaveType: { 
-      type: String, 
-      enum: ['اعتيادية', 'مرضية', 'زواج', 'طارئة' ,'ولادة' ,'غير مدفوعة'] 
-    },
+    leaveType: { type: String, enum: ['اعتيادية', 'مرضية', 'زواج', 'طارئة', 'ولادة', 'غير مدفوعة'] },
     startDate: Date,
     endDate: Date,
     description: String
   },
 
   complaint: {
-    description: String
+    complaintType: { type: String, enum: ['إدارية', 'تشغيلية', 'أخرى'] },
+    description: String,
+    submitDate: { type: Date, default: Date.now }
   },
 
   appeal: {
-    appealType: { type: String }, // زي: "خصم"، "تأخير"…
-    description: String
+    appealType: { type: String, enum: ['تقييم وظيفي', 'معاملة مالية', 'أخرى'] },
+    description: String,
+    submitDate: { type: Date, default: Date.now }
   },
 
   allowance: {
-    allowanceType: { type: String }, // نوع المطالبة
-    amount: { type: Number },
-    spendDate: { type: Date },
+    allowanceType: { type: String, enum: ['بدل سفر', 'بدل سكن', 'بدل انتقالات', 'بدل شراء أدوات ومعدات', 'أخرى'] },
+    amount: Number,
+    spendDate: Date,
     description: String
   },
 
   insurance: {
     claimType: { type: String },
-    claimDate: { type: Date },
+    claimDate: Date,
     description: String
   },
 
-  // مرفقات عامة لأي نوع
+  custody: {
+    custodyType: { type: String, enum: ['أجهزة إلكترونية', 'أدوات مكتبية', 'معدات تشغيل', 'أخرى'] },
+    quantity: Number,
+    requestDate: { type: Date, default: Date.now },
+    purpose: String,
+    duration: { type: String, enum: ['شهر', '3 شهور', '6 شهور', 'سنة', 'غير محددة'] }
+  },
+
+  custodyClearance: {
+    custodyNumber: String,
+    custodyType: String,
+    quantity: Number,
+    reason: { type: String, enum: ['انتهاء فترة الاستخدام', 'عطل', 'استبدال بعهدة جديدة', 'أخرى'] },
+    description: String
+  },
+
+  expense: {
+    expenseType: { type: String, enum: ['مصروف', 'فاتورة'] },
+    amount: Number,
+    spendDate: Date,
+    description: String
+  },
+
   attachments: [attachmentSchema],
 
-  // قرارات
   decidedAt: Date,
   decidedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   decisionNote: String,
   rejectionReason: String,
 
-  // تحويل
- // بدل enum القديم
-forwardedTo: { 
-  type: mongoose.Schema.Types.ObjectId, 
-  ref: 'User', 
-  default: null 
-},
+  forwardedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 
-  // ملاحظات
-  notes: [noteSchema],
+  notes: [noteSchema]
 
 }, { timestamps: true });
 

@@ -493,6 +493,7 @@ const getMonthlyAttendanceForEmployee = async (req, res) => {
 
     let totalAbsent = 0;
     let totalLate = 0;
+    
 
     const days = attendances.map(a => {
       if (a.status === "غائب") totalAbsent++;
@@ -815,7 +816,7 @@ const monthlyReportoneBranch = async (req, res) => {
   }
 };
 
-// لليوم - جدول تاخير موظف معين
+// لليوم - جدول تاخير موظف معينs
 
 
 const dailyEmployeeAttendance = async (req, res) => {
@@ -869,28 +870,28 @@ const dailyEmployeeAttendance = async (req, res) => {
 
 const monthlyEmployeeAttendance = async (req, res) => {
   try {
-    const { id } = req.params;
-    const employee = await Employee.findById(id).populate("workplace");
-    if (!employee) return res.status(404).json({ message: "الموظف غير موجود" });
+ const { id } = req.params;
+ const employee = await Employee.findById(id).populate("workplace");
+if (!employee) return res.status(404).json({ message: "الموظف غير موجود" });
 
-    const nowUTC = DateTime.utc();
-    const startOfMonth = nowUTC.startOf('month').toJSDate();
-    const endOfMonth = nowUTC.endOf('month').toJSDate();
+ const nowUTC = DateTime.utc();
+ const startOfMonth = nowUTC.startOf('month').toJSDate();
+ const endOfMonth = nowUTC.endOf('month').toJSDate();
 
-    const attendances = await Attendance.find({
-      employee: employee._id,
-      date: { $gte: startOfMonth, $lte: endOfMonth }
-    });
+ const attendances = await Attendance.find({
+ employee: employee._id,
+ date: { $gte: startOfMonth, $lte: endOfMonth }
+ });
   
-    const officialStart = employee.workplace?.workStart || "09:00";
-    const allowedLateMinutes = employee.workplace?.gracePeriod || 0;
+ const officialStart = employee.workplace?.workStart || "09:00";
+ const allowedLateMinutes = employee.workplace?.gracePeriod || 0;
 
-    const dailyDelays = [];
-    let totalMonthlyDelay = 0;
+ const dailyDelays = [];
+let totalMonthlyDelay = 0;
 
-    attendances.forEach(a => {
-      if (a.status === "متأخر") {
-  const delay = a.lateMinutes;
+attendances.forEach(a => {
+ if (a.status === "متأخر") {
+   const delay = a.lateMinutes;
 
    // تنسيق التاريخ باللغة العربية
    const attendanceDate = DateTime.fromJSDate(a.date).setLocale('ar-EG').toFormat('dd/MM/yyyy');
@@ -904,24 +905,91 @@ const monthlyEmployeeAttendance = async (req, res) => {
   checkIn: checkInTime,
    officialStart,
   delayMinutes: delay,
-   allowedLateMinutes
-        });
+ allowedLateMinutes
+ });
 
-        totalMonthlyDelay += delay;
-      }
-    });
+ totalMonthlyDelay += delay;
+ }
+ });
 
-    res.json({
-      employeeName: employee.name,
-      month: nowUTC.setLocale("ar-EG").toFormat("MMMM yyyy"),
-      dailyDelays,
-      totalMonthlyDelay
+ res.json({
+   employeeName: employee.name,
+ month: nowUTC.setLocale("ar-EG").toFormat("MMMM yyyy"),
+ dailyDelays,
+  totalMonthlyDelay
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server Error" });
+ console.error(err);
+res.status(500).json({ error: "Server Error" });
   }
 };
+
+
+//get leaves and absences and tiken leaves for employee logging in...
+
+const getYearlyAttendanceSummary = async (req, res) => {
+  try {
+    const employeeId = req.user.id;
+
+    const today = new Date();
+    const year = today.getFullYear();
+    const yearStart = new Date(year, 0, 1, 0, 0, 0, 0);
+    const yearEnd = new Date(year, 11, 31, 23, 59, 59, 999);
+
+    // بيانات الموظف
+    const emp = await Employee.findOne({user:employeeId}).select("name department");
+    if (!emp) return res.status(404).json({ error: "الموظف غير موجود" });
+
+    // حضور السنة
+    const attendances = await Attendance.find({
+      employee: emp._id,
+      date: { $gte: yearStart, $lte: yearEnd }
+    });
+
+    const absentCount = attendances.filter(a => a.status === "غائب").length;
+    const lateCount = attendances.filter(a => a.status === "متأخر").length;
+
+    // الإجازات المقبولة
+    const leaves = await Request.find({
+      employee: emp._id,
+      type: "إجازة",
+      status: "مقبول",
+      "leave.startDate": { $lte: yearEnd },
+      "leave.endDate": { $gte: yearStart }
+    });
+
+    let totalLeavesTaken = 0;
+    for (const leave of leaves) {
+      const start = leave.leave.startDate < yearStart ? yearStart : leave.leave.startDate;
+      const end = leave.leave.endDate > yearEnd ? yearEnd : leave.leave.endDate;
+
+      const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+      totalLeavesTaken += daysDiff;
+    }
+
+    // رصيد الإجازات من LeaveBalance
+    const leaveBalance = await LeaveBalance.findOne({ employee: emp._id });
+
+    res.json({
+      year,
+      employee: emp.name,
+      department: emp.department,
+      absences: absentCount,
+      lates: lateCount,
+      leavesTaken: totalLeavesTaken,
+      leaveRemaining: leaveBalance ? leaveBalance.remaining : 0
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "خطأ في السيرفر" });
+  }
+};
+
+
+
+
+
 module.exports = { checkIn, checkOut ,getTodayAttendance 
    ,dailyState ,dailyStateBranch , dailyAttendanceTable ,getMonthlyAttendanceForEmployee 
-   , monthlyReport ,monthlyReportoneBranch ,dailyAttendanceTableOnebranch ,dailyEmployeeAttendance ,monthlyEmployeeAttendance };
+   , monthlyReport ,monthlyReportoneBranch ,dailyAttendanceTableOnebranch ,dailyEmployeeAttendance ,monthlyEmployeeAttendance ,getYearlyAttendanceSummary };

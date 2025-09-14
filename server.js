@@ -29,7 +29,7 @@ const setupAttendanceCron = require('./cron/attendanceCron.js');
 const startTaskStatusCron = require('./cron/tasksCorn.js');
 
 const app = express();
-const server = http.createServer(app); // 👈 السيرفر الجديد
+const server = http.createServer(app); // 
 
 // Socket.io setup
 const io = new Server(server, {
@@ -98,6 +98,7 @@ app.use('/api/meeting', meetingRouts);
 
 // DB + Server
 const PORT = process.env.PORT || 4000;
+
 
 (async () => {
   try {

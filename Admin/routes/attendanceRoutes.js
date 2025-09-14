@@ -4,8 +4,8 @@ const router = express.Router();
 const { checkIn ,checkOut ,getTodayAttendance ,dailyState ,dailyStateBranch 
     ,dailyAttendanceTable  ,dailyAttendanceTableOnebranch
      ,getMonthlyAttendanceForEmployee 
-     ,monthlyReport
-    ,monthlyReportoneBranch ,dailyEmployeeAttendance  ,monthlyEmployeeAttendance} = require('../controllers/attendanceController');
+     ,monthlyReport 
+    ,monthlyReportoneBranch ,dailyEmployeeAttendance  ,monthlyEmployeeAttendance ,getYearlyAttendanceSummary } = require('../controllers/attendanceController');
 const authenticate=require('../middlesware/authenticate');
 const getClientTime=require('../middlesware/clientTime');
 const authorizeRoles=require('../middlesware/roleMiddleware');
@@ -50,4 +50,7 @@ router.get('/dailyEmployeeAttendance/:id' ,authenticate , authorizeRoles('HR'),d
 
 //  بيانات تاخير الموظف الشهري
  router.get('/monthlyEmployeeAttendance/:id' ,authenticate, authorizeRoles('HR'),monthlyEmployeeAttendance)
+
+ //getYearlyAttendanceSummary 
+ router.get('/getYearlyAttendanceSummary' ,authenticate ,getYearlyAttendanceSummary )
 module.exports = router;
