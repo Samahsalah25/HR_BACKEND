@@ -464,6 +464,69 @@ meeting.attachments = attachments;
   }
 };
 
+const getallMyMeetings = async (req, res) => {
+  try {
+    // 1️⃣ جلب الـ Employee المرتبط بالـ logged-in user
+    const emp = await Employee.findOne({ user: req.user._id });
+    if (!emp) {
+      return res.status(404).json({ success: false, message: "الموظف غير موجود" });
+    }
+
+    // 2️⃣ جلب الاجتماعات المتعلقة بالموظف
+    const meetings = await Meeting.find({
+      $or: [
+        { createdBy: emp._id },
+        { participants: emp._id }
+      ]
+    })
+      .populate("createdBy", "_id name")
+      .populate("participants", "name")
+      .select("_id title startTime endTime day status createdBy participants")
+      .lean();
+
+    // 3️⃣ دالة لتحويل الوقت من "HH:mm" لصيغة 12 ساعة ص/م
+    const formatTime = (timeStr) => {
+      if (!timeStr) return "00:00";
+      const [hourStr, minStr] = timeStr.split(":");
+      let hour = parseInt(hourStr, 10);
+      const minute = minStr.padStart(2, "0");
+      const ampm = hour >= 12 ? "م" : "ص";
+      hour = hour % 12 || 12;
+      return `${hour}:${minute} ${ampm}`;
+    };
+
+    // 4️⃣ تنسيق الاجتماعات للـ frontend
+    const formatted = meetings.map(meeting => ({
+      _id: meeting._id,
+      date: meeting.day.toISOString().split("T")[0], // yyyy-mm-dd
+      time: `${formatTime(meeting.startTime)} - ${formatTime(meeting.endTime)}`,
+      status: meeting.status === "confirmed" ? "مؤكدة" : "ملغية",
+      title: meeting.title,
+      createdBy: {
+        _id: meeting.createdBy?._id,
+        name: meeting.createdBy?.name || "غير معروف"
+      },
+      participants: meeting.participants.map(p => p.name),
+    }));
+
+    // 5️⃣ إرسال الريسبونس
+    res.status(200).json({
+      success: true,
+      count: formatted.length,
+      data: formatted,
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "خطأ في جلب الاجتماعات",
+      error: error.message,
+    });
+  }
+};
+
+
+
 
 
 
@@ -516,4 +579,4 @@ const deleteMeeting = async (req, res) => {
   }
 };
 
-module.exports = { createMeeting, getMyMeetings ,getMeetingById ,updateMeeting ,deleteMeeting};
+module.exports = { createMeeting, getMyMeetings  ,getallMyMeetings,getMeetingById ,updateMeeting ,deleteMeeting};

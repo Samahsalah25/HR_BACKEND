@@ -643,7 +643,6 @@ exports.getMyTasks = async (req, res) => {
 };
 
 
-
 exports.getMyRequests = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -651,10 +650,10 @@ exports.getMyRequests = async (req, res) => {
     const employee = await Employee.findOne({ user: userId });
     if (!employee) return res.status(404).json({ error: "الموظف غير مرتبط بالحساب" });
 
-    // نبدأ بالفلتر الأساسي
+    // الفلتر الأساسي
     let filter = { employee: employee._id };
 
-    // لو اتبعت فلتر بالتاريخ (period بالأيام)
+    // فلتر حسب الفترة لو موجود
     if (req.query.period) {
       const periodDays = parseInt(req.query.period);
       const fromDate = new Date();
@@ -662,7 +661,7 @@ exports.getMyRequests = async (req, res) => {
       filter.createdAt = { $gte: fromDate };
     }
 
-    // لو اتبعت فلتر بالحالة
+    // فلتر حسب الحالة لو موجود
     if (req.query.status) {
       filter.status = req.query.status;
     }
@@ -686,7 +685,8 @@ exports.getMyRequests = async (req, res) => {
         jobTitle: reqItem.employee.jobTitle,
         type: reqItem.type,
         status: reqItem.status,
-        submittedAt: `${reqItem.createdAt.getDate()}/${reqItem.createdAt.getMonth() + 1}/${reqItem.createdAt.getFullYear()}`,
+        submittedAt: reqItem.createdAt.toISOString(), // إرسال بصيغة ISO
+        decidedAt: reqItem.decidedAt ? reqItem.decidedAt.toISOString() : null, // تاريخ القبول/الرفض
         notes: reqItem.notes || [],
         attachments: reqItem.attachments || []
       };
@@ -699,7 +699,7 @@ exports.getMyRequests = async (req, res) => {
         rejected: rejectedCount,
         forwarded: forwardedCount
       },
-      total: requests.length, // العدد الكلي للطلبات اللي رجعت
+      total: requests.length,
       requests: formattedRequests
     });
   } catch (err) {

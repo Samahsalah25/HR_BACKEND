@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createMeeting ,getMyMeetings ,getMeetingById ,updateMeeting ,deleteMeeting} = require('../controllers/meetingController');
+const { createMeeting ,getMyMeetings ,getallMyMeetings ,getMeetingById ,updateMeeting ,deleteMeeting} = require('../controllers/meetingController');
 const authenticate=require('../middlesware/authenticate');
 const authorizeRoles=require('../middlesware/roleMiddleware');
 const validate=require('../middlesware/validate');
@@ -13,6 +13,7 @@ router.post('/' ,authenticate ,   upload.single("attachments"), validate(meeting
 
 
 router.get('/my' ,authenticate ,getMyMeetings)
+router.get('/all' ,authenticate ,getallMyMeetings)
 router.get('/:id' ,authenticate ,getMeetingById);
 router.patch('/:id' ,authenticate , upload.single("attachments") ,validate(meetingValidationSchema) , updateMeeting)
 router.delete('/:id' ,authenticate ,deleteMeeting)
