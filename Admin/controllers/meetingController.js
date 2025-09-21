@@ -313,8 +313,10 @@ const getMeetingById = async (req, res) => {
     const { id } = req.params;
 
     const meeting = await Meeting.findById(id)
-      .populate("createdBy", "name jobTitle")
-      .populate("participants", "name jobTitle");
+       .populate({
+    path: 'createdBy',
+    select: '_id name user jobTitle', // أهم حاجة تجيب user
+  }).populate("participants", "name jobTitle");
 
     if (!meeting) {
       return res.status(404).json({

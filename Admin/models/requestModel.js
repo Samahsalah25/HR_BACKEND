@@ -80,7 +80,8 @@ const requestSchema = new mongoose.Schema({
     custodyType: String,
     quantity: Number,
     reason: { type: String, enum: ['انتهاء فترة الاستخدام', 'عطل', 'استبدال بعهدة جديدة', 'أخرى'] },
-    description: String
+    description: String ,
+      clearanceDate: Date, 
   },
 
   expense: {
