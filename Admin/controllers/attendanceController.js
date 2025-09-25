@@ -38,7 +38,7 @@ if (!branch) return res.status(400).json({ message: 'الفرع غير موجو�
       branch.location.coordinates[0]
     );
 
-    if (distance > 10) {
+    if (distance > 100) {
       return res.status(400).json({ message: 'أنت بعيد عن موقع الفرع' });
     }
 

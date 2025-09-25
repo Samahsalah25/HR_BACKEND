@@ -7,6 +7,8 @@ const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const http = require('http');          //  مهم للسيرفر
 const { Server } = require('socket.io'); //  socket.io
+const notificationRoutes = require("./Admin/routes/notificationRoutes.js");
+
 
 const connectDB = require('./config/db.js');
 const seedAdmin = require('./scripts/seedAdmin.js');
@@ -95,6 +97,7 @@ app.use('/api/tasks', taskRoute);
 app.use('/api/branch', branchRoute);
 app.use('/api/attendance', attendanceRoute);
 app.use('/api/meeting', meetingRouts);
+app.use("/api/notifications", notificationRoutes);
 
 // DB + Server
 const PORT = process.env.PORT || 4000;

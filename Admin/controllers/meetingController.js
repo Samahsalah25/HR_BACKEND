@@ -222,12 +222,13 @@ if (typeof repeat === "string") {
         employee: participantId,
         type: "meeting",
         message: baseMsg,
-        link: `/meetings/${originMeeting._id}`
+      link: `/employee/meetings`,
       });
 
       const socketId = onlineUsers.get(participantId.toString());
       if (socketId) io.to(socketId).emit("notification", notification);
     }
+console.log("📌 Meeting Saved:", meetingsCreated);
 
     res.status(201).json({
       success: true,
@@ -452,13 +453,14 @@ meeting.attachments = attachments;
         employee: participantId,
         type: "meeting",
         message: baseMsg,
-        link: `/meetings/${meeting._id}`,
+       link: `/employee/meetings`,
+
       });
 
       const socketId = onlineUsers.get(participantId.toString());
       if (socketId) io.to(socketId).emit("notification", notification);
     }
-
+console.log('u[dated metting' ,meeting)
     res.json({ success: true, message: "تم تحديث الاجتماع بنجاح", data: meeting });
 
   } catch (error) {

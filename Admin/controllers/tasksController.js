@@ -228,6 +228,7 @@ const taskByemployee = async (req, res) => {
 const createTasks = async (req, res) => {
   try {
     const { title, description, assignedTo, dueDate ,priority,assignDate } = req.body || {};
+        console.log("📦 Payload from frontend:", req.body)
 
     if (!title || !description || !assignedTo || !dueDate) {
       cleanupUploadedFile(req);
@@ -360,7 +361,7 @@ const createTasks = async (req, res) => {
 
 
 
-// PATCH update task (يدعم إضافة/استبدال مرفق واحد إضافي)
+// PATCH update task  
 const updateTask = async (req, res) => {
   try {
     console.log("updateTask reached");
@@ -604,7 +605,7 @@ const getTaskById = async (req, res) => {
     const taskId = req.params.id;
 
     const task = await Task.findById(taskId)
-      .populate('assignedTo', 'name email jobTitle') // أو زوّدي أي فيلد موجود عندك في Employee
+      .populate('assignedTo', 'name email jobTitle user') // أو زوّدي أي فيلد موجود عندك في Employee
       .populate('assignedBy', 'name email'); // من User
 
     if (!task) {

@@ -43,7 +43,7 @@ router.post('/', authenticate,upload.single('attachments'),authorizeRoles('HR','
 
 router.patch('/:id',authenticate,  upload.single('attachments'),validate(updateTaskSchema), updateTask);
 
-router.delete('/:id', authenticate,  authorizeRoles('HR') ,deleteTask);
+router.delete('/:id', authenticate,  authorizeRoles('HR','Manager' ,'EMPLOYEE') ,deleteTask);
 
 
 module.exports = router;

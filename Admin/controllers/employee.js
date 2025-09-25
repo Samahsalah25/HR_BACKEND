@@ -554,27 +554,30 @@ function formatTime(date) {
     hour12: true
   });
 }
-
 exports.getMyTasks = async (req, res) => {
   try {
     const userId = req.user._id;
     const statusFilter = req.query.status; // "مكتملة", "قيد العمل", "متأخرة" أو undefined
-    const periodDays = parseInt(req.query.period) || 90; 
-    const fromDate = new Date();
-    fromDate.setDate(fromDate.getDate() - periodDays);
 
     // جلب بيانات الموظف
     const employee = await Employee.findOne({ user: userId });
     if (!employee) return res.status(404).json({ error: "الموظف غير مرتبط بالحساب" });
 
-    // بناء فلترة الـ query
-    let filter = { assignedTo: employee._id, assignDate: { $gte: fromDate } };
+    // بناء فلترة الـ query بدون تحديد فترة زمنية
+    let filter = {
+      $or: [
+        { assignedTo: employee._id },   // مسندة لي
+        { assignedBy: userId }          // أنا اللي مكريها
+      ]
+    };
     if (statusFilter && statusFilter !== "الكل") {
       filter.status = statusFilter;
     }
 
-    // جلب المهام حسب الفلترة
-    const tasks = await Task.find(filter).sort({ assignDate: -1 });
+    // جلب المهام + الموظف المسند له
+    const tasks = await Task.find(filter)
+      .populate("assignedTo", "name _id jobTitle")
+      .sort({ assignDate: -1 });
 
     let inProgressCount = 0;
     let completedCount = 0;
@@ -616,6 +619,17 @@ exports.getMyTasks = async (req, res) => {
         })}`;
       }
 
+      let relation = "من أجلي" ;
+      let assignedToInfo = null;
+      if (!task.assignedTo._id.equals(employee._id)) {
+        relation = "لموظف آخر";
+        assignedToInfo = {
+          id: task.assignedTo._id,
+          name: task.assignedTo.name,
+          jobTitle: task.assignedTo.jobTitle || ""
+        };
+      }
+
       return {
         _id: task._id,
         title: task.title,
@@ -624,12 +638,14 @@ exports.getMyTasks = async (req, res) => {
         assignDate: assignDay,
         endInfo,
         notes: task.notes || "",
-        attachments: task.attachments || []
+        attachments: task.attachments || [],
+        relation,
+        assignedTo: assignedToInfo
       };
     });
 
     res.json({
-      totalCount: tasks.length,   // 👈 العدد الكلي للمهام
+      totalCount: tasks.length,
       inProgressCount,
       completedCount,
       overdueCount,

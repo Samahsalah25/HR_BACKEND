@@ -376,7 +376,7 @@ if (r.type === 'إجازة' && r.leave?.startDate && r.leave?.endDate) {
       employee: r.employee._id,
       type: 'request',
       message: `تمت الموافقة على طلبك (${r.type})`,
-      link: `/requests/${r._id}`, // لينك اختياري يفتح صفحة الطلب
+   link: `/employee/services`,
       read: false
     });
 
@@ -410,7 +410,7 @@ if (!req.user || !req.user._id) {
       employee: r.employee, // أو r.employee._id لو populate موجود
       type: 'request',
       message: `تم رفض طلبك (${r.type})`,
-      link: `/requests/${r._id}`, // اختياري
+       link: `/employee/services`,
       read: false
     });
     res.json({ message: 'تم رفض الطلب', request: r });
