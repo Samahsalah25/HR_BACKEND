@@ -7,11 +7,11 @@ const contractSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
-    duration: { // عدد السنوات أو الأشهر
+    duration: { 
       type: Number,
       required: true,
     },
-    unit: { // لتحديد هل المدة بالسنين أو بالشهور
+    unit: { 
       type: String,
       enum: ['years', 'months'],
       default: 'years'
