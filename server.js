@@ -36,8 +36,8 @@ const server = http.createServer(app); //
 // Socket.io setup
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173", 
-    credentials: true
+    origin: "*", 
+  
   }
 });
 
@@ -76,8 +76,8 @@ app.use('/uploads/meetings', express.static(path.join(__dirname, 'uploads', 'mee
 app.use(cookieParser());
 app.use(helmet());
 const corsOptions = {
-  origin: "http://localhost:5173",
-  credentials: true
+  origin: "*",
+
 };
 app.use(cors(corsOptions));
 app.use(express.json());
