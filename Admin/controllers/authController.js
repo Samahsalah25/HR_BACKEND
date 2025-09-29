@@ -58,12 +58,16 @@ exports.login = async (req, res) => {
 
 // @desc Logout user
 exports.logout = (req, res) => {
-  res.cookie('token', '', {
+  res.cookie("token", "", {
     httpOnly: true,
-    expires: new Date(0)
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    path: "/", // مهم جداً عشان يمسح من أي مكان
+    expires: new Date(0), // امسح
   });
-  res.json({ message: 'Logged out successfully' });
+  res.json({ message: "Logged out successfully" });
 };
+
 // controllers/authController.js
 exports.getMe = async (req, res) => {
   try {
