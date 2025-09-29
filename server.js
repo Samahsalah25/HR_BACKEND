@@ -36,7 +36,9 @@ const server = http.createServer(app); //
 // Socket.io setup
 const io = new Server(server, {
   cors: {
-    origin: "*", 
+     origin: "*",   // يسمح لأي دومين
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  credentials: true
   
   }
 });
@@ -76,7 +78,9 @@ app.use('/uploads/meetings', express.static(path.join(__dirname, 'uploads', 'mee
 app.use(cookieParser());
 app.use(helmet());
 const corsOptions = {
-  origin: "*",
+  origin: "*",   // يسمح لأي دومين
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  credentials: true
 
 };
 app.use(cors(corsOptions));
