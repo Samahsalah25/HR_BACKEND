@@ -257,50 +257,43 @@ const totalLeaveBalance = companyLeaves.annual + companyLeaves.sick + companyLea
 
 const moment = require("moment-timezone");
 
+require("moment/locale/ar-sa"); // تحميل locale العربية
+
 exports.employeeStatus = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // دالة مساعدة لتنسيق الوقت بتوقيت السعودية
     function formatTime(time) {
       if (!time) return null;
-
-      // لو القيمة String زي "09:00" (مواعيد الدوام)
       if (typeof time === "string") {
         const [hours, minutes] = time.split(":").map(Number);
         return moment()
           .tz("Asia/Riyadh")
           .hour(hours)
           .minute(minutes)
-          .format("hh:mm A");
+          .format("HH:mm"); // عرض 24 ساعة بالعربي ممكن تحط AM/PM لو تحبي
       }
-
-      // لو أصلاً Date
       if (time instanceof Date) {
-        return moment(time).tz("Asia/Riyadh").format("hh:mm A");
+        return moment(time).tz("Asia/Riyadh").format("HH:mm");
       }
-
       return null;
     }
 
-    // جلب الموظف والفرع
     const employee = await Employee.findOne({ user: userId }).populate("workplace");
     if (!employee) return res.status(404).json({ error: "الموظف غير مرتبط بالحساب" });
     const branch = employee.workplace;
 
-    // بداية ونهاية اليوم بالسعودي
-    const now = moment().tz("Asia/Riyadh");
+    const now = moment().tz("Asia/Riyadh").locale("ar-sa"); // ضبط اللغة للعربية
     const startOfDay = now.clone().startOf("day").toDate();
     const endOfDay = now.clone().endOf("day").toDate();
 
-    // جلب حضور اليوم
     const attendance = await Attendance.findOne({
       employee: employee._id,
       date: { $gte: startOfDay, $lte: endOfDay }
     });
 
     res.json({
-      today: now.format("dddd, YYYY/MM/DD"), // تاريخ اليوم بالسعودي
+      today: now.format("dddd، DD MMMM YYYY"), // اليوم مكتوب بالعربي كامل
       officialCheckIn: formatTime(branch?.workStart),
       officialCheckOut: formatTime(branch?.workEnd),
       employeeCheckIn: formatTime(attendance?.checkIn),
@@ -318,6 +311,7 @@ exports.employeeStatus = async (req, res) => {
     res.status(500).json({ error: "خطأ في السيرفر" });
   }
 };
+
 
 // 🟢 دالة تنسيق التاريخ
 function formatArabicDate(date) {
