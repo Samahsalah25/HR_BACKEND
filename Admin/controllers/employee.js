@@ -265,17 +265,20 @@ exports.employeeStatus = async (req, res) => {
 
     function formatTime(time) {
       if (!time) return null;
+
       if (typeof time === "string") {
         const [hours, minutes] = time.split(":").map(Number);
         return moment()
           .tz("Asia/Riyadh")
           .hour(hours)
           .minute(minutes)
-          .format("HH:mm"); // عرض 24 ساعة بالعربي ممكن تحط AM/PM لو تحبي
+          .format("hh:mm A"); // hh:mm 12 ساعة مع AM/PM
       }
+
       if (time instanceof Date) {
-        return moment(time).tz("Asia/Riyadh").format("HH:mm");
+        return moment(time).tz("Asia/Riyadh").format("hh:mm A"); // 12 ساعة
       }
+
       return null;
     }
 
@@ -283,7 +286,7 @@ exports.employeeStatus = async (req, res) => {
     if (!employee) return res.status(404).json({ error: "الموظف غير مرتبط بالحساب" });
     const branch = employee.workplace;
 
-    const now = moment().tz("Asia/Riyadh").locale("ar-sa"); // ضبط اللغة للعربية
+    const now = moment().tz("Asia/Riyadh").locale("ar-sa"); // اللغة عربية
     const startOfDay = now.clone().startOf("day").toDate();
     const endOfDay = now.clone().endOf("day").toDate();
 
@@ -293,7 +296,7 @@ exports.employeeStatus = async (req, res) => {
     });
 
     res.json({
-      today: now.format("dddd، DD MMMM YYYY"), // اليوم مكتوب بالعربي كامل
+      today: now.format("dddd، DD MMMM YYYY"),
       officialCheckIn: formatTime(branch?.workStart),
       officialCheckOut: formatTime(branch?.workEnd),
       employeeCheckIn: formatTime(attendance?.checkIn),
@@ -311,6 +314,7 @@ exports.employeeStatus = async (req, res) => {
     res.status(500).json({ error: "خطأ في السيرفر" });
   }
 };
+
 
 
 // 🟢 دالة تنسيق التاريخ
