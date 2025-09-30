@@ -255,81 +255,133 @@ const totalLeaveBalance = companyLeaves.annual + companyLeaves.sick + companyLea
 
 
 
-exports.employeeStatus = async (req, res) => {
+// exports.employeeStatus = async (req, res) => {
+//   try {
+//     const userId = req.user.id;
+
+//     // دالة مساعدة لتنسيق الوقت
+//     function formatTime(timeStr) {
+//       if (!timeStr) return null;
+
+//       // لو القيمة جاية كـ String زي "09:00"
+//       if (typeof timeStr === "string") {
+//         const [hours, minutes] = timeStr.split(":").map(Number);
+//         const date = new Date();
+//         date.setHours(hours, minutes, 0, 0);
+
+//         return date.toLocaleTimeString("en-US", {
+//           hour: "2-digit",
+//           minute: "2-digit",
+//           hour12: true
+//         });
+//       }
+
+//       // لو أصلاً Date
+//       if (timeStr instanceof Date) {
+//         return timeStr.toLocaleTimeString("en-US", {
+//           hour: "2-digit",
+//           minute: "2-digit",
+//           hour12: true
+//         });
+//       }
+
+//       return null;
+//     }
+
+//     // نجيب الموظف المرتبط باليوزر
+//     const employee = await Employee.findOne({ user: userId }).populate("workplace");
+//     if (!employee) {
+//       return res.status(404).json({ error: "الموظف غير مرتبط بالحساب" });
+//     }
+
+//     const branch = employee.workplace;
+
+//     // تاريخ النهاردة
+//     const today = new Date();
+//     const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+//     const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+
+//     // نجيب الحضور بتاع النهاردة
+//     let attendance = await Attendance.findOne({
+//       employee: employee._id,
+//       date: { $gte: startOfDay, $lte: endOfDay }
+//     });
+
+//     res.json({
+//       today: new Date().toLocaleDateString("ar-EG", {
+//         weekday: "long",
+//         year: "numeric",
+//         month: "long",
+//         day: "numeric"
+//       }),
+//       officialCheckIn: formatTime(branch?.workStart),
+//       officialCheckOut: formatTime(branch?.workEnd),
+//       employeeCheckIn: attendance?.checkIn
+//         ? attendance.checkIn.toLocaleTimeString("en-US", {
+//             hour: "2-digit",
+//             minute: "2-digit",
+//             hour12: true
+//           })
+//         : null,
+//       employeeCheckOut: attendance?.checkOut
+//         ? attendance.checkOut.toLocaleTimeString("en-US", {
+//             hour: "2-digit",
+//             minute: "2-digit",
+//             hour12: true
+//           })
+//         : null,
+//       status: attendance
+//         ? attendance.checkOut
+//           ? "تم الانصراف"
+//           : attendance.checkIn
+//           ? "تم تسجيل الحضور"
+//           : "لم يتم تسجيل الحضور"
+//         : "لم يتم تسجيل الحضور"
+//     });
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ error: "خطأ في السيرفر" });
+//   }
+// };
+
+// 🟢 دالة تنسيق التاريخ
+
+const employeeStatus = async (req, res) => {
   try {
     const userId = req.user.id;
+    const tz = 'Asia/Riyadh'; // السعودية UTC+3
 
-    // دالة مساعدة لتنسيق الوقت
-    function formatTime(timeStr) {
-      if (!timeStr) return null;
-
-      // لو القيمة جاية كـ String زي "09:00"
-      if (typeof timeStr === "string") {
-        const [hours, minutes] = timeStr.split(":").map(Number);
-        const date = new Date();
-        date.setHours(hours, minutes, 0, 0);
-
-        return date.toLocaleTimeString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true
-        });
-      }
-
-      // لو أصلاً Date
-      if (timeStr instanceof Date) {
-        return timeStr.toLocaleTimeString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true
-        });
-      }
-
-      return null;
-    }
-
-    // نجيب الموظف المرتبط باليوزر
     const employee = await Employee.findOne({ user: userId }).populate("workplace");
-    if (!employee) {
-      return res.status(404).json({ error: "الموظف غير مرتبط بالحساب" });
-    }
+    if (!employee) return res.status(404).json({ error: "الموظف غير مرتبط بالحساب" });
 
     const branch = employee.workplace;
 
-    // تاريخ النهاردة
-    const today = new Date();
-    const startOfDay = new Date(today.setHours(0, 0, 0, 0));
-    const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+    const todayStartUTC = DateTime.utc().startOf('day').toJSDate();
+    const todayEndUTC = DateTime.utc().endOf('day').toJSDate();
 
-    // نجيب الحضور بتاع النهاردة
-    let attendance = await Attendance.findOne({
+    const attendance = await Attendance.findOne({
       employee: employee._id,
-      date: { $gte: startOfDay, $lte: endOfDay }
+      date: { $gte: todayStartUTC, $lte: todayEndUTC }
     });
 
+    const formatTime = (timeStr) => {
+      if (!timeStr) return null;
+      if (typeof timeStr === 'string') {
+        const [h, m] = timeStr.split(':').map(Number);
+        return DateTime.utc().setZone(tz).set({ hour: h, minute: m }).toFormat('HH:mm');
+      }
+      if (timeStr instanceof Date) {
+        return DateTime.fromJSDate(timeStr).setZone(tz).toFormat('HH:mm');
+      }
+      return null;
+    };
+
     res.json({
-      today: new Date().toLocaleDateString("ar-EG", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric"
-      }),
+      today: DateTime.now().setZone(tz).toLocaleString(DateTime.DATE_FULL),
       officialCheckIn: formatTime(branch?.workStart),
       officialCheckOut: formatTime(branch?.workEnd),
-      employeeCheckIn: attendance?.checkIn
-        ? attendance.checkIn.toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true
-          })
-        : null,
-      employeeCheckOut: attendance?.checkOut
-        ? attendance.checkOut.toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true
-          })
-        : null,
+      employeeCheckIn: attendance ? formatTime(attendance.checkIn) : null,
+      employeeCheckOut: attendance ? formatTime(attendance.checkOut) : null,
       status: attendance
         ? attendance.checkOut
           ? "تم الانصراف"
@@ -344,7 +396,7 @@ exports.employeeStatus = async (req, res) => {
   }
 };
 
-// 🟢 دالة تنسيق التاريخ
+
 function formatArabicDate(date) {
   const day = new Intl.DateTimeFormat("ar-EG", {
     day: "numeric",

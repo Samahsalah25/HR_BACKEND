@@ -113,6 +113,8 @@ function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
 //   }
 // };
 
+const { DateTime } = require('luxon');
+
 const checkIn = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -135,9 +137,9 @@ const checkIn = async (req, res) => {
 
     // الوقت الحقيقي UTC
     const nowUTC = DateTime.utc();
-    const clientTimezone = req.headers['timezone'] || 'Africa/Cairo';
-    // نحول الوقت لمنطقة الموظف للعرض والحسابات
-    const now = nowUTC.setZone(clientTimezone);
+    // السعودية UTC+3
+    const tz = 'Asia/Riyadh';
+    const now = nowUTC.setZone(tz);
 
     const todayStartUTC = nowUTC.startOf('day').toJSDate();
     const todayEndUTC = nowUTC.endOf('day').toJSDate();
@@ -153,36 +155,34 @@ const checkIn = async (req, res) => {
     const branchStart = now.set({ hour: startHour, minute: startMinute, second: 0, millisecond: 0 });
     const branchEnd = now.set({ hour: endHour, minute: endMinute, second: 0, millisecond: 0 });
     const graceEnd = branchStart.plus({ minutes: branch.gracePeriod });
-    const cutoffTime = branchStart.plus({ hours: 4 });
+    const cutoffTime = branchStart.plus({ hours: 4 }); // 4 ساعات
 
     let status = 'حاضر';
     let lateMinutes = 0;
 
     if (attendance) {
+      // لو متسجل غياب قبل cutoff
       if (attendance.status === 'غائب' && now <= cutoffTime) {
         status = 'متأخر';
         lateMinutes = Math.floor(now.diff(branchStart, 'minutes').minutes);
         attendance.status = status;
-        attendance.checkIn = nowUTC.toJSDate(); // نخزن UTC
+        attendance.checkIn = nowUTC.toJSDate();
         attendance.lateMinutes = lateMinutes;
         await attendance.save();
       } else {
         return res.status(400).json({ message: 'لقد قمت بتسجيل الحضور بالفعل اليوم' });
       }
     } else {
-      if (now > branchEnd) {
-        status = 'غائب';
-      } else if (now > graceEnd) {
+      if (now > branchEnd) status = 'غائب';
+      else if (now > graceEnd) {
         status = 'متأخر';
         lateMinutes = Math.floor(now.diff(graceEnd, 'minutes').minutes);
-      } else {
-        status = 'حاضر';
       }
 
       attendance = await Attendance.create({
         employee: employee._id,
         branch: branch._id,
-        date: nowUTC.toJSDate(), // نخزن UTC
+        date: nowUTC.toJSDate(),
         status,
         checkIn: nowUTC.toJSDate(),
         lateMinutes
@@ -193,7 +193,7 @@ const checkIn = async (req, res) => {
       message: 'تم تسجيل الحضور',
       attendance: {
         ...attendance._doc,
-        checkIn: now.toFormat('HH:mm') // العرض للـ frontend
+        checkIn: now.toFormat('HH:mm')
       },
       times: {
         workStart: branch.workStart,
