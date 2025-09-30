@@ -106,6 +106,10 @@ function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
 //     res.status(500).json({ message: 'حدث خطأ أثناء تسجيل الحضور' });
 //   }
 // };
+
+
+// دالة لحساب المسافة بالمتر بين خطي عرض
+// دالة تسجيل الحضور
 const checkIn = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -118,7 +122,8 @@ const checkIn = async (req, res) => {
     const { latitude, longitude } = req.body;
     const distance = getDistanceFromLatLonInMeters(
       latitude, longitude,
-      branch.location.coordinates[1], branch.location.coordinates[0]
+      branch.location.coordinates[1],
+      branch.location.coordinates[0]
     );
     if (distance > 20) return res.status(400).json({ message: "أنت بعيد عن موقع الفرع" });
 
@@ -126,8 +131,8 @@ const checkIn = async (req, res) => {
     const now = DateTime.now().setZone("Asia/Riyadh");
 
     // بداية ونهاية اليوم السعودية
-    const todayStart = now.startOf("day").toJSDate();
-    const todayEnd = now.endOf("day").toJSDate();
+    const todayStart = now.startOf("day").toISO();
+    const todayEnd = now.endOf("day").toISO();
 
     let attendance = await Attendance.findOne({
       employee: employee._id,
@@ -149,7 +154,7 @@ const checkIn = async (req, res) => {
         status = "متأخر";
         lateMinutes = Math.floor(now.diff(graceEnd, "minutes").minutes);
         attendance.status = status;
-        attendance.checkIn = now.toJSDate();
+        attendance.checkIn = now.toISO();
         attendance.lateMinutes = lateMinutes;
         await attendance.save();
         return res.status(200).json({
@@ -170,9 +175,9 @@ const checkIn = async (req, res) => {
       attendance = await Attendance.create({
         employee: employee._id,
         branch: branch._id,
-        date: now.toJSDate(),
+        date: now.toISO(),
         status,
-        checkIn: now.toJSDate(),
+        checkIn: now.toISO(),
         lateMinutes
       });
 
