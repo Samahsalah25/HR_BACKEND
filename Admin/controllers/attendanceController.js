@@ -4,6 +4,7 @@ const Branch = require('../models/branchSchema');
 const LeaveBalance=require('../models/leaveBalanceModel');
 const Request=require('../models/requestModel')
 const { DateTime } = require("luxon");
+const moment = require("moment-timezone");
 // دالة لحساب المسافة بالمتر بين نقطتين
 function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
   const R = 6371000; 
@@ -108,7 +109,7 @@ function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
 // };
 
 
-const moment = require("moment-timezone");
+
 
 const checkIn = async (req, res) => {
   try {
@@ -127,10 +128,10 @@ const checkIn = async (req, res) => {
     );
     if (distance > 20) return res.status(400).json({ message: "أنت بعيد عن موقع الفرع" });
 
-    // 📌 الوقت الحالي بتوقيت السعودية
+    // 🕒 الوقت الحالي بتوقيت السعودية
     const now = moment().tz("Asia/Riyadh");
 
-    // بداية ونهاية اليوم (بتوقيت السعودية)
+    // 🗓 بداية ونهاية اليوم بتوقيت السعودية
     const todayStart = now.clone().startOf("day");
     const todayEnd = now.clone().endOf("day");
 
@@ -139,13 +140,14 @@ const checkIn = async (req, res) => {
       date: { $gte: todayStart.toDate(), $lte: todayEnd.toDate() }
     });
 
-    // مواعيد الدوام حسب السعودية
+    // ⏰ مواعيد الدوام من بيانات الفرع
     const [startHour, startMinute] = branch.workStart.split(":").map(Number);
     const [endHour, endMinute] = branch.workEnd.split(":").map(Number);
 
     const branchStart = now.clone().hour(startHour).minute(startMinute).second(0).millisecond(0);
     const branchEnd = now.clone().hour(endHour).minute(endMinute).second(0).millisecond(0);
 
+    // فترة السماح + أقصى وقت للتأخير (4 ساعات بعد البداية)
     const graceEnd = branchStart.clone().add(branch.gracePeriod, "minutes");
     const lateLimit = branchStart.clone().add(4, "hours");
 
@@ -153,9 +155,10 @@ const checkIn = async (req, res) => {
     let lateMinutes = 0;
 
     if (attendance) {
+      // لو كان متسجل غائب ولسه داخل في فترة السماح
       if (attendance.status === "غائب" && now.isBefore(lateLimit)) {
         status = "متأخر";
-        lateMinutes = now.diff(graceEnd, "minutes");
+        lateMinutes = Math.max(0, now.diff(graceEnd, "minutes"));
         attendance.status = status;
         attendance.checkIn = now.toDate();
         attendance.lateMinutes = lateMinutes;
@@ -174,25 +177,27 @@ const checkIn = async (req, res) => {
       attendance = await Attendance.create({
         employee: employee._id,
         branch: branch._id,
-        date: now.toDate(),
+        date: now.toDate(),      // تخزين كـ UTC
         status,
-        checkIn: now.toDate(),
+        checkIn: now.toDate(),   // تخزين كـ UTC
         lateMinutes
       });
     }
 
+    // 📤 رجع البيانات للـ frontend بتوقيت السعودية
     res.status(201).json({
-      message: attendance.status === "حاضر" || attendance.status === "متأخر"
+      message: (attendance.status === "حاضر" || attendance.status === "متأخر")
         ? "تم تسجيل الحضور"
         : "تم تعديل حالة الحضور",
       attendance: {
         ...attendance._doc,
-        checkIn: moment(attendance.checkIn).tz("Asia/Riyadh").format(), // بيرجعه بتوقيت السعودية
+        checkIn: moment(attendance.checkIn).tz("Asia/Riyadh").format("YYYY-MM-DD hh:mm A"),
         checkOut: attendance.checkOut
-          ? moment(attendance.checkOut).tz("Asia/Riyadh").format()
+          ? moment(attendance.checkOut).tz("Asia/Riyadh").format("YYYY-MM-DD hh:mm A")
           : null
       }
     });
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "حدث خطأ أثناء تسجيل الحضور" });
