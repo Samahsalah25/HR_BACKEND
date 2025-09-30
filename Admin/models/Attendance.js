@@ -10,7 +10,7 @@ const attendanceSchema = new mongoose.Schema({
   lateMinutes: { type: Number, default: 0 } // عدد الدقائق المتأخرة
 ,workedMinutes: { type: Number, default: 0 } ,
 workedtime: { type: Number, default: 0 }
- // 🔥 عدد الدقايق اللي اشتغلها
+ //  عدد الدقايق اللي اشتغلها
 }, { timestamps: true });
 
 module.exports = mongoose.model("Attendance", attendanceSchema);
