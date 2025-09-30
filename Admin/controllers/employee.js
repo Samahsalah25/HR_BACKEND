@@ -346,52 +346,61 @@ const totalLeaveBalance = companyLeaves.annual + companyLeaves.sick + companyLea
 
 // 🟢 دالة تنسيق التاريخ
 
+
 exports.employeeStatus = async (req, res) => {
   try {
     const userId = req.user._id;
-    const tz = 'Asia/Riyadh'; // السعودية UTC+3
+    const tz = "Asia/Riyadh"; // السعودية UTC+3
 
+    // جلب الموظف مع الفرع
     const employee = await Employee.findOne({ user: userId }).populate("workplace");
     if (!employee) return res.status(404).json({ error: "الموظف غير مرتبط بالحساب" });
 
     const branch = employee.workplace;
+    if (!branch) return res.status(404).json({ error: "فرع الموظف غير موجود" });
 
-    const todayStartUTC = DateTime.utc().startOf('day').toJSDate();
-    const todayEndUTC = DateTime.utc().endOf('day').toJSDate();
+    // بداية ونهاية اليوم بالتوقيت العالمي UTC
+    const todayStartUTC = DateTime.utc().startOf("day").toJSDate();
+    const todayEndUTC = DateTime.utc().endOf("day").toJSDate();
 
+    // جلب حضور اليوم
     const attendance = await Attendance.findOne({
       employee: employee._id,
-      date: { $gte: todayStartUTC, $lte: todayEndUTC }
+      date: { $gte: todayStartUTC, $lte: todayEndUTC },
     });
 
-    const formatTime = (timeStr) => {
-      if (!timeStr) return null;
-      if (typeof timeStr === 'string') {
-        const [h, m] = timeStr.split(':').map(Number);
-        return DateTime.utc().setZone(tz).set({ hour: h, minute: m }).toFormat('HH:mm');
+    // دالة لتحويل الوقت إلى توقيت السعودية وعرضه بصيغة HH:mm
+    const formatTime = (timeStrOrDate) => {
+      if (!timeStrOrDate) return null;
+
+      if (typeof timeStrOrDate === "string") {
+        const [h, m] = timeStrOrDate.split(":").map(Number);
+        return DateTime.fromObject({ hour: h, minute: m }, { zone: tz }).toFormat("HH:mm");
       }
-      if (timeStr instanceof Date) {
-        return DateTime.fromJSDate(timeStr).setZone(tz).toFormat('HH:mm');
+
+      if (timeStrOrDate instanceof Date) {
+        return DateTime.fromJSDate(timeStrOrDate).setZone(tz).toFormat("HH:mm");
       }
+
       return null;
     };
 
     res.json({
       today: DateTime.now().setZone(tz).toLocaleString(DateTime.DATE_FULL),
-      officialCheckIn: formatTime(branch?.workStart),
-      officialCheckOut: formatTime(branch?.workEnd),
-      employeeCheckIn: attendance ? formatTime(attendance.checkIn) : null,
-      employeeCheckOut: attendance ? formatTime(attendance.checkOut) : null,
+      officialCheckIn: formatTime(branch.workStart),
+      officialCheckOut: formatTime(branch.workEnd),
+      employeeCheckIn: formatTime(attendance?.checkIn),
+      employeeCheckOut: formatTime(attendance?.checkOut),
       status: attendance
         ? attendance.checkOut
           ? "تم الانصراف"
           : attendance.checkIn
           ? "تم تسجيل الحضور"
           : "لم يتم تسجيل الحضور"
-        : "لم يتم تسجيل الحضور"
+        : "لم يتم تسجيل الحضور",
     });
   } catch (err) {
-    console.error(err);
+    console.error("employeeStatus error:", err);
     res.status(500).json({ error: "خطأ في السيرفر" });
   }
 };
