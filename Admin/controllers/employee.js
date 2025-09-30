@@ -252,6 +252,7 @@ const totalLeaveBalance = companyLeaves.annual + companyLeaves.sick + companyLea
   }
 };
 
+const { DateTime } = require("luxon");
 
 
 
@@ -347,7 +348,7 @@ const totalLeaveBalance = companyLeaves.annual + companyLeaves.sick + companyLea
 // 🟢 دالة تنسيق التاريخ
 exports.employeeStatus = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user._id;
     const employee = await Employee.findOne({ user: userId }).populate("workplace");
     if (!employee) return res.status(404).json({ message: "الموظف غير مرتبط بالحساب" });
 
