@@ -560,12 +560,98 @@ const dailyAttendanceTableOnebranch = async (req, res) => {
 //  بيانات تسجيل خضور موظف معين خلال الشهر
 
 
+// const getMonthlyAttendanceForEmployee = async (req, res) => {
+//   try {
+//     const employeeId = req.params.id;
+//     const today = new Date();
+//     const month = today.getMonth(); // 0-11
+//     const year = today.getFullYear();
+//     const monthNames = [
+//       "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
+//       "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"
+//     ];
+
+//     const emp = await Employee.findById(employeeId).populate("department", "name");
+//     if (!emp) return res.status(404).json({ error: "الموظف غير موجود" });
+
+//     // بداية ونهاية الشهر
+//     const monthStart = new Date(year, month, 1, 0, 0, 0, 0);
+//     const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+//     // حضور الموظف للشهر
+//     const attendances = await Attendance.find({
+//       employee: emp._id,
+//       date: { $gte: monthStart, $lte: monthEnd }
+//     }).sort({ date: 1 });
+
+//     let totalAbsent = 0;
+//     let totalLate = 0;
+    
+
+//     const days = attendances.map(a => {
+//       if (a.status === "غائب") totalAbsent++;
+//       if (a.status === "متأخر") totalLate++;
+
+//       const day = a.date.getDate().toString().padStart(2, "0");
+//       const monthNum = (a.date.getMonth() + 1).toString().padStart(2, "0");
+//       const yearNum = a.date.getFullYear();
+
+//       // فورمات HH:mm:ss
+//       const formatTime = (d) => {
+//         if (!d) return null;
+//         return d.toTimeString().split(" ")[0]; // بياخد "HH:mm:ss"
+//       };
+
+//       return {
+//         day: `${day}/${monthNum}/${yearNum}`,
+//         status: a.status,
+//         checkIn: formatTime(a.checkIn),
+//         checkOut: formatTime(a.checkOut)
+//       };
+//     });
+
+//     // نجيب الإجازات المقبولة في الشهر دا
+//     const leaves = await Request.find({
+//       employee: emp._id,
+//       type: "إجازة",
+//       status: "مقبول",
+//       "leave.startDate": { $lte: monthEnd },
+//       "leave.endDate": { $gte: monthStart }
+//     });
+
+//     // نحسب عدد الأيام
+//     let totalLeaves = 0;
+//     for (const leave of leaves) {
+//       const start = leave.leave.startDate < monthStart ? monthStart : leave.leave.startDate;
+//       const end = leave.leave.endDate > monthEnd ? monthEnd : leave.leave.endDate;
+
+//       const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+//       totalLeaves += daysDiff;
+//     }
+
+//     res.json({
+//       month: `${monthNames[month]} ${year}`,
+//       employeeName: emp.name,
+//       departmentName: emp.department ? emp.department.name : "غير محدد",
+//       days,
+//       totalAbsent,
+//       totalLate,
+//       totalLeaves
+//     });
+
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ error: "Server Error" });
+//   }
+// };
+const moment = require("moment-timezone");
+
 const getMonthlyAttendanceForEmployee = async (req, res) => {
   try {
     const employeeId = req.params.id;
-    const today = new Date();
-    const month = today.getMonth(); // 0-11
-    const year = today.getFullYear();
+    const today = moment().tz("Asia/Riyadh");
+    const month = today.month(); // 0-11
+    const year = today.year();
     const monthNames = [
       "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
       "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"
@@ -574,11 +660,10 @@ const getMonthlyAttendanceForEmployee = async (req, res) => {
     const emp = await Employee.findById(employeeId).populate("department", "name");
     if (!emp) return res.status(404).json({ error: "الموظف غير موجود" });
 
-    // بداية ونهاية الشهر
-    const monthStart = new Date(year, month, 1, 0, 0, 0, 0);
-    const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
+    // بداية ونهاية الشهر بتوقيت السعودية
+    const monthStart = moment.tz({ year, month, day: 1, hour: 0, minute: 0, second: 0 }, "Asia/Riyadh").toDate();
+    const monthEnd = moment.tz({ year, month, day: today.daysInMonth(), hour: 23, minute: 59, second: 59, millisecond: 999 }, "Asia/Riyadh").toDate();
 
-    // حضور الموظف للشهر
     const attendances = await Attendance.find({
       employee: emp._id,
       date: { $gte: monthStart, $lte: monthEnd }
@@ -586,31 +671,26 @@ const getMonthlyAttendanceForEmployee = async (req, res) => {
 
     let totalAbsent = 0;
     let totalLate = 0;
-    
 
     const days = attendances.map(a => {
       if (a.status === "غائب") totalAbsent++;
       if (a.status === "متأخر") totalLate++;
 
-      const day = a.date.getDate().toString().padStart(2, "0");
-      const monthNum = (a.date.getMonth() + 1).toString().padStart(2, "0");
-      const yearNum = a.date.getFullYear();
+      // تحويل التاريخ لتوقيت السعودية
+      const dayMoment = moment(a.date).tz("Asia/Riyadh");
 
-      // فورمات HH:mm:ss
-      const formatTime = (d) => {
-        if (!d) return null;
-        return d.toTimeString().split(" ")[0]; // بياخد "HH:mm:ss"
-      };
+      // فورمات HH:mm:ss للساعات
+      const formatTime = (d) => d ? moment(d).tz("Asia/Riyadh").format("HH:mm:ss") : null;
 
       return {
-        day: `${day}/${monthNum}/${yearNum}`,
+        day: dayMoment.format("DD/MM/YYYY"),
         status: a.status,
         checkIn: formatTime(a.checkIn),
         checkOut: formatTime(a.checkOut)
       };
     });
 
-    // نجيب الإجازات المقبولة في الشهر دا
+    // الإجازات
     const leaves = await Request.find({
       employee: emp._id,
       type: "إجازة",
@@ -619,13 +699,11 @@ const getMonthlyAttendanceForEmployee = async (req, res) => {
       "leave.endDate": { $gte: monthStart }
     });
 
-    // نحسب عدد الأيام
     let totalLeaves = 0;
     for (const leave of leaves) {
-      const start = leave.leave.startDate < monthStart ? monthStart : leave.leave.startDate;
-      const end = leave.leave.endDate > monthEnd ? monthEnd : leave.leave.endDate;
-
-      const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+      const start = moment.max(moment(leave.leave.startDate).tz("Asia/Riyadh"), moment(monthStart).tz("Asia/Riyadh"));
+      const end = moment.min(moment(leave.leave.endDate).tz("Asia/Riyadh"), moment(monthEnd).tz("Asia/Riyadh"));
+      const daysDiff = end.diff(start, "days") + 1;
       totalLeaves += daysDiff;
     }
 
@@ -644,6 +722,7 @@ const getMonthlyAttendanceForEmployee = async (req, res) => {
     res.status(500).json({ error: "Server Error" });
   }
 };
+
 
 
 //  تقرير شهري لكل الموظفين في الشركة ناو 
