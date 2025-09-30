@@ -348,7 +348,7 @@ const totalLeaveBalance = companyLeaves.annual + companyLeaves.sick + companyLea
 
 exports.employeeStatus = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user._id;
     const tz = 'Asia/Riyadh'; // السعودية UTC+3
 
     const employee = await Employee.findOne({ user: userId }).populate("workplace");
