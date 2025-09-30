@@ -111,10 +111,23 @@ function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
 // دالة لحساب المسافة بالمتر بين خطي عرض
 // دالة تسجيل الحضور
 
+// دالة لحساب المسافة
+function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371000; // نصف قطر الأرض بالمتر
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) *
+    Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 const checkIn = async (req, res) => {
   try {
     const userId = req.user._id;
-    console.log(userId);
     const employee = await Employee.findOne({ user: userId }).populate("workplace");
     if (!employee) return res.status(404).json({ message: "الموظف غير موجود" });
 
@@ -129,12 +142,14 @@ const checkIn = async (req, res) => {
     );
     if (distance > 20) return res.status(400).json({ message: "أنت بعيد عن موقع الفرع" });
 
-    // الآن بتوقيت السعودية
-    const now = DateTime.now().setZone("Asia/Riyadh");
+    // الآن UTC (سيبها زي ما هي)
+    const now = new Date();
 
-    // بداية ونهاية اليوم السعودية
-    const todayStart = now.startOf("day").toISO();
-    const todayEnd = now.endOf("day").toISO();
+    // بداية ونهاية اليوم
+    const todayStart = new Date(now);
+    todayStart.setUTCHours(0, 0, 0, 0);
+    const todayEnd = new Date(now);
+    todayEnd.setUTCHours(23, 59, 59, 999);
 
     let attendance = await Attendance.findOne({
       employee: employee._id,
@@ -143,10 +158,13 @@ const checkIn = async (req, res) => {
 
     const [startHour, startMinute] = branch.workStart.split(":").map(Number);
     const [endHour, endMinute] = branch.workEnd.split(":").map(Number);
-    const branchStart = now.set({ hour: startHour, minute: startMinute, second: 0, millisecond: 0 });
-    const branchEnd = now.set({ hour: endHour, minute: endMinute, second: 0, millisecond: 0 });
-    const graceEnd = branchStart.plus({ minutes: branch.gracePeriod });
-    const lateLimit = branchStart.plus({ hours: 4 });
+    const branchStart = new Date(now);
+    branchStart.setHours(startHour, startMinute, 0, 0);
+    const branchEnd = new Date(now);
+    branchEnd.setHours(endHour, endMinute, 0, 0);
+
+    const graceEnd = new Date(branchStart.getTime() + branch.gracePeriod * 60000);
+    const lateLimit = new Date(branchStart.getTime() + 4 * 60 * 60000); // 4 ساعات بعد الدوام
 
     let status = "حاضر";
     let lateMinutes = 0;
@@ -154,15 +172,11 @@ const checkIn = async (req, res) => {
     if (attendance) {
       if (attendance.status === "غائب" && now < lateLimit) {
         status = "متأخر";
-        lateMinutes = Math.floor(now.diff(graceEnd, "minutes").minutes);
+        lateMinutes = Math.floor((now - graceEnd) / 60000);
         attendance.status = status;
-        attendance.checkIn = now.toISO(); // خزنه كـ ISO string
+        attendance.checkIn = now;
         attendance.lateMinutes = lateMinutes;
         await attendance.save();
-        return res.status(200).json({
-          message: "تم تعديل حالة الحضور",
-          attendance: attendance // بعت كل الكائن كما هو، الواجهة تحوّل الوقت
-        });
       } else {
         return res.status(400).json({ message: "لقد قمت بتسجيل الحضور بالفعل اليوم" });
       }
@@ -171,28 +185,37 @@ const checkIn = async (req, res) => {
         status = "غائب";
       } else if (now > graceEnd) {
         status = "متأخر";
-        lateMinutes = Math.floor(now.diff(graceEnd, "minutes").minutes);
+        lateMinutes = Math.floor((now - graceEnd) / 60000);
       }
 
       attendance = await Attendance.create({
         employee: employee._id,
         branch: branch._id,
-        date: now.toISO(),    // ISO string
+        date: now,
         status,
-        checkIn: now.toISO(), // ISO string
+        checkIn: now,
         lateMinutes
       });
-
-      return res.status(201).json({
-        message: "تم تسجيل الحضور",
-        attendance: attendance // أرسل الكائن كامل، الواجهة تتحكم بالعرض
-      });
     }
+
+    // إرسال الوقت كـ ISO string للواجهة
+    res.status(201).json({
+      message: attendance.status === "حاضر" || attendance.status === "متأخر"
+        ? "تم تسجيل الحضور"
+        : "تم تعديل حالة الحضور",
+      attendance: {
+        ...attendance._doc,
+        checkIn: attendance.checkIn.toISOString(),
+        checkOut: attendance.checkOut ? attendance.checkOut.toISOString() : null
+      }
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "حدث خطأ أثناء تسجيل الحضور" });
   }
 };
+
+
 
 
 // Check-Out endpoint
