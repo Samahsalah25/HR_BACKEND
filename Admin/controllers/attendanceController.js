@@ -109,6 +109,7 @@ function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
 // };
 
 
+// Check-In endpoint
 const checkIn = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -126,44 +127,45 @@ const checkIn = async (req, res) => {
     );
     if (distance > 20) return res.status(400).json({ message: "أنت بعيد عن موقع الفرع" });
 
-    // 🕒 الوقت الحالي بتوقيت السعودية (هيدخل زي ما هو في الداتابيز)
-    const now = moment().tz("Asia/Riyadh").toDate();
+    // الوقت الحالي بتوقيت السعودية
+    const now = moment().tz("Asia/Riyadh");
 
-    // 🗓 بداية ونهاية اليوم بتوقيت السعودية
-    const todayStart = moment(now).startOf("day").toDate();
-    const todayEnd = moment(now).endOf("day").toDate();
+    // بداية ونهاية اليوم بتوقيت السعودية
+    const todayStart = now.clone().startOf("day");
+    const todayEnd = now.clone().endOf("day");
 
     let attendance = await Attendance.findOne({
       employee: employee._id,
-      date: { $gte: todayStart, $lte: todayEnd }
+      date: { $gte: todayStart.toDate(), $lte: todayEnd.toDate() }
     });
 
-    // ⏰ مواعيد الدوام
+    // مواعيد الدوام
     const [startHour, startMinute] = branch.workStart.split(":").map(Number);
     const [endHour, endMinute] = branch.workEnd.split(":").map(Number);
 
-    const branchStart = moment(now).hour(startHour).minute(startMinute).second(0).millisecond(0).toDate();
-    const branchEnd = moment(now).hour(endHour).minute(endMinute).second(0).millisecond(0).toDate();
+    const branchStart = now.clone().hour(startHour).minute(startMinute).second(0).millisecond(0);
+    const branchEnd = now.clone().hour(endHour).minute(endMinute).second(0).millisecond(0);
 
-    const graceEnd = moment(branchStart).add(branch.gracePeriod, "minutes").toDate();
-    const lateLimit = moment(branchStart).add(4, "hours").toDate();
+    const graceEnd = branchStart.clone().add(branch.gracePeriod, "minutes");
+    const lateLimit = branchStart.clone().add(4, "hours");
 
+    // حساب الحالة
     let status;
     let lateMinutes = 0;
 
-    if (now > lateLimit || now > branchEnd) {
+    if (now.isAfter(lateLimit) || now.isAfter(branchEnd)) {
       status = "غائب";
-    } else if (now > graceEnd) {
+    } else if (now.isAfter(graceEnd)) {
       status = "متأخر";
-      lateMinutes = Math.floor((now - graceEnd) / 60000);
+      lateMinutes = now.diff(graceEnd, "minutes");
     } else {
       status = "حاضر";
     }
 
     if (attendance) {
-      if (attendance.status === "غائب" && now <= lateLimit) {
+      if (attendance.status === "غائب" && now.isBefore(lateLimit)) {
         attendance.status = status;
-        attendance.checkIn = now;
+        attendance.checkIn = now.toDate();
         attendance.lateMinutes = lateMinutes;
         await attendance.save();
       } else {
@@ -173,10 +175,12 @@ const checkIn = async (req, res) => {
       attendance = await Attendance.create({
         employee: employee._id,
         branch: branch._id,
-        date: now,        // 🟢 بيتسجل كـ السعودية
+        date: now.toDate(),
         status,
-        checkIn: now,     // 🟢 بيتسجل كـ السعودية
-        lateMinutes
+        checkIn: now.toDate(),
+        lateMinutes,
+        workedMinutes: 0,
+        workedtime: 0
       });
     }
 
@@ -184,7 +188,13 @@ const checkIn = async (req, res) => {
       message: (attendance.status === "حاضر" || attendance.status === "متأخر")
         ? "تم تسجيل الحضور"
         : "تم تعديل حالة الحضور",
-      attendance
+      attendance: {
+        ...attendance._doc,
+        checkIn: moment(attendance.checkIn).tz("Asia/Riyadh").format("YYYY-MM-DD HH:mm"),
+        checkOut: attendance.checkOut
+          ? moment(attendance.checkOut).tz("Asia/Riyadh").format("YYYY-MM-DD HH:mm")
+          : null
+      }
     });
 
   } catch (error) {
@@ -193,12 +203,7 @@ const checkIn = async (req, res) => {
   }
 };
 
-
-
-
 // Check-Out endpoint
-
-
 const checkOut = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -210,48 +215,43 @@ const checkOut = async (req, res) => {
     const branch = employee.workplace;
     if (!branch) return res.status(400).json({ message: "الفرع غير موجود" });
 
-    // تحقق من الموقع
     const distance = getDistanceFromLatLonInMeters(
       latitude,
       longitude,
       branch.location.coordinates[1],
       branch.location.coordinates[0]
     );
-
-    if (distance > 20) {
-      return res.status(400).json({ message: "لا يمكنك تسجيل الانصراف خارج الفرع" });
-    }
+    if (distance > 20) return res.status(400).json({ message: "لا يمكنك تسجيل الانصراف خارج الفرع" });
 
     // الوقت الحالي بتوقيت السعودية
-    const now = DateTime.now().setZone("Asia/Riyadh");
+    const now = moment().tz("Asia/Riyadh");
 
-    // بداية ونهاية اليوم بتوقيت السعودية
-    const todayStart = now.startOf("day").toJSDate();
-    const todayEnd = now.endOf("day").toJSDate();
+    const todayStart = now.clone().startOf("day");
+    const todayEnd = now.clone().endOf("day");
 
     const attendance = await Attendance.findOne({
       employee: employee._id,
-      date: { $gte: todayStart, $lte: todayEnd }
+      date: { $gte: todayStart.toDate(), $lte: todayEnd.toDate() }
     });
 
-    if (!attendance) {
-      return res.status(400).json({ message: "لم يتم تسجيل حضور لهذا اليوم" });
-    }
+    if (!attendance) return res.status(400).json({ message: "لم يتم تسجيل حضور لهذا اليوم" });
 
-    // تسجيل وقت الانصراف
-    attendance.checkOut = now.toJSDate();
+    attendance.checkOut = now.toDate();
 
-    // حساب الوقت الذي قضاه الموظف بالدقائق
     if (attendance.checkIn) {
-      const workedMs = now.toMillis() - DateTime.fromJSDate(attendance.checkIn).toMillis();
-      attendance.workedtime = Math.floor(workedMs / 60000);
+      attendance.workedMinutes = Math.floor((now.toDate() - attendance.checkIn) / 60000);
+      attendance.workedtime = attendance.workedMinutes;
     }
 
     await attendance.save();
 
-    res.status(200).json({ 
-      message: "تم تسجيل الانصراف", 
-      attendance: { ...attendance._doc, checkOut: now.toFormat("HH:mm") } 
+    res.status(200).json({
+      message: "تم تسجيل الانصراف",
+      attendance: {
+        ...attendance._doc,
+        checkIn: moment(attendance.checkIn).tz("Asia/Riyadh").format("YYYY-MM-DD HH:mm"),
+        checkOut: moment(attendance.checkOut).tz("Asia/Riyadh").format("YYYY-MM-DD HH:mm")
+      }
     });
 
   } catch (error) {
@@ -259,6 +259,9 @@ const checkOut = async (req, res) => {
     res.status(500).json({ message: "حدث خطأ أثناء تسجيل الانصراف" });
   }
 };
+
+
+
 
 
 
