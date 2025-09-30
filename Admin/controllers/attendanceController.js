@@ -21,177 +21,178 @@ function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
 
 
 
-const checkIn = async (req, res) => {
-  try {
-    const userId = req.user._id;
-    const employee = await Employee.findOne({ user: userId }).populate('workplace');
-    if (!employee) return res.status(404).json({ message: 'الموظف غير موجود' });
-
-    const branch = employee.workplace;
-    if (!branch) return res.status(400).json({ message: 'الفرع غير موجود' });
-
-    const { latitude, longitude } = req.body;
-    const distance = getDistanceFromLatLonInMeters(
-      latitude, longitude,
-      branch.location.coordinates[1], branch.location.coordinates[0]
-    );
-
-    if (distance > 20) return res.status(400).json({ message: 'أنت بعيد عن موقع الفرع' });
-
-    // المنطقة الزمنية
-    const clientTimezone = req.headers['timezone'] || 'Africa/Cairo';
-    const now = DateTime.now().setZone(clientTimezone);
-
-    // بداية ونهاية اليوم
-    const todayStart = now.startOf('day').toJSDate();
-    const todayEnd = now.endOf('day').toJSDate();
-
-    const existingAttendance = await Attendance.findOne({
-      employee: employee._id,
-      date: { $gte: todayStart, $lte: todayEnd }
-    });
-
-    if (existingAttendance) {
-      return res.status(400).json({ message: 'لقد قمت بتسجيل الحضور بالفعل اليوم' });
-    }
-
-    // أوقات الدوام
-    const [startHour, startMinute] = branch.workStart.split(':').map(Number);
-    const [endHour, endMinute] = branch.workEnd.split(':').map(Number);
-
-    const branchStart = now.set({ hour: startHour, minute: startMinute, second: 0, millisecond: 0 });
-    const branchEnd = now.set({ hour: endHour, minute: endMinute, second: 0, millisecond: 0 });
-    const graceEnd = branchStart.plus({ minutes: branch.gracePeriod });
-
-    // تحديد أقصى وقت لتسجيل الحضور قبل الغياب (4 ساعات بعد بداية الدوام)
-    const lateLimit = branchStart.plus({ hours: 4 });
-
-    let status = 'حاضر';
-    let lateMinutes = 0;
-
-    if (now > branchEnd) {
-      status = 'غائب';
-    } else if (now > lateLimit) {
-      status = 'غائب';
-    } else if (now > graceEnd) {
-      status = 'متأخر';
-      lateMinutes = Math.floor(now.diff(graceEnd, 'minutes').minutes);
-    }
-
-    const attendance = await Attendance.create({
-      employee: employee._id,
-      branch: branch._id,
-      date: now.toJSDate(),
-      status,
-      checkIn: now.toJSDate(),
-      lateMinutes
-    });
-
-    res.status(201).json({
-      message: 'تم تسجيل الحضور',
-      attendance: {
-        ...attendance._doc,
-        checkIn: now.toFormat('HH:mm')
-      },
-      times: {
-        workStart: branch.workStart,
-        workEnd: branch.workEnd,
-        graceEnd: graceEnd.toFormat('HH:mm'),
-        currentTime: now.toFormat('HH:mm')
-      }
-    });
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'حدث خطأ أثناء تسجيل الحضور' });
-  }
-};
-
-
-// دالة لحساب المسافة بالمتر بين خطي عرض
-// دالة تسجيل الحضور
 // const checkIn = async (req, res) => {
 //   try {
 //     const userId = req.user._id;
-//     console.log(userId)
-//     const employee = await Employee.findOne({ user: userId }).populate("workplace");
-//     if (!employee) return res.status(404).json({ message: "الموظف غير موجود" });
+//     const employee = await Employee.findOne({ user: userId }).populate('workplace');
+//     if (!employee) return res.status(404).json({ message: 'الموظف غير موجود' });
 
 //     const branch = employee.workplace;
-//     if (!branch) return res.status(400).json({ message: "الفرع غير موجود" });
+//     if (!branch) return res.status(400).json({ message: 'الفرع غير موجود' });
 
 //     const { latitude, longitude } = req.body;
 //     const distance = getDistanceFromLatLonInMeters(
 //       latitude, longitude,
-//       branch.location.coordinates[1],
-//       branch.location.coordinates[0]
+//       branch.location.coordinates[1], branch.location.coordinates[0]
 //     );
-//     if (distance > 20) return res.status(400).json({ message: "أنت بعيد عن موقع الفرع" });
 
-//     // الآن بتوقيت السعودية
-//     const now = DateTime.now().setZone("Asia/Riyadh");
+//     if (distance > 20) return res.status(400).json({ message: 'أنت بعيد عن موقع الفرع' });
 
-//     // بداية ونهاية اليوم السعودية
-//     const todayStart = now.startOf("day").toISO();
-//     const todayEnd = now.endOf("day").toISO();
+//     // المنطقة الزمنية
+//     const clientTimezone = req.headers['timezone'] || 'Africa/Cairo';
+//     const now = DateTime.now().setZone(clientTimezone);
 
-//     let attendance = await Attendance.findOne({
+//     // بداية ونهاية اليوم
+//     const todayStart = now.startOf('day').toJSDate();
+//     const todayEnd = now.endOf('day').toJSDate();
+
+//     const existingAttendance = await Attendance.findOne({
 //       employee: employee._id,
 //       date: { $gte: todayStart, $lte: todayEnd }
 //     });
 
-//     const [startHour, startMinute] = branch.workStart.split(":").map(Number);
-//     const [endHour, endMinute] = branch.workEnd.split(":").map(Number);
+//     if (existingAttendance) {
+//       return res.status(400).json({ message: 'لقد قمت بتسجيل الحضور بالفعل اليوم' });
+//     }
+
+//     // أوقات الدوام
+//     const [startHour, startMinute] = branch.workStart.split(':').map(Number);
+//     const [endHour, endMinute] = branch.workEnd.split(':').map(Number);
+
 //     const branchStart = now.set({ hour: startHour, minute: startMinute, second: 0, millisecond: 0 });
 //     const branchEnd = now.set({ hour: endHour, minute: endMinute, second: 0, millisecond: 0 });
 //     const graceEnd = branchStart.plus({ minutes: branch.gracePeriod });
+
+//     // تحديد أقصى وقت لتسجيل الحضور قبل الغياب (4 ساعات بعد بداية الدوام)
 //     const lateLimit = branchStart.plus({ hours: 4 });
 
-//     let status = "حاضر";
+//     let status = 'حاضر';
 //     let lateMinutes = 0;
 
-//     if (attendance) {
-//       if (attendance.status === "غائب" && now < lateLimit) {
-//         status = "متأخر";
-//         lateMinutes = Math.floor(now.diff(graceEnd, "minutes").minutes);
-//         attendance.status = status;
-//         attendance.checkIn = now.toISO();
-//         attendance.lateMinutes = lateMinutes;
-//         await attendance.save();
-//         return res.status(200).json({
-//           message: "تم تعديل حالة الحضور",
-//           attendance: { ...attendance._doc, checkIn: now.toFormat("HH:mm") }
-//         });
-//       } else {
-//         return res.status(400).json({ message: "لقد قمت بتسجيل الحضور بالفعل اليوم" });
-//       }
-//     } else {
-//       if (now > branchEnd || now > lateLimit) {
-//         status = "غائب";
-//       } else if (now > graceEnd) {
-//         status = "متأخر";
-//         lateMinutes = Math.floor(now.diff(graceEnd, "minutes").minutes);
-//       }
-
-//       attendance = await Attendance.create({
-//         employee: employee._id,
-//         branch: branch._id,
-//         date: now.toISO(),
-//         status,
-//         checkIn: now.toISO(),
-//         lateMinutes
-//       });
-
-//       return res.status(201).json({
-//         message: "تم تسجيل الحضور",
-//         attendance: { ...attendance._doc, checkIn: now.toFormat("HH:mm") }
-//       });
+//     if (now > branchEnd) {
+//       status = 'غائب';
+//     } else if (now > lateLimit) {
+//       status = 'غائب';
+//     } else if (now > graceEnd) {
+//       status = 'متأخر';
+//       lateMinutes = Math.floor(now.diff(graceEnd, 'minutes').minutes);
 //     }
+
+//     const attendance = await Attendance.create({
+//       employee: employee._id,
+//       branch: branch._id,
+//       date: now.toJSDate(),
+//       status,
+//       checkIn: now.toJSDate(),
+//       lateMinutes
+//     });
+
+//     res.status(201).json({
+//       message: 'تم تسجيل الحضور',
+//       attendance: {
+//         ...attendance._doc,
+//         checkIn: now.toFormat('HH:mm')
+//       },
+//       times: {
+//         workStart: branch.workStart,
+//         workEnd: branch.workEnd,
+//         graceEnd: graceEnd.toFormat('HH:mm'),
+//         currentTime: now.toFormat('HH:mm')
+//       }
+//     });
+
 //   } catch (error) {
 //     console.error(error);
-//     res.status(500).json({ message: "حدث خطأ أثناء تسجيل الحضور" });
+//     res.status(500).json({ message: 'حدث خطأ أثناء تسجيل الحضور' });
 //   }
 // };
+
+
+// دالة لحساب المسافة بالمتر بين خطي عرض
+// دالة تسجيل الحضور
+
+const checkIn = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    console.log(userId);
+    const employee = await Employee.findOne({ user: userId }).populate("workplace");
+    if (!employee) return res.status(404).json({ message: "الموظف غير موجود" });
+
+    const branch = employee.workplace;
+    if (!branch) return res.status(400).json({ message: "الفرع غير موجود" });
+
+    const { latitude, longitude } = req.body;
+    const distance = getDistanceFromLatLonInMeters(
+      latitude, longitude,
+      branch.location.coordinates[1],
+      branch.location.coordinates[0]
+    );
+    if (distance > 20) return res.status(400).json({ message: "أنت بعيد عن موقع الفرع" });
+
+    // الآن بتوقيت السعودية
+    const now = DateTime.now().setZone("Asia/Riyadh");
+
+    // بداية ونهاية اليوم السعودية
+    const todayStart = now.startOf("day").toISO();
+    const todayEnd = now.endOf("day").toISO();
+
+    let attendance = await Attendance.findOne({
+      employee: employee._id,
+      date: { $gte: todayStart, $lte: todayEnd }
+    });
+
+    const [startHour, startMinute] = branch.workStart.split(":").map(Number);
+    const [endHour, endMinute] = branch.workEnd.split(":").map(Number);
+    const branchStart = now.set({ hour: startHour, minute: startMinute, second: 0, millisecond: 0 });
+    const branchEnd = now.set({ hour: endHour, minute: endMinute, second: 0, millisecond: 0 });
+    const graceEnd = branchStart.plus({ minutes: branch.gracePeriod });
+    const lateLimit = branchStart.plus({ hours: 4 });
+
+    let status = "حاضر";
+    let lateMinutes = 0;
+
+    if (attendance) {
+      if (attendance.status === "غائب" && now < lateLimit) {
+        status = "متأخر";
+        lateMinutes = Math.floor(now.diff(graceEnd, "minutes").minutes);
+        attendance.status = status;
+        attendance.checkIn = now.toISO(); // خزنه كـ ISO string
+        attendance.lateMinutes = lateMinutes;
+        await attendance.save();
+        return res.status(200).json({
+          message: "تم تعديل حالة الحضور",
+          attendance: attendance // بعت كل الكائن كما هو، الواجهة تحوّل الوقت
+        });
+      } else {
+        return res.status(400).json({ message: "لقد قمت بتسجيل الحضور بالفعل اليوم" });
+      }
+    } else {
+      if (now > branchEnd || now > lateLimit) {
+        status = "غائب";
+      } else if (now > graceEnd) {
+        status = "متأخر";
+        lateMinutes = Math.floor(now.diff(graceEnd, "minutes").minutes);
+      }
+
+      attendance = await Attendance.create({
+        employee: employee._id,
+        branch: branch._id,
+        date: now.toISO(),    // ISO string
+        status,
+        checkIn: now.toISO(), // ISO string
+        lateMinutes
+      });
+
+      return res.status(201).json({
+        message: "تم تسجيل الحضور",
+        attendance: attendance // أرسل الكائن كامل، الواجهة تتحكم بالعرض
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "حدث خطأ أثناء تسجيل الحضور" });
+  }
+};
 
 
 // Check-Out endpoint
