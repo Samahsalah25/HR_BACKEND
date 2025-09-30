@@ -113,6 +113,7 @@ function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
 const checkIn = async (req, res) => {
   try {
     const userId = req.user._id;
+    console.log(userId)
     const employee = await Employee.findOne({ user: userId }).populate("workplace");
     if (!employee) return res.status(404).json({ message: "الموظف غير موجود" });
 
