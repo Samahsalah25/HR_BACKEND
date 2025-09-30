@@ -344,67 +344,7 @@ exports.employeeStatus = async (req, res) => {
   }
 };
 
-
-
-// exports.employeeStatus = async (req, res) => {
-//   try {
-//     if (!req.user) return res.status(401).json({ error: "User not authenticated" });
-
-//     const userId = req.user.id;
-//     const tz = "Asia/Riyadh";
-
-//     const employee = await Employee.findOne({ user: userId }).populate("workplace");
-//     if (!employee) return res.status(404).json({ error: "الموظف غير مرتبط بالحساب" });
-
-//     const branch = employee.workplace;
-//     if (!branch) return res.status(404).json({ error: "فرع الموظف غير موجود" });
-
-//     console.log("Employee:", employee);
-//     console.log("Branch:", branch);
-
-//     const todayStartUTC = DateTime.utc().startOf("day").toJSDate();
-//     const todayEndUTC = DateTime.utc().endOf("day").toJSDate();
-
-//     const attendance = await Attendance.findOne({
-//       employee: employee._id,
-//       date: { $gte: todayStartUTC, $lte: todayEndUTC },
-//     });
-
-//     console.log("Attendance:", attendance);
-
-//     const formatTime = (timeStrOrDate) => {
-//       if (!timeStrOrDate) return null;
-//       if (typeof timeStrOrDate === "string") {
-//         const [h, m] = timeStrOrDate.split(":").map(Number);
-//         return DateTime.fromObject({ hour: h, minute: m }, { zone: tz }).toFormat("HH:mm");
-//       }
-//       if (timeStrOrDate instanceof Date) {
-//         return DateTime.fromJSDate(timeStrOrDate).setZone(tz).toFormat("HH:mm");
-//       }
-//       return null;
-//     };
-
-//     res.json({
-//       today: DateTime.now().setZone(tz).toLocaleString(DateTime.DATE_FULL),
-//       officialCheckIn: formatTime(branch.workStart),
-//       officialCheckOut: formatTime(branch.workEnd),
-//       employeeCheckIn: formatTime(attendance?.checkIn),
-//       employeeCheckOut: formatTime(attendance?.checkOut),
-//       status: attendance
-//         ? attendance.checkOut
-//           ? "تم الانصراف"
-//           : attendance.checkIn
-//           ? "تم تسجيل الحضور"
-//           : "لم يتم تسجيل الحضور"
-//         : "لم يتم تسجيل الحضور",
-//     });
-//   } catch (err) {
-//     console.error("employeeStatus error:", err);
-//     res.status(500).json({ error: "خطأ في السيرفر" });
-//   }
-// };
-
-
+// 🟢 دالة تنسيق التاريخ
 function formatArabicDate(date) {
   const day = new Intl.DateTimeFormat("ar-EG", {
     day: "numeric",
