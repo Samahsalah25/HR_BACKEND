@@ -129,7 +129,9 @@ const checkIn = async (req, res) => {
       branch.location.coordinates[1],
       branch.location.coordinates[0]
     );
-    if (distance > 20) return res.status(400).json({ message: 'أنت بعيد عن موقع الفرع' });
+
+    if (distance > 20)
+      return res.status(400).json({ message: 'أنت بعيد عن موقع الفرع' });
 
     const clientTimezone = req.headers['timezone'] || 'Africa/Cairo';
     const now = DateTime.now().setZone(clientTimezone);
@@ -137,8 +139,8 @@ const checkIn = async (req, res) => {
     const todayStart = now.startOf('day').toJSDate();
     const todayEnd = now.endOf('day').toJSDate();
 
-    // نجيب أي سجل موجود لليوم (ممكن يكون الكرون حط له غياب)
-    let existingAttendance = await Attendance.findOne({
+    // نجيب أي سجل موجود لليوم
+    let attendance = await Attendance.findOne({
       employee: employee._id,
       date: { $gte: todayStart, $lte: todayEnd }
     });
@@ -149,27 +151,26 @@ const checkIn = async (req, res) => {
     const branchStart = now.set({ hour: startHour, minute: startMinute, second: 0, millisecond: 0 });
     const branchEnd = now.set({ hour: endHour, minute: endMinute, second: 0, millisecond: 0 });
     const graceEnd = branchStart.plus({ minutes: branch.gracePeriod });
-    const cutoffTime = branchStart.plus({ hours: 4 }); // آخر معاد للتعديل من غائب → متأخر
+    const cutoffTime = branchStart.plus({ hours: 4 }); // آخر معاد لتعديل الغائب
 
     let status = 'حاضر';
     let lateMinutes = 0;
 
-    // لو فيه سجل موجود
-    if (existingAttendance) {
-      if (existingAttendance.status === 'غائب' && now <= cutoffTime) {
-        // نغيره من غائب → متأخر
+    if (attendance) {
+      // لو موجود سجل اليوم
+      if (attendance.status === 'غائب' && now <= cutoffTime) {
         status = 'متأخر';
         lateMinutes = Math.floor(now.diff(branchStart, 'minutes').minutes);
-        existingAttendance.status = status;
-        existingAttendance.checkIn = now.toJSDate();
-        existingAttendance.lateMinutes = lateMinutes;
-        await existingAttendance.save();
+        attendance.status = status;
+        attendance.checkIn = now.toJSDate();
+        attendance.lateMinutes = lateMinutes;
+        await attendance.save();
       } else {
-        // لو موجود وحضره أو بعد cutoff، نرفض تسجيل جديد
+        // لو سجل قبل كدا أو بعد cutoff
         return res.status(400).json({ message: 'لقد قمت بتسجيل الحضور بالفعل اليوم' });
       }
     } else {
-      // لو مفيش سجل لليوم
+      // لو مفيش سجل
       if (now > branchEnd) {
         status = 'غائب';
       } else if (now > graceEnd) {
@@ -179,7 +180,7 @@ const checkIn = async (req, res) => {
         status = 'حاضر';
       }
 
-      existingAttendance = await Attendance.create({
+      attendance = await Attendance.create({
         employee: employee._id,
         branch: branch._id,
         date: now.toJSDate(),
@@ -192,7 +193,7 @@ const checkIn = async (req, res) => {
     res.status(201).json({
       message: 'تم تسجيل الحضور',
       attendance: {
-        ...existingAttendance._doc,
+        ...attendance._doc,
         checkIn: now.toFormat('HH:mm')
       },
       times: {
@@ -204,10 +205,11 @@ const checkIn = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error(error);
+    console.error('Check-in error:', error);
     res.status(500).json({ message: 'حدث خطأ أثناء تسجيل الحضور' });
   }
 };
+
 
 // Check-Out endpoint
 const checkOut = async (req, res) => {
