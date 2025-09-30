@@ -120,11 +120,12 @@ const checkIn = async (req, res) => {
       latitude, longitude,
       branch.location.coordinates[1], branch.location.coordinates[0]
     );
-
     if (distance > 20) return res.status(400).json({ message: "أنت بعيد عن موقع الفرع" });
 
-    // التوقيت بتوقيت السعودية
+    // الآن بتوقيت السعودية
     const now = DateTime.now().setZone("Asia/Riyadh");
+
+    // بداية ونهاية اليوم السعودية
     const todayStart = now.startOf("day").toJSDate();
     const todayEnd = now.endOf("day").toJSDate();
 
@@ -133,20 +134,17 @@ const checkIn = async (req, res) => {
       date: { $gte: todayStart, $lte: todayEnd }
     });
 
-    // أوقات الدوام وفترة السماح
     const [startHour, startMinute] = branch.workStart.split(":").map(Number);
     const [endHour, endMinute] = branch.workEnd.split(":").map(Number);
-
     const branchStart = now.set({ hour: startHour, minute: startMinute, second: 0, millisecond: 0 });
     const branchEnd = now.set({ hour: endHour, minute: endMinute, second: 0, millisecond: 0 });
     const graceEnd = branchStart.plus({ minutes: branch.gracePeriod });
-    const lateLimit = branchStart.plus({ hours: 4 }); // بعد 4 ساعات يكون غياب
+    const lateLimit = branchStart.plus({ hours: 4 });
 
     let status = "حاضر";
     let lateMinutes = 0;
 
     if (attendance) {
-      // إذا كان مسجل غياب قبل 4 ساعات من بداية الدوام يمكن تحويله لمتأخر
       if (attendance.status === "غائب" && now < lateLimit) {
         status = "متأخر";
         lateMinutes = Math.floor(now.diff(graceEnd, "minutes").minutes);
@@ -162,7 +160,6 @@ const checkIn = async (req, res) => {
         return res.status(400).json({ message: "لقد قمت بتسجيل الحضور بالفعل اليوم" });
       }
     } else {
-      // حساب الحالة الجديدة
       if (now > branchEnd || now > lateLimit) {
         status = "غائب";
       } else if (now > graceEnd) {
@@ -192,6 +189,8 @@ const checkIn = async (req, res) => {
 
 
 // Check-Out endpoint
+
+
 const checkOut = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -215,13 +214,16 @@ const checkOut = async (req, res) => {
       return res.status(400).json({ message: "لا يمكنك تسجيل الانصراف خارج الفرع" });
     }
 
-    const now = new Date();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // الوقت الحالي بتوقيت السعودية
+    const now = DateTime.now().setZone("Asia/Riyadh");
+
+    // بداية ونهاية اليوم بتوقيت السعودية
+    const todayStart = now.startOf("day").toJSDate();
+    const todayEnd = now.endOf("day").toJSDate();
 
     const attendance = await Attendance.findOne({
       employee: employee._id,
-      date: { $gte: today }
+      date: { $gte: todayStart, $lte: todayEnd }
     });
 
     if (!attendance) {
@@ -229,25 +231,27 @@ const checkOut = async (req, res) => {
     }
 
     // تسجيل وقت الانصراف
-    attendance.checkOut = now;
+    attendance.checkOut = now.toJSDate();
 
-  
+    // حساب الوقت الذي قضاه الموظف بالدقائق
     if (attendance.checkIn) {
-      const workedMs = attendance.checkOut - attendance.checkIn; // الفرق بالملي ثانية
-      attendance.workedtime = Math.floor(workedMs / 60000);   // نحولها لدقايق
+      const workedMs = now.toMillis() - DateTime.fromJSDate(attendance.checkIn).toMillis();
+      attendance.workedtime = Math.floor(workedMs / 60000);
     }
 
     await attendance.save();
 
     res.status(200).json({ 
       message: "تم تسجيل الانصراف", 
-      attendance 
+      attendance: { ...attendance._doc, checkOut: now.toFormat("HH:mm") } 
     });
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "حدث خطأ أثناء تسجيل الانصراف" });
   }
 };
+
 
 
 //
