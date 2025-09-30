@@ -131,6 +131,11 @@ const checkIn = async (req, res) => {
     // 🕒 الوقت الحالي بتوقيت السعودية
     const now = moment().tz("Asia/Riyadh");
 
+
+console.log("moment Asia/Riyadh:", moment().tz("Asia/Riyadh").format("YYYY-MM-DD HH:mm:ss"));
+console.log("moment UTC:", moment.utc().format("YYYY-MM-DD HH:mm:ss"));
+console.log("Date now:", new Date());
+
     // 🗓 بداية ونهاية اليوم بتوقيت السعودية
     const todayStart = now.clone().startOf("day");
     const todayEnd = now.clone().endOf("day");
