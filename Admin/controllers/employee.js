@@ -255,81 +255,56 @@ const totalLeaveBalance = companyLeaves.annual + companyLeaves.sick + companyLea
 
 
 
+const moment = require("moment-timezone");
+
 exports.employeeStatus = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // دالة مساعدة لتنسيق الوقت
-    function formatTime(timeStr) {
-      if (!timeStr) return null;
+    // دالة مساعدة لتنسيق الوقت بتوقيت السعودية
+    function formatTime(time) {
+      if (!time) return null;
 
-      // لو القيمة جاية كـ String زي "09:00"
-      if (typeof timeStr === "string") {
-        const [hours, minutes] = timeStr.split(":").map(Number);
-        const date = new Date();
-        date.setHours(hours, minutes, 0, 0);
-
-        return date.toLocaleTimeString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true
-        });
+      // لو القيمة String زي "09:00" (مواعيد الدوام)
+      if (typeof time === "string") {
+        const [hours, minutes] = time.split(":").map(Number);
+        return moment()
+          .tz("Asia/Riyadh")
+          .hour(hours)
+          .minute(minutes)
+          .format("hh:mm A");
       }
 
       // لو أصلاً Date
-      if (timeStr instanceof Date) {
-        return timeStr.toLocaleTimeString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true
-        });
+      if (time instanceof Date) {
+        return moment(time).tz("Asia/Riyadh").format("hh:mm A");
       }
 
       return null;
     }
 
-    // نجيب الموظف المرتبط باليوزر
+    // جلب الموظف والفرع
     const employee = await Employee.findOne({ user: userId }).populate("workplace");
-    if (!employee) {
-      return res.status(404).json({ error: "الموظف غير مرتبط بالحساب" });
-    }
-
+    if (!employee) return res.status(404).json({ error: "الموظف غير مرتبط بالحساب" });
     const branch = employee.workplace;
 
-    // تاريخ النهاردة
-    const today = new Date();
-    const startOfDay = new Date(today.setHours(0, 0, 0, 0));
-    const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+    // بداية ونهاية اليوم بالسعودي
+    const now = moment().tz("Asia/Riyadh");
+    const startOfDay = now.clone().startOf("day").toDate();
+    const endOfDay = now.clone().endOf("day").toDate();
 
-    // نجيب الحضور بتاع النهاردة
-    let attendance = await Attendance.findOne({
+    // جلب حضور اليوم
+    const attendance = await Attendance.findOne({
       employee: employee._id,
       date: { $gte: startOfDay, $lte: endOfDay }
     });
 
     res.json({
-      today: new Date().toLocaleDateString("ar-EG", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric"
-      }),
+      today: now.format("dddd, YYYY/MM/DD"), // تاريخ اليوم بالسعودي
       officialCheckIn: formatTime(branch?.workStart),
       officialCheckOut: formatTime(branch?.workEnd),
-      employeeCheckIn: attendance?.checkIn
-        ? attendance.checkIn.toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true
-          })
-        : null,
-      employeeCheckOut: attendance?.checkOut
-        ? attendance.checkOut.toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true
-          })
-        : null,
+      employeeCheckIn: formatTime(attendance?.checkIn),
+      employeeCheckOut: formatTime(attendance?.checkOut),
       status: attendance
         ? attendance.checkOut
           ? "تم الانصراف"
