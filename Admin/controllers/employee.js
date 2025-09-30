@@ -349,39 +349,39 @@ const totalLeaveBalance = companyLeaves.annual + companyLeaves.sick + companyLea
 
 exports.employeeStatus = async (req, res) => {
   try {
-    const userId = req.user._id;
-    const tz = "Asia/Riyadh"; // السعودية UTC+3
+    if (!req.user) return res.status(401).json({ error: "User not authenticated" });
 
-    // جلب الموظف مع الفرع
+    const userId = req.user._id;
+    const tz = "Asia/Riyadh";
+
     const employee = await Employee.findOne({ user: userId }).populate("workplace");
     if (!employee) return res.status(404).json({ error: "الموظف غير مرتبط بالحساب" });
 
     const branch = employee.workplace;
     if (!branch) return res.status(404).json({ error: "فرع الموظف غير موجود" });
 
-    // بداية ونهاية اليوم بالتوقيت العالمي UTC
+    console.log("Employee:", employee);
+    console.log("Branch:", branch);
+
     const todayStartUTC = DateTime.utc().startOf("day").toJSDate();
     const todayEndUTC = DateTime.utc().endOf("day").toJSDate();
 
-    // جلب حضور اليوم
     const attendance = await Attendance.findOne({
       employee: employee._id,
       date: { $gte: todayStartUTC, $lte: todayEndUTC },
     });
 
-    // دالة لتحويل الوقت إلى توقيت السعودية وعرضه بصيغة HH:mm
+    console.log("Attendance:", attendance);
+
     const formatTime = (timeStrOrDate) => {
       if (!timeStrOrDate) return null;
-
       if (typeof timeStrOrDate === "string") {
         const [h, m] = timeStrOrDate.split(":").map(Number);
         return DateTime.fromObject({ hour: h, minute: m }, { zone: tz }).toFormat("HH:mm");
       }
-
       if (timeStrOrDate instanceof Date) {
         return DateTime.fromJSDate(timeStrOrDate).setZone(tz).toFormat("HH:mm");
       }
-
       return null;
     };
 
