@@ -346,7 +346,7 @@ const totalLeaveBalance = companyLeaves.annual + companyLeaves.sick + companyLea
 
 // 🟢 دالة تنسيق التاريخ
 
-const employeeStatus = async (req, res) => {
+exports.employeeStatus = async (req, res) => {
   try {
     const userId = req.user.id;
     const tz = 'Asia/Riyadh'; // السعودية UTC+3
