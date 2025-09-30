@@ -108,11 +108,7 @@ function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
 // };
 
 
-// دالة لحساب المسافة بالمتر بين خطي عرض
-// دالة تسجيل الحضور
-
-// دالة لحساب المسافة
-
+const moment = require("moment-timezone");
 
 const checkIn = async (req, res) => {
   try {
@@ -131,71 +127,70 @@ const checkIn = async (req, res) => {
     );
     if (distance > 20) return res.status(400).json({ message: "أنت بعيد عن موقع الفرع" });
 
-    // الآن UTC (سيبها زي ما هي)
-    const now = new Date();
+    // 📌 الوقت الحالي بتوقيت السعودية
+    const now = moment().tz("Asia/Riyadh");
 
-    // بداية ونهاية اليوم
-    const todayStart = new Date(now);
-    todayStart.setUTCHours(0, 0, 0, 0);
-    const todayEnd = new Date(now);
-    todayEnd.setUTCHours(23, 59, 59, 999);
+    // بداية ونهاية اليوم (بتوقيت السعودية)
+    const todayStart = now.clone().startOf("day");
+    const todayEnd = now.clone().endOf("day");
 
     let attendance = await Attendance.findOne({
       employee: employee._id,
-      date: { $gte: todayStart, $lte: todayEnd }
+      date: { $gte: todayStart.toDate(), $lte: todayEnd.toDate() }
     });
 
+    // مواعيد الدوام حسب السعودية
     const [startHour, startMinute] = branch.workStart.split(":").map(Number);
     const [endHour, endMinute] = branch.workEnd.split(":").map(Number);
-    const branchStart = new Date(now);
-    branchStart.setHours(startHour, startMinute, 0, 0);
-    const branchEnd = new Date(now);
-    branchEnd.setHours(endHour, endMinute, 0, 0);
 
-    const graceEnd = new Date(branchStart.getTime() + branch.gracePeriod * 60000);
-    const lateLimit = new Date(branchStart.getTime() + 4 * 60 * 60000); // 4 ساعات بعد الدوام
+    const branchStart = now.clone().hour(startHour).minute(startMinute).second(0).millisecond(0);
+    const branchEnd = now.clone().hour(endHour).minute(endMinute).second(0).millisecond(0);
+
+    const graceEnd = branchStart.clone().add(branch.gracePeriod, "minutes");
+    const lateLimit = branchStart.clone().add(4, "hours");
 
     let status = "حاضر";
     let lateMinutes = 0;
 
     if (attendance) {
-      if (attendance.status === "غائب" && now < lateLimit) {
+      if (attendance.status === "غائب" && now.isBefore(lateLimit)) {
         status = "متأخر";
-        lateMinutes = Math.floor((now - graceEnd) / 60000);
+        lateMinutes = now.diff(graceEnd, "minutes");
         attendance.status = status;
-        attendance.checkIn = now;
+        attendance.checkIn = now.toDate();
         attendance.lateMinutes = lateMinutes;
         await attendance.save();
       } else {
         return res.status(400).json({ message: "لقد قمت بتسجيل الحضور بالفعل اليوم" });
       }
     } else {
-      if (now > branchEnd || now > lateLimit) {
+      if (now.isAfter(branchEnd) || now.isAfter(lateLimit)) {
         status = "غائب";
-      } else if (now > graceEnd) {
+      } else if (now.isAfter(graceEnd)) {
         status = "متأخر";
-        lateMinutes = Math.floor((now - graceEnd) / 60000);
+        lateMinutes = now.diff(graceEnd, "minutes");
       }
 
       attendance = await Attendance.create({
         employee: employee._id,
         branch: branch._id,
-        date: now,
+        date: now.toDate(),
         status,
-        checkIn: now,
+        checkIn: now.toDate(),
         lateMinutes
       });
     }
 
-    // إرسال الوقت كـ ISO string للواجهة
     res.status(201).json({
       message: attendance.status === "حاضر" || attendance.status === "متأخر"
         ? "تم تسجيل الحضور"
         : "تم تعديل حالة الحضور",
       attendance: {
         ...attendance._doc,
-        checkIn: attendance.checkIn.toISOString(),
-        checkOut: attendance.checkOut ? attendance.checkOut.toISOString() : null
+        checkIn: moment(attendance.checkIn).tz("Asia/Riyadh").format(), // بيرجعه بتوقيت السعودية
+        checkOut: attendance.checkOut
+          ? moment(attendance.checkOut).tz("Asia/Riyadh").format()
+          : null
       }
     });
   } catch (error) {
@@ -203,7 +198,6 @@ const checkIn = async (req, res) => {
     res.status(500).json({ message: "حدث خطأ أثناء تسجيل الحضور" });
   }
 };
-
 
 
 
