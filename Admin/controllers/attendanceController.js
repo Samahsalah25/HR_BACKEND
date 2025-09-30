@@ -3,7 +3,7 @@ const Employee = require('../models/employee');
 const Branch = require('../models/branchSchema');
 const LeaveBalance=require('../models/leaveBalanceModel');
 const Request=require('../models/requestModel')
-
+const { DateTime } = require("luxon");
 // دالة لحساب المسافة بالمتر بين نقطتين
 function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
   const R = 6371000; 
@@ -19,85 +19,79 @@ function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
 
 // Check-In endpoint
 
+
+
 const checkIn = async (req, res) => {
-  try {
+  try {
+    const userId = req.user._id;
+    const employee = await Employee.findOne({ user: userId }).populate('workplace');
+    if (!employee) return res.status(404).json({ message: 'الموظف غير موجود' });
 
-  const userId = req.user._id;
- const employee = await Employee.findOne({ user: userId }).populate('workplace');
-    if (!employee) return res.status(404).json({ message: 'الموظف غير موجود' });
+    const branch = employee.workplace;
+    if (!branch) return res.status(400).json({ message: 'الفرع غير موجود' });
 
-    const branch = employee.workplace;
-if (!branch) return res.status(400).json({ message: 'الفرع غير موجود' });
+    const { latitude, longitude } = req.body;
+    const distance = getDistanceFromLatLonInMeters(
+      latitude, longitude,
+      branch.location.coordinates[1], branch.location.coordinates[0]
+    );
 
-    const { latitude, longitude } = req.body;
+    if (distance > 20) return res.status(400).json({ message: 'أنت بعيد عن موقع الفرع' });
 
-    const distance = getDistanceFromLatLonInMeters(
-      latitude,
-      longitude,
-      branch.location.coordinates[1],
-      branch.location.coordinates[0]
-    );
+    // المنطقة الزمنية
+    const clientTimezone = req.headers['timezone'] || 'Africa/Cairo';
+    const now = DateTime.now().setZone(clientTimezone);
 
-    if (distance > 20) {
-      return res.status(400).json({ message: 'أنت بعيد عن موقع الفرع' });
-    }
+    // بداية ونهاية اليوم
+    const todayStart = now.startOf('day').toJSDate();
+    const todayEnd = now.endOf('day').toJSDate();
 
-    // تحديد المنطقة الزمنية من العميل (أو الافتراضية)
-    const clientTimezone = req.headers['timezone'] || 'Africa/Cairo';
+    const existingAttendance = await Attendance.findOne({
+      employee: employee._id,
+      date: { $gte: todayStart, $lte: todayEnd }
+    });
 
-    // الحصول على الوقت الحالي بتوقيت العميل (باستخدام Luxon)
-    const now = DateTime.now().setZone(clientTimezone);
+    if (existingAttendance) {
+      return res.status(400).json({ message: 'لقد قمت بتسجيل الحضور بالفعل اليوم' });
+    }
 
-    // تحديد بداية ونهاية اليوم الحالي بتوقيت العميل للبحث عن سجلات سابقة
-    const todayStart = now.startOf('day').toJSDate();
-    const todayEnd = now.endOf('day').toJSDate();
+    // أوقات الدوام
+    const [startHour, startMinute] = branch.workStart.split(':').map(Number);
+    const [endHour, endMinute] = branch.workEnd.split(':').map(Number);
 
-    const existingAttendance = await Attendance.findOne({
-      employee: employee._id,
-      date: { $gte: todayStart, $lte: todayEnd }
-    });
+    const branchStart = now.set({ hour: startHour, minute: startMinute, second: 0, millisecond: 0 });
+    const branchEnd = now.set({ hour: endHour, minute: endMinute, second: 0, millisecond: 0 });
+    const graceEnd = branchStart.plus({ minutes: branch.gracePeriod });
 
-    if (existingAttendance) {
-      return res.status(400).json({ message: 'لقد قمت بتسجيل الحضور بالفعل اليوم' });
-    }
+    // تحديد أقصى وقت لتسجيل الحضور قبل الغياب (4 ساعات بعد بداية الدوام)
+    const lateLimit = branchStart.plus({ hours: 4 });
 
-    // حساب أوقات الدوام وفترة السماح في نفس المنطقة الزمنية للعميل
-    const [startHour, startMinute] = branch.workStart.split(':').map(Number);
-    const [endHour, endMinute] = branch.workEnd.split(':').map(Number);
+    let status = 'حاضر';
+    let lateMinutes = 0;
 
-    // إنشاء أوقات الدوام في نفس يوم 'now' وبنفس المنطقة الزمنية
-    const branchStart = now.set({ hour: startHour, minute: startMinute, second: 0, millisecond: 0 });
-    const branchEnd = now.set({ hour: endHour, minute: endMinute, second: 0, millisecond: 0 });
-    const graceEnd = branchStart.plus({ minutes: branch.gracePeriod });
+    if (now > branchEnd) {
+      status = 'غائب';
+    } else if (now > lateLimit) {
+      status = 'غائب';
+    } else if (now > graceEnd) {
+      status = 'متأخر';
+      lateMinutes = Math.floor(now.diff(graceEnd, 'minutes').minutes);
+    }
 
-    let status = 'حاضر';
-    let lateMinutes = 0;
+    const attendance = await Attendance.create({
+      employee: employee._id,
+      branch: branch._id,
+      date: now.toJSDate(),
+      status,
+      checkIn: now.toJSDate(),
+      lateMinutes
+    });
 
-    // المقارنات والحسابات تتم كلها باستخدام كائنات Luxon في نفس المنطقة الزمنية
-    if (now > branchEnd) {
-      status = 'غائب';
-    } else if (now > graceEnd) {
-      status = 'متأخر';
-      lateMinutes = Math.floor(now.diff(graceEnd, 'minutes').minutes);
-    } else {
-        status = 'حاضر';
-    }
-
-    // تخزين التواريخ في قاعدة البيانات بتوقيت UTC
-    const attendance = await Attendance.create({
-      employee: employee._id,
-      branch: branch._id,
-      date: now.toJSDate(),
-      status,
-      checkIn: now.toJSDate(),
-      lateMinutes
-    });
-
-    res.status(201).json({
+    res.status(201).json({
       message: 'تم تسجيل الحضور',
       attendance: {
         ...attendance._doc,
-        checkIn: now.toFormat('HH:mm') // تمثيل الوقت فقط في الرد
+        checkIn: now.toFormat('HH:mm')
       },
       times: {
         workStart: branch.workStart,
@@ -107,11 +101,14 @@ if (!branch) return res.status(400).json({ message: 'الفرع غير موجو�
       }
     });
 
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'حدث خطأ أثناء تسجيل الحضور' });
-  }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'حدث خطأ أثناء تسجيل الحضور' });
+  }
 };
+
+
+
 // Check-Out endpoint
 const checkOut = async (req, res) => {
   try {
@@ -556,7 +553,6 @@ const getMonthlyAttendanceForEmployee = async (req, res) => {
 
 
 
-const { DateTime } = require("luxon"); // لو بتستخدمي Luxon
 // افترضنا إن LeaveBalance, Employee, Attendance موجودين ومستورَدِين
 
 const monthlyReport = async (req, res) => {
