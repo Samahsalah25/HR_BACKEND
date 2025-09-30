@@ -174,7 +174,7 @@ const corsOptions = {
       callback(new Error("Not allowed by CORS"));
     }
   },
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  methods: ["GET", "POST", "PUT", "DELETE" ,"PATCH", "OPTIONS"],
   credentials: true
 };
 
@@ -210,7 +210,7 @@ app.use("/api/notifications", notificationRoutes);
 const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
-    methods: ["GET", "POST"],
+    methods: ["GET", "POST" ,"PATCH" ,"DELETE"],
     credentials: true
   }
 });
