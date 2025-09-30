@@ -115,8 +115,66 @@ function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
 
 
 
+// Check-Out endpoint
+// const checkOut = async (req, res) => {
+//   try {
+//     const userId = req.user._id;
+//     const { latitude, longitude } = req.body;
+
+//     const employee = await Employee.findOne({ user: userId }).populate("workplace");
+//     if (!employee) return res.status(404).json({ message: "الموظف غير موجود" });
+
+//     const branch = employee.workplace;
+//     if (!branch) return res.status(400).json({ message: "الفرع غير موجود" });
+
+//     // تحقق من الموقع
+//     const distance = getDistanceFromLatLonInMeters(
+//       latitude,
+//       longitude,
+//       branch.location.coordinates[1],
+//       branch.location.coordinates[0]
+//     );
+
+//     if (distance > 10) {
+//       return res.status(400).json({ message: "لا يمكنك تسجيل الانصراف خارج الفرع" });
+//     }
+
+//     const now = new Date();
+//     const today = new Date();
+//     today.setHours(0, 0, 0, 0);
+
+//     const attendance = await Attendance.findOne({
+//       employee: employee._id,
+//       date: { $gte: today }
+//     });
+
+//     if (!attendance) {
+//       return res.status(400).json({ message: "لم يتم تسجيل حضور لهذا اليوم" });
+//     }
+
+//     // تسجيل وقت الانصراف
+//     attendance.checkOut = now;
+
+  
+//     if (attendance.checkIn) {
+//       const workedMs = attendance.checkOut - attendance.checkIn; // الفرق بالملي ثانية
+//       attendance.workedtime = Math.floor(workedMs / 60000);   // نحولها لدقايق
+//     }
+
+//     await attendance.save();
+
+//     res.status(200).json({ 
+//       message: "تم تسجيل الانصراف", 
+//       attendance 
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: "حدث خطأ أثناء تسجيل الانصراف" });
+//   }
+// };
 const { DateTime } = require("luxon");
 
+// Check-In endpoint
 const checkIn = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -128,17 +186,20 @@ const checkIn = async (req, res) => {
 
     const { latitude, longitude } = req.body;
     const distance = getDistanceFromLatLonInMeters(
-      latitude, longitude,
+      latitude,
+      longitude,
       branch.location.coordinates[1],
       branch.location.coordinates[0]
     );
 
-    if (distance > 20) 
+    if (distance > 20)
       return res.status(400).json({ message: 'أنت بعيد عن موقع الفرع' });
 
+    // الوقت المحلي
     const tz = 'Asia/Riyadh';
-    const now = DateTime.now().setZone(tz); // الوقت المحلي للفرع
+    const now = DateTime.now().setZone(tz);
 
+    // بداية ونهاية اليوم
     const todayStart = now.startOf('day').toJSDate();
     const todayEnd = now.endOf('day').toJSDate();
 
@@ -206,67 +267,7 @@ const checkIn = async (req, res) => {
   }
 };
 
-
-
-
 // Check-Out endpoint
-// const checkOut = async (req, res) => {
-//   try {
-//     const userId = req.user._id;
-//     const { latitude, longitude } = req.body;
-
-//     const employee = await Employee.findOne({ user: userId }).populate("workplace");
-//     if (!employee) return res.status(404).json({ message: "الموظف غير موجود" });
-
-//     const branch = employee.workplace;
-//     if (!branch) return res.status(400).json({ message: "الفرع غير موجود" });
-
-//     // تحقق من الموقع
-//     const distance = getDistanceFromLatLonInMeters(
-//       latitude,
-//       longitude,
-//       branch.location.coordinates[1],
-//       branch.location.coordinates[0]
-//     );
-
-//     if (distance > 10) {
-//       return res.status(400).json({ message: "لا يمكنك تسجيل الانصراف خارج الفرع" });
-//     }
-
-//     const now = new Date();
-//     const today = new Date();
-//     today.setHours(0, 0, 0, 0);
-
-//     const attendance = await Attendance.findOne({
-//       employee: employee._id,
-//       date: { $gte: today }
-//     });
-
-//     if (!attendance) {
-//       return res.status(400).json({ message: "لم يتم تسجيل حضور لهذا اليوم" });
-//     }
-
-//     // تسجيل وقت الانصراف
-//     attendance.checkOut = now;
-
-  
-//     if (attendance.checkIn) {
-//       const workedMs = attendance.checkOut - attendance.checkIn; // الفرق بالملي ثانية
-//       attendance.workedtime = Math.floor(workedMs / 60000);   // نحولها لدقايق
-//     }
-
-//     await attendance.save();
-
-//     res.status(200).json({ 
-//       message: "تم تسجيل الانصراف", 
-//       attendance 
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ message: "حدث خطأ أثناء تسجيل الانصراف" });
-//   }
-// };
-
 const checkOut = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -279,12 +280,15 @@ const checkOut = async (req, res) => {
     if (!branch) return res.status(400).json({ message: "الفرع غير موجود" });
 
     const distance = getDistanceFromLatLonInMeters(
-      latitude, longitude,
+      latitude,
+      longitude,
       branch.location.coordinates[1],
       branch.location.coordinates[0]
     );
 
-    if (distance > 10) return res.status(400).json({ message: "لا يمكنك تسجيل الانصراف خارج الفرع" });
+    if (distance > 10) {
+      return res.status(400).json({ message: "لا يمكنك تسجيل الانصراف خارج الفرع" });
+    }
 
     const tz = 'Asia/Riyadh';
     const now = DateTime.now().setZone(tz);
@@ -297,29 +301,30 @@ const checkOut = async (req, res) => {
       date: { $gte: todayStart, $lte: todayEnd }
     });
 
-    if (!attendance) return res.status(400).json({ message: "لم يتم تسجيل حضور لهذا اليوم" });
+    if (!attendance) {
+      return res.status(400).json({ message: "لم يتم تسجيل حضور لهذا اليوم" });
+    }
 
     attendance.checkOut = now.toJSDate();
 
     if (attendance.checkIn) {
       const workedMs = attendance.checkOut - attendance.checkIn;
-      attendance.workedtime = Math.floor(workedMs / 60000); // بالدقائق
+      attendance.workedtime = Math.floor(workedMs / 60000);
     }
 
     await attendance.save();
 
-    res.status(200).json({
-      message: "تم تسجيل الانصراف",
-      attendance: {
-        ...attendance._doc,
-        checkOut: now.toFormat('HH:mm')
-      }
+    res.status(200).json({ 
+      message: "تم تسجيل الانصراف", 
+      attendance 
     });
   } catch (error) {
-    console.error('Check-out error:', error);
+    console.error(error);
     res.status(500).json({ message: "حدث خطأ أثناء تسجيل الانصراف" });
   }
 };
+
+
 
 //
 
