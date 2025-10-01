@@ -313,11 +313,14 @@ const getMeetingById = async (req, res) => {
   try {
     const { id } = req.params;
 
+    // جلب الاجتماع بالكامل
     const meeting = await Meeting.findById(id)
-       .populate({
-    path: 'createdBy',
-    select: '_id name user jobTitle', // أهم حاجة تجيب user
-  }).populate("participants", "name jobTitle");
+      .populate({
+        path: "createdBy",
+        select: "_id name user jobTitle",
+      })
+      .populate("participants", "_id name jobTitle")
+      .lean(); // تحويله لكائن عادي لتسهيل التعامل مع الحقول
 
     if (!meeting) {
       return res.status(404).json({
@@ -326,9 +329,21 @@ const getMeetingById = async (req, res) => {
       });
     }
 
+    // لو attachments موجودة، نظهرها كاملة
+    const formattedMeeting = {
+      ...meeting,
+      attachments: meeting.attachments?.map(att => ({
+        _id: att._id,
+        filename: att.filename,
+        originalname: att.originalname,
+        path: att.path,
+        url: `/uploads/meetings/${att.filename}`, // رابط مباشر للـ frontend
+      })) || [],
+    };
+
     res.json({
       success: true,
-      data: meeting,
+      data: formattedMeeting,
     });
   } catch (error) {
     res.status(500).json({
