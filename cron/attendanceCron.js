@@ -75,72 +75,51 @@
 // };
 
 // module.exports = setupAttendanceCron;
-const cron = require("node-cron");
-const Branch = require("../Admin/models/branchSchema");
-const Employee = require("../Admin/models/employee");
-const Attendance = require("../Admin/models/Attendance");
-const Request = require("../Admin/models/requestModel");
 const { DateTime } = require("luxon");
 
-function isWeekend(day, weekendDays) {
-  return weekendDays.includes(day);
-}
+cron.schedule(`${cronMinute} ${cronHour} * * *`, async () => {
+  try {
+    console.log(`⏰ Running auto-absence for branch ${branch.name}`);
 
-const setupAttendanceCron = () => {
-  Branch.find().then(branches => {
-    branches.forEach(branch => {
-      const [startHour, startMinute] = branch.workStart.split(":").map(Number);
+    // استخدم توقيت السعودية
+    const now = DateTime.now().setZone("Asia/Riyadh");
+    const dayOfWeek = now.weekday % 7;
+    if (isWeekend(dayOfWeek, branch.weekendDays)) return;
 
-      // الكرون يرن بعد ساعة من بداية الدوام
-      const cronHour = startHour + 1;
-      const cronMinute = startMinute;
+    const employees = await Employee.find({ workplace: branch._id });
 
-      cron.schedule(`${cronMinute} ${cronHour} * * *`, async () => {
-        try {
-          console.log(`⏰ Running auto-absence for branch ${branch.name}`);
+    for (const employee of employees) {
+      const startOfDay = now.startOf("day").toJSDate();
+      const endOfDay = now.endOf("day").toJSDate();
 
-          const nowUTC = DateTime.utc();
-          const dayOfWeek = nowUTC.weekday % 7;
-          if (isWeekend(dayOfWeek, branch.weekendDays)) return;
-
-          const employees = await Employee.find({ workplace: branch._id });
-
-          for (const employee of employees) {
-            const startOfDayUTC = nowUTC.startOf("day").toJSDate();
-            const endOfDayUTC = nowUTC.endOf("day").toJSDate();
-
-            const attendance = await Attendance.findOne({
-              employee: employee._id,
-              date: { $gte: startOfDayUTC, $lte: endOfDayUTC }
-            });
-
-            if (!attendance) {
-              const leave = await Request.findOne({
-                employee: employee._id,
-                type: "إجازة",
-                status: "مقبول",
-                "leave.startDate": { $lte: endOfDayUTC },
-                "leave.endDate": { $gte: startOfDayUTC }
-              });
-
-              if (!leave) {
-                await Attendance.create({
-                  employee: employee._id,
-                  branch: branch._id,
-                  date: nowUTC.toJSDate(),
-                  status: "غائب"
-                });
-
-                console.log(` Marked absent: ${employee._id} at branch ${branch.name}`);
-              }
-            }
-          }
-        } catch (err) {
-          console.error("Error in attendance cron:", err);
-        }
+      // تحقق من وجود سجل غياب مسبق
+      const attendance = await Attendance.findOne({
+        employee: employee._id,
+        date: { $gte: startOfDay, $lte: endOfDay }
       });
-    });
-  });
-};
 
-module.exports = setupAttendanceCron;
+      if (!attendance) {
+        const leave = await Request.findOne({
+          employee: employee._id,
+          type: "إجازة",
+          status: "مقبول",
+          "leave.startDate": { $lte: endOfDay },
+          "leave.endDate": { $gte: startOfDay }
+        });
+
+        if (!leave) {
+          await Attendance.create({
+            employee: employee._id,
+            branch: branch._id,
+            date: now.toJSDate(),
+            status: "غائب"
+          });
+
+          console.log(` Marked absent: ${employee._id} at branch ${branch.name}`);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Error in attendance cron:", err);
+  }
+});
