@@ -546,41 +546,29 @@ const deleteMeeting = async (req, res) => {
       return res.status(404).json({ success: false, message: "الاجتماع غير موجود" });
     }
 
-    // هات الموظف اللي عامل الريكويست
+    // تحقق إنه صاحب الاجتماع
     const emp = await Employee.findOne({ user: req.user._id });
     if (!emp) {
       return res.status(404).json({ success: false, message: "المستخدم غير مرتبط بموظف" });
     }
 
-    // تحقق إنه الـ creator
     if (!meeting.createdBy.equals(emp._id)) {
-      return res.status(403).json({
-        success: false,
-        message: "غير مسموح لك بحذف هذا الاجتماع",
-      });
+      return res.status(403).json({ success: false, message: "غير مسموح لك بحذف هذا الاجتماع" });
     }
 
-    // لازم يبقى Cancelled عشان يتحذف
+    // لو الاجتماع مش ملغي، نعمله Cancelled قبل الحذف
     if (meeting.status !== "cancelled") {
-      return res.status(400).json({
-        success: false,
-        message: "لا يمكن حذف اجتماع مؤكد، يجب إلغاءه أولا",
-      });
+      meeting.status = "cancelled";
+      await meeting.save();
     }
 
     await meeting.deleteOne();
 
-    res.json({
-      success: true,
-      message: "تم حذف الاجتماع بنجاح",
-    });
+    res.json({ success: true, message: "تم حذف الاجتماع بنجاح" });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "خطأ في حذف الاجتماع",
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: "خطأ في حذف الاجتماع", error: error.message });
   }
 };
+
 
 module.exports = { createMeeting, getMyMeetings  ,getallMyMeetings,getMeetingById ,updateMeeting ,deleteMeeting};
