@@ -5,6 +5,7 @@ const LeaveBalance=require('../models/leaveBalanceModel')
 const mongoose=require('mongoose')
 const Contract=require('../models/Contract') ;
 const ResidencyYear =require('../models/ResidencyYear')
+
 const getAllEmployees = async (req, res) => {
   try {
     const employees = await Employee.find()
@@ -40,7 +41,7 @@ const getAllEmployees = async (req, res) => {
       return {
         _id: emp._id,
         name: emp.name,
-        role:emp.role ,
+        role:emp.user.role ,
         email: emp.user.email,
         department: emp.department ? emp.department.name : null,
         jobTitle: emp.jobTitle,
