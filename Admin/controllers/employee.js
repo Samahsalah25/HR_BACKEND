@@ -697,3 +697,22 @@ exports.getMyRequests = async (req, res) => {
   }
 };
 
+
+
+// PATCH /api/employees/promote/:id
+exports.promoteToManager = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // نعدل اليوزر ونخلي دوره MANAGER
+    await User.findOneAndUpdate({ _id: id }, { role: "MANAGER" });
+    
+    // نعدل بيانات الموظف (اختياري) 
+    await Employee.findOneAndUpdate({ user: id }, { jobTitle: "Manager" });
+
+    res.status(200).json({ message: "تمت ترقية الموظف إلى مدير" });
+  } catch (err) {
+    res.status(500).json({ message: "فشل في الترقية", error: err.message });
+  }
+};
+

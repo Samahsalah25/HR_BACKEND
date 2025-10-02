@@ -15,12 +15,14 @@ const  {
 router.get('/' , getAllEmployees);
 router.get('/managers' ,getManagerss)
 router.get('/getEmployeesByBranch' ,authenticate ,authorizeRoles('HR') ,getEmployeesByBranch)
+
 // get contrcacts
-router.get('/getContractsStats' ,authenticate ,authorizeRoles('HR'),getContractsStats) ;
+
+router.get('/getContractsStats' ,authenticate ,authorizeRoles('HR'),getContractsStats) 
 router.get('/getAllContracts' ,getAllContracts)
 router.get('/getOneemployee/:id' , getEmployeeById)
 router.post('/' ,validate(createEmployeeSchema) ,createEmployee)
 router.delete('/deleteEmployee/:id' ,deleteEmployee)
 router.patch('/updateemployee/:id' ,validate(updateEmployeeSchema),updateEmployee)
-
+                            
 module.exports = router;

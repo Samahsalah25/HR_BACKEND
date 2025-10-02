@@ -61,7 +61,7 @@ const createEmployeeSchema = Joi.object({
     "string.hex": "معرّف الفرع يجب أن يكون ObjectId صحيح",
     "string.length": "معرّف الفرع يجب أن يكون 24 حرف"
   }),
-    role: Joi.string().valid('ADMIN', 'HR' ,'EMPLOYEE').default('EMPLOYEE'),
+    role: Joi.string().valid('ADMIN', 'HR' ,'EMPLOYEE' ,'Manager').default('EMPLOYEE'),
 
   salary: Joi.object({
     base: Joi.number().min(0).messages({
