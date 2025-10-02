@@ -14,7 +14,9 @@ const getAllEmployees = async (req, res) => {
       .populate('residency.duration');
 
     // فلترة الموظفين اللي رولهم Employee
-    const filtered = employees.filter(emp => emp.user.role === 'EMPLOYEE');
+   const filtered = employees.filter(emp => 
+  ["EMPLOYEE", "Manager", "HR"].includes(emp.user.role)
+);
 
     const result = filtered.map(emp => {
       // معالجة مدة العقد
