@@ -40,7 +40,7 @@ const getAllEmployees = async (req, res) => {
       return {
         _id: emp._id,
         name: emp.name,
-        role:emp.role
+        role:emp.role ,
         email: emp.user.email,
         department: emp.department ? emp.department.name : null,
         jobTitle: emp.jobTitle,
