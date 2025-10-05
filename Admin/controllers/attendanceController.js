@@ -162,27 +162,40 @@ const checkIn = async (req, res) => {
       status = "حاضر";
     }
 
-    if (attendance) {
-      if (attendance.status === "غائب" && now.isBefore(lateLimit)) {
-        attendance.status = status;
-        attendance.checkIn = now.toDate();
-        attendance.lateMinutes = lateMinutes;
-        await attendance.save();
-      } else {
-        return res.status(400).json({ message: "لقد قمت بتسجيل الحضور بالفعل اليوم" });
-      }
-    } else {
-      attendance = await Attendance.create({
-        employee: employee._id,
-        branch: branch._id,
-        date: now.toDate(),
-        status,
-        checkIn: now.toDate(),
-        lateMinutes,
-        workedMinutes: 0,
-        workedtime: 0
-      });
+  if (attendance) {
+  
+  if (attendance.status === "غائب") {
+    if (now.isAfter(lateLimit)) {
+      return res.status(400).json({ message: "لقد تجاوزت وقت تسجيل الحضور المسموح" });
     }
+
+    attendance.status = status;
+    attendance.checkIn = now.toDate();
+    attendance.lateMinutes = lateMinutes;
+    await attendance.save();
+  } else {
+    return res.status(400).json({ message: "لقد قمت بتسجيل الحضور بالفعل اليوم" });
+  }
+} else {
+
+  if (now.isAfter(lateLimit)) {
+  
+    return res.status(400).json({ message: "لقد تجاوزت وقت تسجيل الحضور المسموح" });
+  }
+
+  // غير كده حضوره طبيعي أو متأخر
+  attendance = await Attendance.create({
+    employee: employee._id,
+    branch: branch._id,
+    date: now.toDate(),
+    status,
+    checkIn: now.toDate(),
+    lateMinutes,
+    workedMinutes: 0,
+    workedtime: 0,
+  });
+}
+
 
     res.status(201).json({
       message: (attendance.status === "حاضر" || attendance.status === "متأخر")
