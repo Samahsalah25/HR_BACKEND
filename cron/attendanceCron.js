@@ -75,6 +75,9 @@
 // };
 
 // module.exports = setupAttendanceCron;
+
+
+
 const { DateTime } = require("luxon");
 const cron = require("node-cron");
 const Branch = require("../Admin/models/branchSchema");
@@ -82,50 +85,52 @@ const Employee = require("../Admin/models/employee");
 const Attendance = require("../Admin/models/Attendance");
 const Request = require("../Admin/models/requestModel");
 
-// دالة للتحقق من أيام العطلة
 function isWeekend(day, weekendDays) {
   return weekendDays.includes(day);
 }
 
 const setupAttendanceCron = () => {
-  Branch.find().then(branches => {
-    branches.forEach(branch => {
-      const [startHour, startMinute] = branch.workStart.split(":").map(Number);
+  Branch.find()
+    .then(branches => {
+      branches.forEach(branch => {
+        const [startHour, startMinute] = branch.workStart.split(":").map(Number);
 
-      // الكرون يرن بعد ساعة من بداية الدوام
-      const cronHour = startHour + 1;
-      const cronMinute = startMinute;
+        // ⏰ بعد ساعة من بداية الدوام
+        const cronHour = startHour + Math.floor((startMinute + 60) / 60);
+        const cronMinute = (startMinute + 60) % 60;
 
-      cron.schedule(`${cronMinute} ${cronHour} * * *`, async () => {
-        try {
-          console.log(`⏰ Running auto-absence for branch ${branch.name}`);
+        cron.schedule(`${cronMinute} ${cronHour} * * *`, async () => {
+          try {
+            const now = DateTime.now().setZone("Asia/Riyadh");
+            console.log(`🏁 Running absence cron for branch: ${branch.name} at ${now.toFormat("HH:mm")}`);
 
-          // استخدام توقيت السعودية
-          const now = DateTime.now().setZone("Asia/Riyadh");
-          const dayOfWeek = now.weekday % 7;
+            const dayOfWeek = now.weekday % 7;
+            if (isWeekend(dayOfWeek, branch.weekendDays)) return;
 
-          if (isWeekend(dayOfWeek, branch.weekendDays)) return;
+            const employees = await Employee.find({ workplace: branch._id });
 
-          const employees = await Employee.find({ workplace: branch._id });
+            for (const employee of employees) {
+              const startOfDay = now.startOf("day").toJSDate();
+              const endOfDay = now.endOf("day").toJSDate();
 
-          for (const employee of employees) {
-            const startOfDay = now.startOf("day").toJSDate();
-            const endOfDay = now.endOf("day").toJSDate();
+              // ✅ تحقق إن ما فيش سجل لنفس اليوم قبل ما تضيف
+              const existing = await Attendance.findOne({
+                employee: employee._id,
+                date: { $gte: startOfDay, $lte: endOfDay },
+              });
 
-            // تحقق من وجود سجل غياب مسبق
-            const attendance = await Attendance.findOne({
-              employee: employee._id,
-              date: { $gte: startOfDay, $lte: endOfDay }
-            });
+              if (existing) {
+                console.log(`↩️ Skipping ${employee._id} (already has record today)`);
+                continue;
+              }
 
-            if (!attendance) {
-              // تحقق من الإجازة المقبولة
+              // ⛱️ تحقق من الإجازة المقبولة
               const leave = await Request.findOne({
                 employee: employee._id,
                 type: "إجازة",
                 status: "مقبول",
                 "leave.startDate": { $lte: endOfDay },
-                "leave.endDate": { $gte: startOfDay }
+                "leave.endDate": { $gte: startOfDay },
               });
 
               if (!leave) {
@@ -133,19 +138,21 @@ const setupAttendanceCron = () => {
                   employee: employee._id,
                   branch: branch._id,
                   date: now.toJSDate(),
-                  status: "غائب"
+                  status: "غائب", // غياب مبدئي
                 });
 
-                console.log(`✅ Marked absent: ${employee._id} at branch ${branch.name}`);
+                console.log(`🚫 Marked initially absent: ${employee._id} (${branch.name})`);
+              } else {
+                console.log(`✅ ${employee._id} is on approved leave`);
               }
             }
+          } catch (err) {
+            console.error("Error in attendance cron:", err);
           }
-        } catch (err) {
-          console.error("Error in attendance cron:", err);
-        }
+        });
       });
-    });
-  }).catch(err => console.error("Error fetching branches:", err));
+    })
+    .catch(err => console.error("Error fetching branches:", err));
 };
 
 module.exports = setupAttendanceCron;
