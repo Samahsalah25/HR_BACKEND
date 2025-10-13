@@ -1,3 +1,5 @@
+const Joi = require("joi");
+
 const createDepartmentSchema = Joi.object({
   name: Joi.string()
     .min(3)
@@ -23,3 +25,9 @@ const updateDepartmentSchema = Joi.object({
     }),
   description: Joi.string().allow("", null).optional(), 
 }).min(1);
+
+
+module.exports = {
+  createDepartmentSchema,
+  updateDepartmentSchema,
+};
