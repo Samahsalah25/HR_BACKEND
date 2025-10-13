@@ -9,9 +9,9 @@ const {
   updateResidencyYearSchema
 }= require('../validations/residencyValidation');
 
-router.post('/',authenticate,authorizeRoles('ADMIN'),validate(createResidencyYearSchema), createResidencyYear);
+router.post('/',authenticate,authorizeRoles('ADMIN' ,"HR"),validate(createResidencyYearSchema), createResidencyYear);
 router.get('/', getResidencyYears);
-router.patch('/:id' ,authenticate ,authorizeRoles('ADMIN') ,validate(updateResidencyYearSchema) ,updateResidencyYear)
-router.delete('/:id',authenticate,authorizeRoles('ADMIN'), deleteResidencyYear)
-router.get('/:id',authenticate,authorizeRoles('ADMIN'),getResidencyYearById);
+router.patch('/:id' ,authenticate ,authorizeRoles('ADMIN' ,"HR") ,validate(updateResidencyYearSchema) ,updateResidencyYear)
+router.delete('/:id',authenticate,authorizeRoles('ADMIN',"HR"), deleteResidencyYear)
+router.get('/:id',authenticate,authorizeRoles('ADMIN' ,"HR"),getResidencyYearById);
 module.exports = router;
