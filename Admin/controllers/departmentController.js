@@ -2,16 +2,17 @@ const Department =require('../models/depaertment')
 const Employee = require("../models/employee");
 exports.createDepartment = async (req, res) => {
   try {
-    const { name  } = req.body;
+    const { name, description } = req.body; 
     const exists = await Department.findOne({ name });
     if (exists) return res.status(400).json({ message: 'Department already exists' });
 
-    const department = await Department.create({ name });
+    const department = await Department.create({ name, description }); 
     res.status(201).json(department);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
+
 
 // عرض كل الأقسام
 exports.getDepartments = async (req, res) => {
