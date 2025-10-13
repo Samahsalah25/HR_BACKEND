@@ -10,9 +10,9 @@ const {
   updateBranchSchema,
 }=require('../validations/branchvalidation');
 // Routes (Admin only)
-router.post("/", authenticate,authorizeRoles('ADMIN'),validate(createBranchSchema), createBranch);
+router.post("/", authenticate,authorizeRoles('ADMIN',"HR"),validate(createBranchSchema), createBranch);
 router.get("/", getBranches);
-router.patch("/:id", authenticate,authorizeRoles('ADMIN') ,validate(updateBranchSchema), updateBranch);
-router.delete("/:id", authenticate,authorizeRoles('ADMIN'), deleteBranch);
+router.patch("/:id", authenticate,authorizeRoles('ADMIN' ,"HR") ,validate(updateBranchSchema), updateBranch);
+router.delete("/:id", authenticate,authorizeRoles('ADMIN',"HR"), deleteBranch);
 
 module.exports = router;

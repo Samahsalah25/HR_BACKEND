@@ -148,6 +148,7 @@ const branchRoute = require('./Admin/routes/branchRoutes.js');
 const attendanceRoute = require('./Admin/routes/attendanceRoutes.js');
 const leaveRoute = require('./Admin/routes/leaveRoutes.js');
 const meetingRouts = require('./Admin/routes/meetingRoute.js');
+const systemSettingsRoutes = require("./Admin/routes/SystemSettingsRoute.js");
 
 // DB & scripts
 const connectDB = require('./config/db.js');
@@ -205,6 +206,7 @@ app.use('/api/branch', branchRoute);
 app.use('/api/attendance', attendanceRoute);
 app.use('/api/meeting', meetingRouts);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/settings/system", systemSettingsRoutes);
 
 // ========= Socket.io =========
 const io = new Server(server, {
