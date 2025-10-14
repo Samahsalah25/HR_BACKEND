@@ -52,8 +52,10 @@ exports.getRecords = async (req, res) => {
   try {
     const { category } = req.query;  
     const filter = category ? { category } : {};
-    let records = await licence.find(filter).sort({ createdAt: -1 });
-
+    let records = await licence.find(filter)
+      .populate("branch", "name") 
+      .sort({ createdAt: -1 });
+                               
     const now = new Date();
     records = records.map(record => {
       if (record.expiryDate && new Date(record.expiryDate) < now) {
@@ -70,6 +72,7 @@ exports.getRecords = async (req, res) => {
     res.status(500).json({ message: 'خطأ أثناء جلب السجلات' });
   }
 };
+
 
 // Get single record
 exports.getRecordById = async (req, res) => {

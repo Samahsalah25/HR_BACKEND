@@ -13,7 +13,11 @@ const recordSchema = new mongoose.Schema({
   },
   type: { type: String, required: true },   
   number: { type: String },                
-  branch: { type: String },               
+ branch: { 
+  type: mongoose.Schema.Types.ObjectId, 
+  ref: 'Branch' 
+},
+              
   issueDate: { type: Date },               
   expiryDate: { type: Date },               
   status: { 
