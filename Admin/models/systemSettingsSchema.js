@@ -9,7 +9,9 @@ const systemSettingsSchema = new mongoose.Schema({
     branches: { type: Boolean, default: false },
     departments: { type: Boolean, default: false },
     contracts: { type: Boolean, default: false },
-    leaves: { type: Boolean, default: false }
+    leaves: { type: Boolean, default: false } ,
+    records:{type:Boolean ,default:false} ,
+    residency:{type:Boolean ,default:false}
   }
 }, { timestamps: true });
 

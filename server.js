@@ -247,6 +247,7 @@ const PORT = process.env.PORT || 4000;
 (async () => {
   try {
     await connectDB();
+    seedAdmin()
     setupAttendanceCron();
     startTaskStatusCron();
 
