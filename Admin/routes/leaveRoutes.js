@@ -7,7 +7,6 @@ const authorizeRoles=require('../middlesware/roleMiddleware');
 const createCompanyLeavesSchema=require('../validations/leavevalidation');
 const validate=require('../middlesware/validate');
 //admin create leaves; 
-router.post("/",authenticate,authenticate,authorizeRoles('ADMIN' ,'HR'),validate(createCompanyLeavesSchema),createCompanyLeaves);
-router.get('/' ,authenticate ,authorizeRoles('ADMIN' ,'HR'
-) ,getCompanyLeaves )
+router.post("/",authenticate,authenticate,validate(createCompanyLeavesSchema),createCompanyLeaves);
+router.get('/' ,authenticate ,getCompanyLeaves )
 module.exports = router;
