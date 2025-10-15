@@ -18,21 +18,21 @@ const seedAdmin = async () => {
       return;
     }
 
-    // 🔹 بيانات افتراضية للعقد والإقامة (لو مش موجودين)
-    let contract = await Contract.findOne();
-    if (!contract) {
-      contract = await Contract.create({
-        duration: 1,
-        unit: 'years'
-      });
-    }
+    // // 🔹 بيانات افتراضية للعقد والإقامة (لو مش موجودين)
+    // let contract = await Contract.findOne();
+    // if (!contract) {
+    //   contract = await Contract.create({
+    //     duration: 1,
+    //     unit: 'years'
+    //   });
+    // }
 
-    let residency = await ResidencyYear.findOne();
-    if (!residency) {
-      residency = await ResidencyYear.create({
-        year: 1
-      });
-    }
+    // let residency = await ResidencyYear.findOne();
+    // if (!residency) {
+    //   residency = await ResidencyYear.create({
+    //     year: 1
+    //   });
+    // }
 
     // 🔹 إنشاء الأدمن في جدول المستخدمين
     const user = await User.create({
@@ -47,43 +47,43 @@ const seedAdmin = async () => {
       name: 'Super Admin',
       jobTitle: 'مدير النظام',
       employeeNumber: 'A-0002', // ← ممكن تغيريها لو حابة
-      department: 'الإدارة',
-      employmentType: 'دوام كامل',
-      contract: {
-        start: new Date(),
-        duration: contract._id
-      },
-      residency: {
-        start: new Date(),
-        duration: residency._id
-      },
+   
+      // employmentType: 'دوام كامل',
+      // contract: {
+      //   start: new Date(),
+      //   duration: contract._id
+      // },
+      // residency: {
+      //   start: new Date(),
+      //   duration: residency._id
+      // },
       workHoursPerWeek: 40,
       salary: 0,
       user: user._id
     });
 
     // 🔹 نسخ رصيد الإجازات الافتراضي للموظف الأدمن
-    const companyLeaves = await LeaveBalance.findOne({ employee: null });
-    if (companyLeaves) {
-      const totalLeaveBalance =
-        companyLeaves.annual +
-        companyLeaves.sick +
-        companyLeaves.marriage +
-        companyLeaves.emergency +
-        companyLeaves.maternity +
-        companyLeaves.unpaid;
+    // const companyLeaves = await LeaveBalance.findOne({ employee: null });
+    // if (companyLeaves) {
+    //   const totalLeaveBalance =
+    //     companyLeaves.annual +
+    //     companyLeaves.sick +
+    //     companyLeaves.marriage +
+    //     companyLeaves.emergency +
+    //     companyLeaves.maternity +
+    //     companyLeaves.unpaid;
 
-      await LeaveBalance.create({
-        employee: employee._id,
-        annual: companyLeaves.annual,
-        sick: companyLeaves.sick,
-        marriage: companyLeaves.marriage,
-        emergency: companyLeaves.emergency,
-        maternity: companyLeaves.maternity,
-        unpaid: companyLeaves.unpaid,
-        remaining: totalLeaveBalance,
-      });
-    }
+    //   await LeaveBalance.create({
+    //     employee: employee._id,
+    //     annual: companyLeaves.annual,
+    //     sick: companyLeaves.sick,
+    //     marriage: companyLeaves.marriage,
+    //     emergency: companyLeaves.emergency,
+    //     maternity: companyLeaves.maternity,
+    //     unpaid: companyLeaves.unpaid,
+    //     remaining: totalLeaveBalance,
+    //   });
+    // }
 
     console.log('✅ Admin created successfully:');
     console.log(`   Email: ${user.email}`);
@@ -92,7 +92,7 @@ const seedAdmin = async () => {
   } catch (err) {
     console.error('❌ Error creating admin:', err);
   } finally {
-    mongoose.connection.close();
+
   }
 };
 
