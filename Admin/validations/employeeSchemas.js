@@ -55,21 +55,29 @@ const createEmployeeSchema = Joi.object({
   }),
 
   // ✅ الإضافات الجديدة
-  residencyAdditionNumber: Joi.string().allow("").messages({
-    "string.base": "رقم الإضافة يجب أن يكون نص"
-  }),
-  residencyIssuingAuthority: Joi.string().allow("").messages({
-    "string.base": "الجهة المصدرة يجب أن تكون نص"
-  }),
-  residencyInsuranceNumber: Joi.string().allow("").messages({
-    "string.base": "الرقم التأميني يجب أن يكون نص"
-  }),
-  residencyType: Joi.string().allow("").messages({
-    "string.base": "نوع الإقامة يجب أن يكون نص"
-  }),
-  nationality: Joi.string().allow("").messages({
-    "string.base": "الجنسية يجب أن تكون نص"
-  }),
+residencyNationality: Joi.string().allow("").messages({
+  "string.base": "الجنسية يجب أن تكون نص"
+}),
+residencyAdditionNumber: Joi.string().allow("").messages({
+  "string.base": "رقم الإضافة يجب أن يكون نص"
+}),
+residencyIssuingAuthority: Joi.string().allow("").messages({
+  "string.base": "الجهة المصدرة يجب أن تكون نص"
+}),
+residencyInsuranceNumber: Joi.string().allow("").messages({
+  "string.base": "الرقم التأميني يجب أن يكون نص"
+}),
+residencyType: Joi.string().allow("").messages({
+  "string.base": "نوع الإقامة يجب أن يكون نص"
+}),
+residencyStart: Joi.date().messages({
+  "date.base": "تاريخ بداية الإقامة غير صالح"
+}),
+residencyDurationId: Joi.string().hex().length(24).messages({
+  "string.hex": "معرّف مدة الإقامة يجب أن يكون ObjectId صحيح",
+  "string.length": "معرّف مدة الإقامة يجب أن يكون 24 حرف"
+}),
+
 
   workHoursPerWeek: Joi.number().messages({
     "number.base": "عدد ساعات العمل يجب أن يكون رقم"
