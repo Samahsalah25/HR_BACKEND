@@ -15,10 +15,15 @@ const employeeSchema = new mongoose.Schema(
       end: { type: Date } // هنا مش هنحسبها بالـ getter
     },
 
-    residency: {
+     residency: {
+       nationality: { type: String },  
       start: { type: Date },
       duration: { type: mongoose.Schema.Types.ObjectId, ref: 'ResidencyYear' },
-      end: { type: Date } // نفس الشيء
+      end: { type: Date },
+      residencyNumber: { type: String },          // رقم الإقامة
+      issuingAuthority: { type: String },        // الجهة المصدرة
+      insuranceNumber: { type: String },         // الرقم التأميني
+      residencyType: { type: String }            // نوع الإقامة
     },
 
     workHoursPerWeek: { type: Number },

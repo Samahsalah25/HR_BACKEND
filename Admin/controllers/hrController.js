@@ -83,24 +83,28 @@ const createEmployee = async (req, res) => {
       contractDurationId,
       residencyStart,
       residencyDurationId,
+      residencyAdditionNumber,
+      residencyIssuingAuthority,
+      residencyInsuranceNumber,
+      residencyType,
       workHoursPerWeek,
       workplace,
       salary
     } = req.body;
 
-    // تحقق من البريد الإلكتروني
+    //  تحقق من البريد الإلكتروني
     const existingUser = await User.findOne({ email }).session(session);
     if (existingUser) {
       return res.status(400).json({ message: `البريد الإلكتروني ${email} مستخدم بالفعل` });
     }
 
-    // تحقق من رقم الموظف
+    //  تحقق من رقم الموظف
     const existingEmployee = await Employee.findOne({ employeeNumber }).session(session);
     if (existingEmployee) {
       return res.status(400).json({ message: `رقم الموظف ${employeeNumber} مستخدم بالفعل` });
     }
 
-    // استرجاع البيانات المرتبطة بالعقد والإقامة
+    // استرجاع بيانات العقد والإقامة
     const contractDuration = await Contract.findById(contractDurationId).session(session);
     if (!contractDuration) {
       return res.status(400).json({ message: "لم يتم العثور على مدة العقد." });
@@ -111,10 +115,10 @@ const createEmployee = async (req, res) => {
       return res.status(400).json({ message: "لم يتم العثور على مدة الإقامة." });
     }
 
-    // إنشاء المستخدم
+    //  إنشاء المستخدم
     const user = await User.create([{ name, email, password, role: "EMPLOYEE" }], { session });
 
-    // إنشاء الموظف
+    //  إنشاء الموظف
     let employee = await Employee.create([{
       name,
       jobTitle,
@@ -124,21 +128,24 @@ const createEmployee = async (req, res) => {
       employmentType,
       contract: {
         start: contractStart || null,
-        duration: contractDuration._id // استخدام ObjectId الخاص بالعقد
+        duration: contractDuration._id
       },
       residency: {
         start: residencyStart || null,
-        duration: residencyDuration._id // استخدام ObjectId الخاص بالإقامة
+        duration: residencyDuration._id,
+        additionNumber: residencyAdditionNumber || null,
+        issuingAuthority: residencyIssuingAuthority || null,
+        insuranceNumber: residencyInsuranceNumber || null,
+        type: residencyType || null
       },
       workHoursPerWeek,
       workplace,
       salary,
       user: user[0]._id
     }], { session });
-
     employee = employee[0];
 
-    // حساب تاريخ النهاية للعقد
+    //  حساب تاريخ نهاية العقد
     if (employee.contract.start && contractDuration) {
       const end = new Date(employee.contract.start);
       if (contractDuration.unit === 'years') {
@@ -149,7 +156,7 @@ const createEmployee = async (req, res) => {
       employee.contract.end = end;
     }
 
-    // حساب تاريخ النهاية للإقامة
+    //  حساب تاريخ نهاية الإقامة
     if (employee.residency.start && residencyDuration) {
       const end = new Date(employee.residency.start);
       end.setFullYear(end.getFullYear() + residencyDuration.year);
@@ -158,13 +165,20 @@ const createEmployee = async (req, res) => {
 
     await employee.save({ session });
 
-    // رصيد الإجازات
+    //  إنشاء رصيد الإجازات
     const companyLeaves = await LeaveBalance.findOne({ employee: null }).session(session);
     if (!companyLeaves) {
       throw new Error("رصيد الإجازات الافتراضي للشركة غير محدد");
     }
-const totalLeaveBalance = companyLeaves.annual + companyLeaves.sick + companyLeaves.marriage +
-                          companyLeaves.emergency + companyLeaves.maternity + companyLeaves.unpaid;
+
+    const totalLeaveBalance =
+      companyLeaves.annual +
+      companyLeaves.sick +
+      companyLeaves.marriage +
+      companyLeaves.emergency +
+      companyLeaves.maternity +
+      companyLeaves.unpaid;
+
     await LeaveBalance.create([{
       employee: employee._id,
       annual: companyLeaves.annual,
@@ -172,8 +186,8 @@ const totalLeaveBalance = companyLeaves.annual + companyLeaves.sick + companyLea
       marriage: companyLeaves.marriage,
       emergency: companyLeaves.emergency,
       maternity: companyLeaves.maternity,
-      unpaid: companyLeaves.unpaid ,
-        remaining: totalLeaveBalance 
+      unpaid: companyLeaves.unpaid,
+      remaining: totalLeaveBalance
     }], { session });
 
     await session.commitTransaction();
@@ -184,9 +198,7 @@ const totalLeaveBalance = companyLeaves.annual + companyLeaves.sick + companyLea
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
- 
-  console.error("Error details:", error);
-
+    console.error("Error details:", error);
     res.status(500).json({ message: 'حدث خطأ أثناء إنشاء الموظف', error: error.message });
   }
 };

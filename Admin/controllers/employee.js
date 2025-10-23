@@ -75,7 +75,6 @@ exports.employeeOverview = async (req, res) => {
 };
 
 
-
 exports.createEmployee = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -93,6 +92,11 @@ exports.createEmployee = async (req, res) => {
       contractDurationId,
       residencyStart,
       residencyDurationId,
+      residencyAdditionNumber,
+      residencyIssuingAuthority,
+      residencyInsuranceNumber,
+        residencyNationality, 
+      residencyType,
       workHoursPerWeek,
       workplace,
       salary,
@@ -103,13 +107,13 @@ exports.createEmployee = async (req, res) => {
       return res.status(403).json({ message: "ليس لديك صلاحية" });
     }
 
-    // ✅ تشيك مسبق على الايميل
+    //  تشيك مسبق على الايميل
     const emailExists = await User.findOne({ email }).session(session);
     if (emailExists) {
       return res.status(400).json({ message: "البريد الإلكتروني مستخدم بالفعل" });
     }
 
-    // ✅ تشيك مسبق على رقم الموظف
+    //  تشيك مسبق على رقم الموظف
     const empNumExists = await Employee.findOne({ employeeNumber }).session(session);
     if (empNumExists) {
       return res.status(400).json({ message: "رقم الموظف مستخدم بالفعل" });
@@ -127,7 +131,15 @@ exports.createEmployee = async (req, res) => {
       manager,
       employmentType,
       contract: { start: contractStart, duration: contractDurationId },
-      residency: { start: residencyStart, duration: residencyDurationId },
+      residency: { 
+          nationality: residencyNationality,  
+        start: residencyStart, 
+        duration: residencyDurationId,
+        additionNumber: residencyAdditionNumber,      // رقم الإضافة
+        issuingAuthority: residencyIssuingAuthority,  // الجهة المصدرة
+        insuranceNumber: residencyInsuranceNumber,    // الرقم التأميني
+        residencyType: residencyType                  // نوع الإقامة
+      },
       workHoursPerWeek,
       workplace,
       salary,
@@ -141,8 +153,10 @@ exports.createEmployee = async (req, res) => {
     if (!companyLeaves) {
       throw new Error("رصيد الإجازات الافتراضي للشركة غير محدد");
     }
-const totalLeaveBalance = companyLeaves.annual + companyLeaves.sick + companyLeaves.marriage +
-                          companyLeaves.emergency + companyLeaves.maternity + companyLeaves.unpaid;
+
+    const totalLeaveBalance = companyLeaves.annual + companyLeaves.sick + companyLeaves.marriage +
+                              companyLeaves.emergency + companyLeaves.maternity + companyLeaves.unpaid;
+
     await LeaveBalance.create([{
       employee: employee._id,
       annual: companyLeaves.annual,
@@ -150,15 +164,13 @@ const totalLeaveBalance = companyLeaves.annual + companyLeaves.sick + companyLea
       marriage: companyLeaves.marriage,
       emergency: companyLeaves.emergency,
       maternity: companyLeaves.maternity,
-      unpaid: companyLeaves.unpaid ,
-      remaining: totalLeaveBalance 
+      unpaid: companyLeaves.unpaid,
+      remaining: totalLeaveBalance
     }], { session });
 
-    // ✅ لو كله تمام نعمل commit
     await session.commitTransaction();
     session.endSession();
 
-    // ✅ بعد الكوميت نعمل populate براحه
     const populatedEmployee = await Employee.findById(employee._id)
       .populate("contract.duration")
       .populate("residency.duration");
@@ -169,7 +181,6 @@ const totalLeaveBalance = companyLeaves.annual + companyLeaves.sick + companyLea
     await session.abortTransaction();
     session.endSession();
 
-    // ✅ مسك errors بتاعت الـ duplicate keys
     if (error.code === 11000) {
       if (error.keyPattern?.employeeNumber) {
         return res.status(400).json({ message: "رقم الموظف مستخدم بالفعل" });
@@ -254,7 +265,6 @@ const totalLeaveBalance = companyLeaves.annual + companyLeaves.sick + companyLea
 
 
 
-
 const moment = require("moment-timezone");
 
 require("moment/locale/ar-sa"); // تحميل locale العربية
@@ -316,8 +326,7 @@ exports.employeeStatus = async (req, res) => {
 };
 
 
-
-// 🟢 دالة تنسيق التاريخ
+//  دالة تنسيق التاريخ
 function formatArabicDate(date) {
   const day = new Intl.DateTimeFormat("ar-EG", {
     day: "numeric",
@@ -336,7 +345,7 @@ function formatArabicDate(date) {
   return `${day} ${month} ${year}`;
 }
 
-// 🟢 دالة تحويل وقت الفرع (09:00 → 09:00 AM)
+//  دالة تحويل وقت الفرع (09:00 → 09:00 AM)
 function formatTime(timeStr) {
   if (!timeStr) return null;
   const [hours, minutes] = timeStr.split(":");
