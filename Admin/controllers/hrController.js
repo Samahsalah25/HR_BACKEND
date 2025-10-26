@@ -495,11 +495,13 @@ const getManagerss = async (req, res) => {
 
 //update employee here
 // Update Employee
-const updateEmployee = async (req, res) => {
+exports.updateEmployee = async (req, res) => {
   try {
-    const { id } = req.params;    
+    const { id } = req.params;
     const {
       name,
+      email,
+      password,
       jobTitle,
       employeeNumber,
       department,
@@ -509,33 +511,43 @@ const updateEmployee = async (req, res) => {
       contractDurationId,
       residencyStart,
       residencyDurationId,
+      residencyAdditionNumber,
+      residencyIssuingAuthority,
+      residencyInsuranceNumber,
+      residencyNationality,
+      residencyType,
       workHoursPerWeek,
       workplace,
       salary,
       role
     } = req.body;
 
-    // HR/Admin فقط يقدروا يعدلوا
-    // if (!['HR', 'ADMIN'].includes(req.user.role)) {
-    //   return res.status(403).json({ message: "ليس لديك صلاحية" });
-    // }
+    // تأكيد الصلاحيات
+    if (req.user.role !== "HR") {
+      return res.status(403).json({ message: "ليس لديك صلاحية لتعديل بيانات الموظف" });
+    }
 
-    // جلب الموظف
+    // جلب الموظف مع populate
     let employee = await Employee.findById(id)
+      .populate("user")
       .populate("contract.duration")
-      .populate("residency.duration")
-      .populate("user");
+      .populate("residency.duration");
 
     if (!employee) {
-    return res.status(404).json({ message: "الموظف غير موجود" });
-
+      return res.status(404).json({ message: "الموظف غير موجود" });
     }
 
-    // تحديث البيانات
-    if (name) {
-      employee.name = name;
-      if (employee.user) employee.user.name = name; // لو عايزة تحدث كمان الـ user
+    // تحديث بيانات المستخدم (User)
+    if (employee.user) {
+      if (name) employee.user.name = name;
+      if (email) employee.user.email = email;
+      if (password) employee.user.password = password; // هيتعمل له hash في الـ model
+      if (role) employee.user.role = role;
+      await employee.user.save();
     }
+
+    // تحديث البيانات الأساسية
+    if (name) employee.name = name;
     if (jobTitle) employee.jobTitle = jobTitle;
     if (employeeNumber) employee.employeeNumber = employeeNumber;
     if (department) employee.department = department;
@@ -545,31 +557,37 @@ const updateEmployee = async (req, res) => {
     if (workplace) employee.workplace = workplace;
     if (salary) employee.salary = salary;
 
-    // --- العقد ---
+    // تحديث العقد
     if (contractStart) employee.contract.start = contractStart;
     if (contractDurationId) employee.contract.duration = contractDurationId;
 
-    // --- الإقامة ---
+    // تحديث بيانات الإقامة
     if (residencyStart) employee.residency.start = residencyStart;
     if (residencyDurationId) employee.residency.duration = residencyDurationId;
+    if (residencyAdditionNumber) employee.residency.additionNumber = residencyAdditionNumber;
+    if (residencyIssuingAuthority) employee.residency.issuingAuthority = residencyIssuingAuthority;
+    if (residencyInsuranceNumber) employee.residency.insuranceNumber = residencyInsuranceNumber;
+    if (residencyNationality) employee.residency.nationality = residencyNationality;
+    if (residencyType) employee.residency.type = residencyType;
 
+    // إعادة تحميل مدة العقد والإقامة
     await employee.populate([
-  { path: "contract.duration" },
-  { path: "residency.duration" }
-]);
+      { path: "contract.duration" },
+      { path: "residency.duration" }
+    ]);
 
-    // حساب الـ end للـ contract
+    // حساب نهاية العقد
     if (employee.contract.start && employee.contract.duration) {
       const end = new Date(employee.contract.start);
       if (employee.contract.duration.unit === "years") {
         end.setFullYear(end.getFullYear() + employee.contract.duration.duration);
-      } else {
+      } else if (employee.contract.duration.unit === "months") {
         end.setMonth(end.getMonth() + employee.contract.duration.duration);
       }
       employee.contract.end = end;
     }
 
-    // حساب الـ end للإقامة
+    // حساب نهاية الإقامة
     if (employee.residency.start && employee.residency.duration) {
       const end = new Date(employee.residency.start);
       end.setFullYear(end.getFullYear() + employee.residency.duration.year);
@@ -577,15 +595,27 @@ const updateEmployee = async (req, res) => {
     }
 
     await employee.save();
-    if (employee.user) await employee.user.save(); 
 
-    res.json({ message: "تم تحديث بيانات الموظف بنجاح", employee });
+    // بعد التحديث نرجع البيانات كاملة
+    const updatedEmployee = await Employee.findById(id)
+      .populate("user")
+      .populate("contract.duration")
+      .populate("residency.duration");
+
+    res.status(200).json({
+      message: "تم تحديث بيانات الموظف بنجاح ✅",
+      employee: updatedEmployee
+    });
+
   } catch (error) {
-   console.error("Update employee error:", error);
-res.status(500).json({ message: "خطأ أثناء تحديث الموظف", error: error.message });
-
+    console.error("❌ Update employee error:", error);
+    res.status(500).json({
+      message: "حدث خطأ أثناء تحديث الموظف",
+      error: error.message
+    });
   }
 };
+
 
 
 
