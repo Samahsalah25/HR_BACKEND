@@ -495,7 +495,7 @@ const getManagerss = async (req, res) => {
 
 //update employee here
 // Update Employee
-exports.updateEmployee = async (req, res) => {
+const updateEmployee = async (req, res) => {
   try {
     const { id } = req.params;
     const {
