@@ -78,6 +78,7 @@ exports.employeeOverview = async (req, res) => {
 exports.createEmployee = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
+
   try {
     const {
       name,
@@ -95,7 +96,7 @@ exports.createEmployee = async (req, res) => {
       residencyAdditionNumber,
       residencyIssuingAuthority,
       residencyInsuranceNumber,
-        residencyNationality, 
+      residencyNationality,
       residencyType,
       workHoursPerWeek,
       workplace,
@@ -103,26 +104,36 @@ exports.createEmployee = async (req, res) => {
       role
     } = req.body;
 
+    // 🔐 السماح فقط لـ HR
     if (req.user.role !== "HR") {
-      return res.status(403).json({ message: "ليس لديك صلاحية" });
+      return res.status(403).json({ message: "ليس لديك صلاحية لإضافة موظف جديد" });
     }
 
-    //  تشيك مسبق على الايميل
-    const emailExists = await User.findOne({ email }).session(session);
-    if (emailExists) {
-      return res.status(400).json({ message: "البريد الإلكتروني مستخدم بالفعل" });
+    // ✉️ تحقق من البريد
+    const existingUser = await User.findOne({ email }).session(session);
+    if (existingUser) {
+      return res.status(400).json({ message: `البريد الإلكتروني ${email} مستخدم بالفعل` });
     }
 
-    //  تشيك مسبق على رقم الموظف
-    const empNumExists = await Employee.findOne({ employeeNumber }).session(session);
-    if (empNumExists) {
-      return res.status(400).json({ message: "رقم الموظف مستخدم بالفعل" });
+    // 👤 تحقق من رقم الموظف
+    const existingEmployee = await Employee.findOne({ employeeNumber }).session(session);
+    if (existingEmployee) {
+      return res.status(400).json({ message: `رقم الموظف ${employeeNumber} مستخدم بالفعل` });
     }
 
-    // إنشاء المستخدم
-    const user = await User.create([{ name, email, password, role }], { session });
+    // 🧾 المدد
+    const contractDuration = contractDurationId
+      ? await Contract.findById(contractDurationId).session(session)
+      : null;
 
-    // إنشاء الموظف
+    const residencyDuration = residencyDurationId
+      ? await ResidencyYear.findById(residencyDurationId).session(session)
+      : null;
+
+    // 👨‍💻 إنشاء المستخدم
+    const user = await User.create([{ name, email, password, role: role || "EMPLOYEE" }], { session });
+
+    // 👷 إنشاء الموظف
     let employee = await Employee.create([{
       name,
       jobTitle,
@@ -130,18 +141,20 @@ exports.createEmployee = async (req, res) => {
       department,
       manager,
       employmentType,
-      contract: { start: contractStart, duration: contractDurationId },
-      residency: { 
-          nationality: residencyNationality,  
-        start: residencyStart, 
-        duration: residencyDurationId,
-        residencyNumber: residencyAdditionNumber,
-      // رقم الإضافة
-        issuingAuthority: residencyIssuingAuthority,  // الجهة المصدرة
-        insuranceNumber: residencyInsuranceNumber,    // الرقم التأميني
-        residencyType: residencyType                  // نوع الإقامة
+      contract: {
+        start: contractStart || null,
+        duration: contractDuration?._id || null
       },
-      workHoursPerWeek,
+      residency: {
+        nationality: residencyNationality || "",
+        start: residencyStart || null,
+        duration: residencyDuration?._id || null,
+        additionNumber: residencyAdditionNumber || "",
+        issuingAuthority: residencyIssuingAuthority || "",
+        insuranceNumber: residencyInsuranceNumber || "",
+        type: residencyType || ""
+      },
+      workHoursPerWeek: workHoursPerWeek || 0,
       workplace,
       salary,
       user: user[0]._id
@@ -149,14 +162,39 @@ exports.createEmployee = async (req, res) => {
 
     employee = employee[0];
 
-    // جلب رصيد الإجازات الافتراضي
+    // 📅 حساب نهاية العقد تلقائيًا
+    if (employee.contract.start && contractDuration) {
+      const end = new Date(employee.contract.start);
+      if (contractDuration.unit === "years") {
+        end.setFullYear(end.getFullYear() + contractDuration.duration);
+      } else if (contractDuration.unit === "months") {
+        end.setMonth(end.getMonth() + contractDuration.duration);
+      }
+      employee.contract.end = end;
+    }
+
+    // 📅 حساب نهاية الإقامة تلقائيًا
+    if (employee.residency.start && residencyDuration) {
+      const end = new Date(employee.residency.start);
+      end.setFullYear(end.getFullYear() + residencyDuration.year);
+      employee.residency.end = end;
+    }
+
+    await employee.save({ session });
+
+    // 🕓 إنشاء رصيد الإجازات
     const companyLeaves = await LeaveBalance.findOne({ employee: null }).session(session);
     if (!companyLeaves) {
       throw new Error("رصيد الإجازات الافتراضي للشركة غير محدد");
     }
 
-    const totalLeaveBalance = companyLeaves.annual + companyLeaves.sick + companyLeaves.marriage +
-                              companyLeaves.emergency + companyLeaves.maternity + companyLeaves.unpaid;
+    const totalLeaveBalance =
+      companyLeaves.annual +
+      companyLeaves.sick +
+      companyLeaves.marriage +
+      companyLeaves.emergency +
+      companyLeaves.maternity +
+      companyLeaves.unpaid;
 
     await LeaveBalance.create([{
       employee: employee._id,
@@ -172,28 +210,25 @@ exports.createEmployee = async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
+    // 🌟 Populate للعرض
     const populatedEmployee = await Employee.findById(employee._id)
       .populate("contract.duration")
       .populate("residency.duration");
 
-    res.status(201).json({ user: user[0], employee: populatedEmployee });
+    res.status(201).json({
+      message: "✅ تم إنشاء الموظف بنجاح",
+      user: user[0],
+      employee: populatedEmployee
+    });
 
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-
-    if (error.code === 11000) {
-      if (error.keyPattern?.employeeNumber) {
-        return res.status(400).json({ message: "رقم الموظف مستخدم بالفعل" });
-      }
-      if (error.keyPattern?.email) {
-        return res.status(400).json({ message: "البريد الإلكتروني مستخدم بالفعل" });
-      }
-      return res.status(400).json({ message: "قيمة مكررة في البيانات" });
-    }
-
-    console.error(error);
-    res.status(500).json({ message: "حدث خطأ أثناء إنشاء الموظف", error: error.message });
+    console.error("❌ Error details:", error);
+    res.status(500).json({
+      message: "حدث خطأ أثناء إنشاء الموظف",
+      error: error.message
+    });
   }
 };
 

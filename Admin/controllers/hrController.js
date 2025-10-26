@@ -65,7 +65,7 @@ const getAllEmployees = async (req, res) => {
 //Hr can create employee
 
 
-exports.createEmployee = async (req, res) => {
+const createEmployee = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -94,36 +94,45 @@ exports.createEmployee = async (req, res) => {
       role
     } = req.body;
 
-    // 🔐 السماح فقط لـ HR
+    // ✅ تأكيد إن اللي بيضيف HR فقط
     if (req.user.role !== "HR") {
       return res.status(403).json({ message: "ليس لديك صلاحية لإضافة موظف جديد" });
     }
 
-    // ✉️ تحقق من البريد
+    // ✅ تأكد من وجود البريد الإلكتروني مسبقًا
     const existingUser = await User.findOne({ email }).session(session);
     if (existingUser) {
       return res.status(400).json({ message: `البريد الإلكتروني ${email} مستخدم بالفعل` });
     }
 
-    // 👤 تحقق من رقم الموظف
+    // ✅ تأكد من عدم تكرار رقم الموظف
     const existingEmployee = await Employee.findOne({ employeeNumber }).session(session);
     if (existingEmployee) {
       return res.status(400).json({ message: `رقم الموظف ${employeeNumber} مستخدم بالفعل` });
     }
 
-    // 🧾 المدد
-    const contractDuration = contractDurationId
-      ? await Contract.findById(contractDurationId).session(session)
-      : null;
+    // ✅ استرجاع بيانات العقد (اختياري)
+    let contractDuration = null;
+    if (contractDurationId) {
+      contractDuration = await Contract.findById(contractDurationId).session(session);
+      if (!contractDuration) {
+        return res.status(400).json({ message: "لم يتم العثور على مدة العقد." });
+      }
+    }
 
-    const residencyDuration = residencyDurationId
-      ? await ResidencyYear.findById(residencyDurationId).session(session)
-      : null;
+    // ✅ استرجاع بيانات الإقامة (اختياري)
+    let residencyDuration = null;
+    if (residencyDurationId) {
+      residencyDuration = await ResidencyYear.findById(residencyDurationId).session(session);
+      if (!residencyDuration) {
+        return res.status(400).json({ message: "لم يتم العثور على مدة الإقامة." });
+      }
+    }
 
-    // 👨‍💻 إنشاء المستخدم
+    // ✅ إنشاء المستخدم
     const user = await User.create([{ name, email, password, role: role || "EMPLOYEE" }], { session });
 
-    // 👷 إنشاء الموظف
+    // ✅ إنشاء الموظف
     let employee = await Employee.create([{
       name,
       jobTitle,
@@ -152,7 +161,7 @@ exports.createEmployee = async (req, res) => {
 
     employee = employee[0];
 
-    // 📅 حساب نهاية العقد تلقائيًا
+    // ✅ حساب تاريخ نهاية العقد تلقائيًا
     if (employee.contract.start && contractDuration) {
       const end = new Date(employee.contract.start);
       if (contractDuration.unit === "years") {
@@ -163,7 +172,7 @@ exports.createEmployee = async (req, res) => {
       employee.contract.end = end;
     }
 
-    // 📅 حساب نهاية الإقامة تلقائيًا
+    // ✅ حساب تاريخ نهاية الإقامة تلقائيًا
     if (employee.residency.start && residencyDuration) {
       const end = new Date(employee.residency.start);
       end.setFullYear(end.getFullYear() + residencyDuration.year);
@@ -172,7 +181,7 @@ exports.createEmployee = async (req, res) => {
 
     await employee.save({ session });
 
-    // 🕓 إنشاء رصيد الإجازات
+    // ✅ إنشاء رصيد الإجازات الافتراضي
     const companyLeaves = await LeaveBalance.findOne({ employee: null }).session(session);
     if (!companyLeaves) {
       throw new Error("رصيد الإجازات الافتراضي للشركة غير محدد");
@@ -200,13 +209,13 @@ exports.createEmployee = async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
-    // 🌟 Populate للعرض
+    // ✅ جلب الموظف بعد الـ populate
     const populatedEmployee = await Employee.findById(employee._id)
       .populate("contract.duration")
       .populate("residency.duration");
 
     res.status(201).json({
-      message: "✅ تم إنشاء الموظف بنجاح",
+      message: "تم إنشاء الموظف بنجاح",
       user: user[0],
       employee: populatedEmployee
     });
