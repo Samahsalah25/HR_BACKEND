@@ -20,7 +20,7 @@ const employeeSchema = new mongoose.Schema(
       start: { type: Date },
       duration: { type: mongoose.Schema.Types.ObjectId, ref: 'ResidencyYear' },
       end: { type: Date },
-      AdditionNumber: { type: String },          // رقم الإقامة
+      residencyNumber: { type: String },          // رقم الإقامة
       issuingAuthority: { type: String },        // الجهة المصدرة
       insuranceNumber: { type: String },         // الرقم التأميني
       residencyType: { type: String }            // نوع الإقامة

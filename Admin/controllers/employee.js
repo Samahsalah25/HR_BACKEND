@@ -135,7 +135,8 @@ exports.createEmployee = async (req, res) => {
           nationality: residencyNationality,  
         start: residencyStart, 
         duration: residencyDurationId,
-        additionNumber: residencyAdditionNumber,      // رقم الإضافة
+        residencyNumber: residencyAdditionNumber,
+      // رقم الإضافة
         issuingAuthority: residencyIssuingAuthority,  // الجهة المصدرة
         insuranceNumber: residencyInsuranceNumber,    // الرقم التأميني
         residencyType: residencyType                  // نوع الإقامة
