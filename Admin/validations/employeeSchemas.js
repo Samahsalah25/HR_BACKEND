@@ -118,7 +118,9 @@ const updateEmployeeSchema = Joi.object({
   residencyIssuingAuthority: Joi.string().allow(""),
   residencyInsuranceNumber: Joi.string().allow(""),
   residencyType: Joi.string().allow(""),
-  nationality: Joi.string().allow(""),
+ residencyNationality: Joi.string().allow("").messages({
+  "string.base": "الجنسية يجب أن تكون نص"
+}),
 
   workHoursPerWeek: Joi.number(),
   workplace: Joi.string().hex().length(24),
