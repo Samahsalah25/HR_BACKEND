@@ -320,49 +320,56 @@ const getEmployeeById = async (req, res) => {
       .populate("department", "name")
       .populate("manager", "name")
       .populate("contract.duration", "duration unit")
-      .populate("residency.duration", "duration unit")
-      .populate("workplace", "name");
+      .populate("residency.duration", "duration unit year")
+      .populate("workplace", "name location");
 
     if (!employee) {
       return res.status(404).json({ message: "الموظف غير موجود" });
     }
 
-    // ✅ هنا هنرجع نسخة كاملة للـ frontend
+    // ✅ نجهز البيانات بشكل منسق للـ frontend
     const result = {
       id: employee._id,
       name: employee.name,
-      email: employee.user?.email,
-      role: employee.user?.role,
-      employeeNumber: employee.employeeNumber,
-      jobTitle: employee.jobTitle,
-
+      email: employee.user?.email || "",
+      role: employee.user?.role || "",
+      employeeNumber: employee.employeeNumber || "",
+      jobTitle: employee.jobTitle || "",
       department: employee.department?._id || null,
-      departmentName: employee.department?.name || null,
-
+      departmentName: employee.department?.name || "",
       manager: employee.manager?._id || null,
-      managerName: employee.manager?.name || null,
-
-      employmentType: employee.employmentType,
-
-      contractStart: employee.contract?.start,
-      contractEnd: employee.contract?.end,
-      contractDurationId: employee.contract?.duration?._id || null,
-      contractDuration: employee.contract?.duration
-        ? `${employee.contract.duration.duration} ${employee.contract.duration.unit === "years" ? "سنة" : "شهر"}`
-        : null,
-
-      residencyStart: employee.residency?.start,
-      residencyEnd: employee.residency?.end,
-      residencyDurationId: employee.residency?.duration?._id || null,
-      residencyDuration: employee.residency?.duration
-        ? `${employee.residency.duration.duration} ${employee.residency.duration.unit === "years" ? "سنة" : "شهر"}`
-        : null,
-
+      managerName: employee.manager?.name || "",
+      employmentType: employee.employmentType || "",
+      workHoursPerWeek: employee.workHoursPerWeek || "",
       workplace: employee.workplace?._id || null,
-      workplaceName: employee.workplace?.name || null,
+      workplaceName: employee.workplace?.name || "",
 
-      workHoursPerWeek: employee.workHoursPerWeek,
+      // 🧾 العقد
+      contractStart: employee.contract?.start || null,
+      contractEnd: employee.contract?.end || null,
+      contractDurationId: employee.contract?.duration?._id || null,
+      contractDurationLabel: employee.contract?.duration
+        ? `${employee.contract.duration.duration} ${
+            employee.contract.duration.unit === "years" ? "سنة" : "شهر"
+          }`
+        : null,
 
+      // 🪪 بيانات الإقامة
+      residencyStart: employee.residency?.start || null,
+      residencyEnd: employee.residency?.end || null,
+      residencyDurationId: employee.residency?.duration?._id || null,
+      residencyDurationLabel: employee.residency?.duration
+        ? `${employee.residency.duration.duration} ${
+            employee.residency.duration.unit === "years" ? "سنة" : "شهر"
+          }`
+        : null,
+      residencyType: employee.residency?.type || "",
+      residencyNationality: employee.residency?.nationality || "",
+      residencyAdditionNumber: employee.residency?.additionNumber || "",
+      residencyIssuingAuthority: employee.residency?.issuingAuthority || "",
+      residencyInsuranceNumber: employee.residency?.insuranceNumber || "",
+
+      // 💰 الراتب
       salary: {
         base: employee.salary?.base || 0,
         housingAllowance: employee.salary?.housingAllowance || 0,
@@ -371,10 +378,10 @@ const getEmployeeById = async (req, res) => {
       },
     };
 
-    res.json(result);
+    res.status(200).json(result);
   } catch (err) {
     console.error("❌ خطأ في getEmployeeById:", err);
-    res.status(500).json({ message: "حصل خطأ في السيرفر" });
+    res.status(500).json({ message: "حدث خطأ في السيرفر" });
   }
 };
 
