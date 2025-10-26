@@ -508,7 +508,7 @@ const updateEmployee = async (req, res) => {
     const {
       name,
       email,
-      password,
+      
       jobTitle,
       employeeNumber,
       department,
@@ -526,7 +526,6 @@ const updateEmployee = async (req, res) => {
       workHoursPerWeek,
       workplace,
       salary,
-      role
     } = req.body;
 
     // تأكيد الصلاحيات
@@ -548,8 +547,7 @@ const updateEmployee = async (req, res) => {
     if (employee.user) {
       if (name) employee.user.name = name;
       if (email) employee.user.email = email;
-      if (password) employee.user.password = password; // هيتعمل له hash في الـ model
-      if (role) employee.user.role = role;
+      
       await employee.user.save();
     }
 

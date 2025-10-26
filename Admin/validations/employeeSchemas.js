@@ -132,7 +132,6 @@ const updateEmployeeSchema = Joi.object({
     otherAllowance: Joi.number().min(0)
   }),
 
-  role: Joi.string().valid('ADMIN', 'HR', 'EMPLOYEE', 'Manager')
 }).min(1);
 
 module.exports = {
