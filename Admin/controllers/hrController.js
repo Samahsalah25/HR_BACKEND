@@ -529,9 +529,9 @@ const updateEmployee = async (req, res) => {
     } = req.body;
 
     // تأكيد الصلاحيات
-    if (req.user.role !== "HR") {
-      return res.status(403).json({ message: "ليس لديك صلاحية لتعديل بيانات الموظف" });
-    }
+    // if (req.user.role !== "HR") {
+    //   return res.status(403).json({ message: "ليس لديك صلاحية لتعديل بيانات الموظف" });
+    // }
 
     // جلب الموظف مع populate
     let employee = await Employee.findById(id)
