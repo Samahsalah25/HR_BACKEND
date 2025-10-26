@@ -65,7 +65,7 @@ const getAllEmployees = async (req, res) => {
 //Hr can create employee
 
 
-exports.createEmployee = async (req, res) => {
+const createEmployee = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
