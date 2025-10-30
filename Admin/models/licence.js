@@ -17,12 +17,11 @@ const recordSchema = new mongoose.Schema({
   type: mongoose.Schema.Types.ObjectId, 
   ref: 'Branch' 
 },
-
-
-
               
-  issueDate: { type: Date },               
-  expiryDate: { type: Date },               
+                          
+                
+issueDate: { type: Date },               
+expiryDate: { type: Date },               
   status: { 
     type: String, 
     enum: ['متاح', 'منتهي'], 
