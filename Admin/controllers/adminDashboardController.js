@@ -293,32 +293,36 @@ exports.getBranchesDetails = async (req, res) => {
 //   });
 // }
 // };
-
 exports.getBranchesWithDepartments = async (req, res) => {
   try {
+    // 1️⃣ كل الأقسام في الشركة (حتى بدون موظفين)
+    const allDepartments = await Department.find().lean();
+
+    // 2️⃣ كل الفروع
     const branches = await Branch.find();
-    const allDepartments = await Department.find().lean(); // 👈 كل الأقسام
+
+    // 3️⃣ كل الموظفين مع بيانات القسم والمدير
     const employees = await Employee.find()
       .populate("department manager", "name description")
+      .populate("workplace", "name")
       .lean();
 
     const branchDetails = [];
 
+    // 4️⃣ بناء تفاصيل الفروع
     for (const branch of branches) {
-      // الأقسام اللي ليها موظفين في الفرع دا
       const employeesInBranch = employees.filter(
-        (emp) => emp.workplace?.toString() === branch._id.toString()
+        (emp) => emp.workplace?._id?.toString() === branch._id.toString()
       );
 
-      const departmentsInBranch = new Map();
+      const departmentsMap = new Map();
 
-      // ربط الأقسام اللي ليها موظفين
       for (const emp of employeesInBranch) {
         const dept = emp.department;
         if (!dept) continue;
 
-        if (!departmentsInBranch.has(dept._id.toString())) {
-          departmentsInBranch.set(dept._id.toString(), {
+        if (!departmentsMap.has(dept._id.toString())) {
+          departmentsMap.set(dept._id.toString(), {
             departmentId: dept._id,
             departmentName: dept.name,
             description: dept.description,
@@ -327,53 +331,25 @@ exports.getBranchesWithDepartments = async (req, res) => {
           });
         }
 
-        const dep = departmentsInBranch.get(dept._id.toString());
-        dep.employeeCount += 1;
+        departmentsMap.get(dept._id.toString()).employeeCount += 1;
       }
-
-      // 🔥 أضف أي قسم مش متسجل في الخريطة بس تابع للفرع دا أو ملوش فرع
-      allDepartments.forEach((dept) => {
-        const exists = [...departmentsInBranch.keys()].includes(
-          dept._id.toString()
-        );
-
-        // لو القسم مش متضاف لسه، ضيفه كقسم بدون موظفين
-        if (!exists && (!dept.branch || dept.branch.toString() === branch._id.toString())) {
-          departmentsInBranch.set(dept._id.toString(), {
-            departmentId: dept._id,
-            departmentName: dept.name,
-            description: dept.description,
-            manager: "غير محدد",
-            employeeCount: 0,
-          });
-        }
-      });
 
       branchDetails.push({
         branchId: branch._id,
         branchName: branch.name,
-        departments: [...departmentsInBranch.values()],
+        departments: Array.from(departmentsMap.values()),
       });
     }
 
-    // 🔥 الأقسام اللي ملهاش فرع أصلاً
-    const unassignedDepartments = allDepartments.filter((dept) => !dept.branch);
-    const unassigned = {
-      branchId: null,
-      branchName: "بدون فرع",
-      departments: unassignedDepartments.map((dept) => ({
+    // 5️⃣ الإخراج النهائي
+    res.status(200).json({
+      success: true,
+      allDepartments: allDepartments.map((dept) => ({
         departmentId: dept._id,
         departmentName: dept.name,
         description: dept.description,
-        manager: "غير محدد",
-        employeeCount: 0,
       })),
-    };
-
-    res.status(200).json({
-      success: true,
-      totalBranches: branchDetails.length + 1,
-      branches: [...branchDetails, unassigned],
+      branches: branchDetails,
     });
   } catch (error) {
     console.error("Error fetching branches with departments:", error.message);
@@ -383,6 +359,7 @@ exports.getBranchesWithDepartments = async (req, res) => {
     });
   }
 };
+
 
 
 exports.getEmployeesSummary = async (req, res) => {
