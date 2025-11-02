@@ -232,6 +232,67 @@ exports.getBranchesDetails = async (req, res) => {
   }
 }; 
 
+// exports.getBranchesWithDepartments = async (req, res) => {
+//   try {
+//     const branches = await Branch.find();
+
+//     const branchDetails = [];
+
+//     for (const branch of branches) {
+//       // نجيب كل الأقسام اللي ليها موظفين في الفرع ده
+//       const employeesInBranch = await Employee.find({ workplace: branch._id }).populate("department manager", "name description");
+
+//       // نجهز خريطة الأقسام داخل الفرع
+//       const departmentsMap = new Map();
+
+//       for (const emp of employeesInBranch) {
+//         const deptId = emp.department?._id?.toString();
+//         if (!deptId) continue;
+
+//         if (!departmentsMap.has(deptId)) {
+//           departmentsMap.set(deptId, {
+//             departmentId: emp.department._id,
+//             departmentName: emp.department.name,
+//             description: emp.department.description,
+//             employees: [],
+//           });
+//         }
+
+//         departmentsMap.get(deptId).employees.push(emp);
+//       }
+
+//       // نجهز الأقسام بالتفاصيل المطلوبة
+//       const departments = Array.from(departmentsMap.values()).map((dept) => {
+//         const manager = dept.employees.find((e) => !e.manager)?.name || "غير محدد";
+//         return {
+//           departmentId: dept.departmentId,
+//           departmentName: dept.departmentName,
+//           description: dept.description,
+//           manager,
+//           employeeCount: dept.employees.length,
+//         };
+//       });
+
+//       branchDetails.push({
+//         branchId: branch._id,
+//         branchName: branch.name,
+//         departments,
+//       });
+//     }
+
+//     res.status(200).json({
+//       success: true,
+//       totalBranches: branchDetails.length,
+//       branches: branchDetails,
+//     });
+//   }  catch (error) {
+//   console.error("Error fetching branches with departments:", error.message);
+//   res.status(500).json({
+//     success: false,
+//     message: "حدث خطأ أثناء جلب تفاصيل الفروع والأقسام",
+//   });
+// }
+// };
 exports.getBranchesWithDepartments = async (req, res) => {
   try {
     const branches = await Branch.find();
@@ -239,44 +300,51 @@ exports.getBranchesWithDepartments = async (req, res) => {
     const branchDetails = [];
 
     for (const branch of branches) {
-      // نجيب كل الأقسام اللي ليها موظفين في الفرع ده
-      const employeesInBranch = await Employee.find({ workplace: branch._id }).populate("department manager", "name description");
+      // نجيب كل الأقسام اللي تابعة للفرع ده (حتى لو مفيش موظفين)
+      const departments = await Department.find({ branch: branch._id });
 
-      // نجهز خريطة الأقسام داخل الفرع
-      const departmentsMap = new Map();
+      const departmentsWithEmployees = [];
 
-      for (const emp of employeesInBranch) {
-        const deptId = emp.department?._id?.toString();
-        if (!deptId) continue;
+      for (const dept of departments) {
+        // نجيب الموظفين في القسم ده داخل الفرع ده
+        const employees = await Employee.find({
+          workplace: branch._id,
+          department: dept._id,
+        });
 
-        if (!departmentsMap.has(deptId)) {
-          departmentsMap.set(deptId, {
-            departmentId: emp.department._id,
-            departmentName: emp.department.name,
-            description: emp.department.description,
-            employees: [],
-          });
-        }
+        const manager =
+          employees.find((e) => e.isManager)?.name || "غير محدد";
 
-        departmentsMap.get(deptId).employees.push(emp);
-      }
-
-      // نجهز الأقسام بالتفاصيل المطلوبة
-      const departments = Array.from(departmentsMap.values()).map((dept) => {
-        const manager = dept.employees.find((e) => !e.manager)?.name || "غير محدد";
-        return {
-          departmentId: dept.departmentId,
-          departmentName: dept.departmentName,
+        departmentsWithEmployees.push({
+          departmentId: dept._id,
+          departmentName: dept.name,
           description: dept.description,
           manager,
-          employeeCount: dept.employees.length,
-        };
-      });
+          employeeCount: employees.length,
+        });
+      }
 
       branchDetails.push({
         branchId: branch._id,
         branchName: branch.name,
-        departments,
+        departments: departmentsWithEmployees,
+      });
+    }
+
+    // كمان نجيب الأقسام اللي ملهاش فرع (يتيمة)
+    const orphanDepartments = await Department.find({ branch: { $exists: false } });
+
+    if (orphanDepartments.length > 0) {
+      branchDetails.push({
+        branchId: null,
+        branchName: "بدون فرع",
+        departments: orphanDepartments.map((dept) => ({
+          departmentId: dept._id,
+          departmentName: dept.name,
+          description: dept.description,
+          manager: "غير محدد",
+          employeeCount: 0,
+        })),
       });
     }
 
@@ -285,14 +353,15 @@ exports.getBranchesWithDepartments = async (req, res) => {
       totalBranches: branchDetails.length,
       branches: branchDetails,
     });
-  }  catch (error) {
-  console.error("Error fetching branches with departments:", error.message);
-  res.status(500).json({
-    success: false,
-    message: "حدث خطأ أثناء جلب تفاصيل الفروع والأقسام",
-  });
-}
+  } catch (error) {
+    console.error("Error fetching branches with departments:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "حدث خطأ أثناء جلب تفاصيل الفروع والأقسام",
+    });
+  }
 };
+
 
 exports.getEmployeesSummary = async (req, res) => {
   try {
