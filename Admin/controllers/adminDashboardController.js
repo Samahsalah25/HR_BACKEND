@@ -362,27 +362,74 @@ exports.getBranchesWithDepartments = async (req, res) => {
 
 
 
+// exports.getEmployeesSummary = async (req, res) => {
+//   try {
+//     const employees = await Employee.find()
+//       .populate("department", "name")
+//       .populate("contract.duration", "name") // ← نجيب اسم مدة العقد
+//       .lean();
+
+//     const summaries = [];
+
+//     for (const emp of employees) {
+//       // نحاول نجيب الإجازات
+//       const leaveBalance = await LeaveBalance.findOne({ employee: emp._id }).lean();
+
+//       summaries.push({
+//         name: emp.name || "غير محدد",
+//         employeeNumber: emp.employeeNumber || "غير محدد",
+//         department: emp.department?.name || "غير محدد",
+//         contractDurationName: emp.contract?.duration?.name || "غير محدد",
+//         contractPeriod:
+//           emp.contract?.start && emp.contract?.end
+//             ? `${new Date(emp.contract.start).toLocaleDateString("ar-EG")} - ${new Date(emp.contract.end).toLocaleDateString("ar-EG")}`
+//             : "غير محدد",
+//         carriedLeaves: leaveBalance?.remaining || 0,
+//       });
+//     }
+
+//     res.status(200).json({
+//       success: true,
+//       totalEmployees: summaries.length,
+//       employees: summaries,
+//     });
+//   } catch (error) {
+//     console.error("❌ خطأ أثناء جلب ملخص الموظفين:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "حدث خطأ أثناء جلب ملخص الموظفين",
+//       error: error.message,
+//     });
+//   }
+// };   
 exports.getEmployeesSummary = async (req, res) => {
   try {
     const employees = await Employee.find()
-      .populate("department", "name")
-      .populate("contract.duration", "name") // ← نجيب اسم مدة العقد
+      .populate("department", "name") // اسم القسم
+      .populate("contract.duration", "name") // مدة العقد
+      .populate({
+        path: "user", // نجيب المستخدم المرتبط بالموظف
+        select: "role", // نجيب فقط الدور (role)
+      })
       .lean();
 
     const summaries = [];
 
     for (const emp of employees) {
-      // نحاول نجيب الإجازات
+      // نحاول نجيب الإجازات الخاصة بالموظف
       const leaveBalance = await LeaveBalance.findOne({ employee: emp._id }).lean();
 
       summaries.push({
         name: emp.name || "غير محدد",
         employeeNumber: emp.employeeNumber || "غير محدد",
         department: emp.department?.name || "غير محدد",
+        role: emp.user?.role || "غير محدد", // ✅ أضفنا الدور
         contractDurationName: emp.contract?.duration?.name || "غير محدد",
         contractPeriod:
           emp.contract?.start && emp.contract?.end
-            ? `${new Date(emp.contract.start).toLocaleDateString("ar-EG")} - ${new Date(emp.contract.end).toLocaleDateString("ar-EG")}`
+            ? `${new Date(emp.contract.start).toLocaleDateString("ar-EG")} - ${new Date(
+                emp.contract.end
+              ).toLocaleDateString("ar-EG")}`
             : "غير محدد",
         carriedLeaves: leaveBalance?.remaining || 0,
       });
@@ -401,7 +448,7 @@ exports.getEmployeesSummary = async (req, res) => {
       error: error.message,
     });
   }
-};   
+};
 
      
 /// contract 
