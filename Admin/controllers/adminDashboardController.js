@@ -590,17 +590,18 @@ exports.getEmployeesByLeaveType = async (req, res) => {
 
 
 // ✅ عرض جميع بيانات الإقامة
+
 exports.getResidencyData = async (req, res) => {
   try {
     const employees = await Employee.find()
-      .populate("residency.duration", "name") // لو السنين موجودة كموديل منفصل
+      .populate("residency.duration", "year") 
       .select("name residency");
 
     const residencyList = employees.map((emp) => {
       const r = emp.residency || {};
       const today = new Date();
 
-      // حساب الحالة
+
       let status = "غير محددة";
       if (r.end) {
         const endDate = new Date(r.end);
@@ -614,17 +615,24 @@ exports.getResidencyData = async (req, res) => {
         name: emp.name || "لم يتم التحديد",
         additionNumber: r.additionNumber || "لم يتم التحديد",
         duration:
-          r.duration?.name || "لم يتم التحديد", // لو عندك موديل ResidencyYear فيه name
-        start: r.start ? r.start.toISOString().split("T")[0] : "لم يتم التحديد",
-        end: r.end ? r.end.toISOString().split("T")[0] : "لم يتم التحديد",
+          r.duration?.year ? `${r.duration.year} سنوات` : "لم يتم التحديد", 
+        start: r.start
+          ? new Date(r.start).toISOString().split("T")[0]
+          : "لم يتم التحديد",
+        end: r.end
+          ? new Date(r.end).toISOString().split("T")[0]
+          : "لم يتم التحديد",
         status,
       };
     });
 
     res.json({ success: true, residencyList });
   } catch (error) {
-    console.error("❌ Error fetching residency data:", error);
-    res.status(500).json({ success: false, message: "خطأ في جلب بيانات الإقامة" });
+    console.error(" Error fetching residency data:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "خطأ في جلب بيانات الإقامة", error: error.message });
   }
 };
+
 
