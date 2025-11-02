@@ -2,6 +2,7 @@ const Employee = require("../models/employee");
 const Branch = require("../models/branchSchema");
 const Department = require("../models/depaertment");
 const LeaveBalance =require("../models/leaveBalanceModel")
+const ResidencyYear = require("../models/ResidencyYear"); // لو عندك الموديل دا عشان نحسب السنين
 
 
 exports.getDashboardStats = async (req, res) => {
@@ -586,4 +587,44 @@ exports.getEmployeesByLeaveType = async (req, res) => {
   }
 };
 
+
+
+// ✅ عرض جميع بيانات الإقامة
+exports.getResidencyData = async (req, res) => {
+  try {
+    const employees = await Employee.find()
+      .populate("residency.duration", "name") // لو السنين موجودة كموديل منفصل
+      .select("name residency");
+
+    const residencyList = employees.map((emp) => {
+      const r = emp.residency || {};
+      const today = new Date();
+
+      // حساب الحالة
+      let status = "غير محددة";
+      if (r.end) {
+        const endDate = new Date(r.end);
+        const diffDays = (endDate - today) / (1000 * 60 * 60 * 24);
+        if (diffDays < 0) status = "منتهية";
+        else if (diffDays <= 30) status = "قرب الانتهاء";
+        else status = "سارية";
+      }
+
+      return {
+        name: emp.name || "لم يتم التحديد",
+        additionNumber: r.additionNumber || "لم يتم التحديد",
+        duration:
+          r.duration?.name || "لم يتم التحديد", // لو عندك موديل ResidencyYear فيه name
+        start: r.start ? r.start.toISOString().split("T")[0] : "لم يتم التحديد",
+        end: r.end ? r.end.toISOString().split("T")[0] : "لم يتم التحديد",
+        status,
+      };
+    });
+
+    res.json({ success: true, residencyList });
+  } catch (error) {
+    console.error("❌ Error fetching residency data:", error);
+    res.status(500).json({ success: false, message: "خطأ في جلب بيانات الإقامة" });
+  }
+};
 
