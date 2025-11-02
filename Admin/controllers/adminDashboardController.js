@@ -293,65 +293,87 @@ exports.getBranchesDetails = async (req, res) => {
 //   });
 // }
 // };
+
 exports.getBranchesWithDepartments = async (req, res) => {
   try {
     const branches = await Branch.find();
+    const allDepartments = await Department.find().lean(); // 👈 كل الأقسام
+    const employees = await Employee.find()
+      .populate("department manager", "name description")
+      .lean();
 
     const branchDetails = [];
 
     for (const branch of branches) {
-      // نجيب كل الأقسام اللي تابعة للفرع ده (حتى لو مفيش موظفين)
-      const departments = await Department.find({ branch: branch._id });
+      // الأقسام اللي ليها موظفين في الفرع دا
+      const employeesInBranch = employees.filter(
+        (emp) => emp.workplace?.toString() === branch._id.toString()
+      );
 
-      const departmentsWithEmployees = [];
+      const departmentsInBranch = new Map();
 
-      for (const dept of departments) {
-        // نجيب الموظفين في القسم ده داخل الفرع ده
-        const employees = await Employee.find({
-          workplace: branch._id,
-          department: dept._id,
-        });
+      // ربط الأقسام اللي ليها موظفين
+      for (const emp of employeesInBranch) {
+        const dept = emp.department;
+        if (!dept) continue;
 
-        const manager =
-          employees.find((e) => e.isManager)?.name || "غير محدد";
+        if (!departmentsInBranch.has(dept._id.toString())) {
+          departmentsInBranch.set(dept._id.toString(), {
+            departmentId: dept._id,
+            departmentName: dept.name,
+            description: dept.description,
+            manager: emp.manager ? emp.manager.name : "غير محدد",
+            employeeCount: 0,
+          });
+        }
 
-        departmentsWithEmployees.push({
-          departmentId: dept._id,
-          departmentName: dept.name,
-          description: dept.description,
-          manager,
-          employeeCount: employees.length,
-        });
+        const dep = departmentsInBranch.get(dept._id.toString());
+        dep.employeeCount += 1;
       }
+
+      // 🔥 أضف أي قسم مش متسجل في الخريطة بس تابع للفرع دا أو ملوش فرع
+      allDepartments.forEach((dept) => {
+        const exists = [...departmentsInBranch.keys()].includes(
+          dept._id.toString()
+        );
+
+        // لو القسم مش متضاف لسه، ضيفه كقسم بدون موظفين
+        if (!exists && (!dept.branch || dept.branch.toString() === branch._id.toString())) {
+          departmentsInBranch.set(dept._id.toString(), {
+            departmentId: dept._id,
+            departmentName: dept.name,
+            description: dept.description,
+            manager: "غير محدد",
+            employeeCount: 0,
+          });
+        }
+      });
 
       branchDetails.push({
         branchId: branch._id,
         branchName: branch.name,
-        departments: departmentsWithEmployees,
+        departments: [...departmentsInBranch.values()],
       });
     }
 
-    // كمان نجيب الأقسام اللي ملهاش فرع (يتيمة)
-    const orphanDepartments = await Department.find({ branch: { $exists: false } });
-
-    if (orphanDepartments.length > 0) {
-      branchDetails.push({
-        branchId: null,
-        branchName: "بدون فرع",
-        departments: orphanDepartments.map((dept) => ({
-          departmentId: dept._id,
-          departmentName: dept.name,
-          description: dept.description,
-          manager: "غير محدد",
-          employeeCount: 0,
-        })),
-      });
-    }
+    // 🔥 الأقسام اللي ملهاش فرع أصلاً
+    const unassignedDepartments = allDepartments.filter((dept) => !dept.branch);
+    const unassigned = {
+      branchId: null,
+      branchName: "بدون فرع",
+      departments: unassignedDepartments.map((dept) => ({
+        departmentId: dept._id,
+        departmentName: dept.name,
+        description: dept.description,
+        manager: "غير محدد",
+        employeeCount: 0,
+      })),
+    };
 
     res.status(200).json({
       success: true,
-      totalBranches: branchDetails.length,
-      branches: branchDetails,
+      totalBranches: branchDetails.length + 1,
+      branches: [...branchDetails, unassigned],
     });
   } catch (error) {
     console.error("Error fetching branches with departments:", error.message);
