@@ -105,9 +105,9 @@ exports.createEmployee = async (req, res) => {
     } = req.body;
 
     // 🔐 السماح فقط لـ HR
-    if (req.user.role !== "HR") {
-      return res.status(403).json({ message: "ليس لديك صلاحية لإضافة موظف جديد" });
-    }
+    // if (req.user.role !== "HR") {
+    //   return res.status(403).json({ message: "ليس لديك صلاحية لإضافة موظف جديد" });
+    // }
 
     // ✉️ تحقق من البريد
     const existingUser = await User.findOne({ email }).session(session);
