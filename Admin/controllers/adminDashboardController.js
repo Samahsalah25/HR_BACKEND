@@ -75,17 +75,17 @@ exports.getDashboardStats = async (req, res) => {
 
 // احذف const fetch = require("node-fetch");
 
-async function getAddressFromCoordinates(lat, lng) {
-  try {
-    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ar`;
-    const res = await fetch(url);
-    const data = await res.json();
-    return data.display_name || "غير محدد";
-  } catch (error) {
-    console.error("Geocoding error:", error.message);
-    return "غير محدد";
-  }
-}
+// async function getAddressFromCoordinates(lat, lng) {
+//   try {
+//     const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ar`;
+//     const res = await fetch(url);
+//     const data = await res.json();
+//     return data.display_name || "غير محدد";
+//   } catch (error) {
+//     console.error("Geocoding error:", error.message);
+//     return "غير محدد";
+//   }
+// }
 
 exports.getCompanySummary = async (req, res) => {
   try {
@@ -98,16 +98,16 @@ exports.getCompanySummary = async (req, res) => {
       .populate("workplace", "name location")
       .populate("department", "name");
 
-    // معالجة الفروع
     const branchData = await Promise.all(
       branches.map(async (branch) => {
+        // تصفية الموظفين التابعين للفرع
         const branchEmployees = employees.filter(
           (emp) =>
             emp.workplace &&
             emp.workplace._id.toString() === branch._id.toString()
         );
 
-        // الأقسام اللي في الفرع
+        // جمع الأقسام وعدد الموظفين فيها
         const departmentMap = {};
         branchEmployees.forEach((emp) => {
           if (emp.department) {
@@ -116,11 +116,14 @@ exports.getCompanySummary = async (req, res) => {
           }
         });
 
-        // تحديد الإحداثيات وتحويلها إلى عنوان نصي
+        // تحديد الإحداثيات وتحويلها لعنوان نصي
         let locationName = "غير محدد";
-        if (branch.location?.coordinates?.length === 2) {
-          const [lng, lat] = branch.location.coordinates;
-          locationName = await getAddressFromCoordinates(lat, lng);
+        if (
+          branch.location?.coordinates &&
+          branch.location.coordinates.length === 2
+        ) {
+          const [lng, lat] = branch.location.coordinates; // DB: [lng, lat]
+          locationName = await getAddressFromCoordinates(lat, lng); // API: [lat, lng]
         }
 
         return {
@@ -154,6 +157,20 @@ exports.getCompanySummary = async (req, res) => {
     });
   }
 };
+
+// الدالة نفسها لـ Nominatim
+async function getAddressFromCoordinates(lat, lng) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ar`;
+    const res = await fetch(url);
+    const data = await res.json();
+    return data.display_name || "غير محدد";
+  } catch (error) {
+    console.error("Geocoding error:", error.message);
+    return "غير محدد";
+  }
+}
+
 
 exports.getNewEmployees = async (req, res) => {
   try {
