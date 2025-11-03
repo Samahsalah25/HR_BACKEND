@@ -89,6 +89,7 @@ exports.getDashboardStats = async (req, res) => {
 // }
 
 
+
 exports.getCompanySummary = async (req, res) => {
   try {
     const totalEmployees = await Employee.countDocuments();
@@ -100,7 +101,6 @@ exports.getCompanySummary = async (req, res) => {
       .populate("workplace", "name location")
       .populate("department", "name");
 
-    // معالجة الفروع
     const branchData = await Promise.all(
       branches.map(async (branch) => {
         const branchEmployees = employees.filter(
@@ -109,7 +109,7 @@ exports.getCompanySummary = async (req, res) => {
             emp.workplace._id.toString() === branch._id.toString()
         );
 
-        // الأقسام في الفرع
+        // الأقسام اللي في الفرع
         const departmentMap = {};
         branchEmployees.forEach((emp) => {
           if (emp.department) {
@@ -118,19 +118,12 @@ exports.getCompanySummary = async (req, res) => {
           }
         });
 
-        // تحديد العنوان من الإحداثيات
+        // تحديد الإحداثيات وتحويلها إلى عنوان نصي
         let locationName = "غير محدد";
-        if (
-          branch.location?.coordinates &&
-          branch.location.coordinates.length === 2
-        ) {
-          try {
-            const [lng, lat] = branch.location.coordinates;
-            locationName = await getAddressFromCoordinates(lat, lng);
-          } catch (err) {
-            console.error("Geocoding error:", err.message);
-            locationName = "غير محدد";
-          }
+        if (branch.location?.coordinates?.length === 2) {
+          // ⚠️ هنا نتاكد من ترتيب lat/lng حسب ما هو مخزن في الـ DB
+          const [lat, lng] = branch.location.coordinates; // لو مخزنة lat, lng
+          locationName = await getAddressFromCoordinates(lat, lng);
         }
 
         return {
@@ -171,7 +164,6 @@ exports.getCompanySummary = async (req, res) => {
   try {
     const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ar`;
     const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
     const data = await res.json();
     return data.display_name || "غير محدد";
   } catch (error) {
