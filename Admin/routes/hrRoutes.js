@@ -18,7 +18,7 @@ router.get('/getEmployeesByBranch' ,authenticate ,authorizeRoles('HR') ,getEmplo
 
 // get contrcacts
 
-router.get('/getContractsStats' ,authenticate ,authorizeRoles('HR'),getContractsStats) 
+router.get('/getContractsStats' ,authenticate ,authorizeRoles('HR' ,'ADMIN'),getContractsStats) 
 router.get('/getAllContracts' ,getAllContracts)
 router.get('/getOneemployee/:id' , getEmployeeById)
 router.post('/' ,validate(createEmployeeSchema) ,createEmployee)
