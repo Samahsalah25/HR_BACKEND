@@ -163,9 +163,19 @@ exports.getCompanySummary = async (req, res) => {
 async function getAddressFromCoordinates(lat, lng) {
   try {
     const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ar`;
-    const { data } = await axios.get(url);
-    console.log('data' ,data)
-    return data.display_name || "غير محدد";
+
+    const { data } = await axios.get(url, {
+      headers: {
+       "User-Agent": "HR-Dashboard/1.0 (malaksalah@gmail.com)"
+
+      }
+    });
+
+    if (data && data.display_name) {
+      return data.display_name;
+    } else {
+      return "غير محدد";
+    }
   } catch (error) {
     console.error("Geocoding error:", error.message);
     return "غير محدد";
