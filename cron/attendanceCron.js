@@ -104,8 +104,8 @@ const setupAttendanceCron = () => {
         const [startHour, startMinute] = branch.workStart.split(":").map(Number);
 
         // بعد ساعة من بداية الدوام
-        const cronHour = startHour + Math.floor((startMinute + 60) / 60);
-        const cronMinute = (startMinute + 60) % 60;
+        const cronHour = startHour + Math.floor((startMinute + 1) / 60);
+        const cronMinute = (startMinute + 1) % 60;
 
         // إنشاء الكرون
         cron.schedule(`${cronMinute} ${cronHour} * * *`, async () => {
