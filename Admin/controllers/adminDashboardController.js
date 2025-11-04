@@ -4,7 +4,8 @@ const Department = require("../models/depaertment");
 const LeaveBalance =require("../models/leaveBalanceModel")
 const ResidencyYear = require("../models/ResidencyYear"); // لو عندك الموديل دا عشان نحسب السنين
 // utils/geocoding.js
-const  fetch =require("node-cron");
+const axios = require("axios");
+
 
 exports.getDashboardStats = async (req, res) => {
   try {
@@ -121,8 +122,9 @@ exports.getCompanySummary = async (req, res) => {
         // تحديد الإحداثيات وتحويلها إلى عنوان نصي
         let locationName = "غير محدد";
         if (branch.location?.coordinates?.length === 2) {
-          // ⚠️ هنا نتاكد من ترتيب lat/lng حسب ما هو مخزن في الـ DB
-          const [lat, lng] = branch.location.coordinates; // لو مخزنة lat, lng
+          // ⚠️ تصحيح ترتيب الإحداثيات [lng, lat] → Nominatim يحتاج lat, lng
+          const [lng, lat] = branch.location.coordinates;
+          console.log(`Branch: ${branch.name}, Lat: ${lat}, Lng: ${lng}`); // للتأكد
           locationName = await getAddressFromCoordinates(lat, lng);
         }
 
@@ -158,19 +160,17 @@ exports.getCompanySummary = async (req, res) => {
   }
 };
 
-
-
- async function getAddressFromCoordinates(lat, lng) {
+async function getAddressFromCoordinates(lat, lng) {
   try {
     const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ar`;
-    const res = await fetch(url);
-    const data = await res.json();
+    const { data } = await axios.get(url);
     return data.display_name || "غير محدد";
   } catch (error) {
     console.error("Geocoding error:", error.message);
     return "غير محدد";
   }
 }
+
 
 
 exports.getNewEmployees = async (req, res) => {
