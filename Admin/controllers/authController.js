@@ -57,16 +57,28 @@ exports.login = async (req, res) => {
 };
 
 // @desc Logout user
+// controllers/authController.js أو حسب مكانك
 exports.logout = (req, res) => {
-  res.cookie("token", "", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-    path: "/", // مهم جداً عشان يمسح من أي مكان
-    expires: new Date(0), // امسح
-  });
-  res.json({ message: "Logged out successfully" });
+  try {
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: true,      // لازم نفس القيمة زي login
+      sameSite: "none",  // لازم نفس القيمة زي login
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "تم تسجيل الخروج بنجاح",
+    });
+  } catch (error) {
+    console.error("Logout error:", error);
+    res.status(500).json({
+      success: false,
+      message: "حدث خطأ أثناء تسجيل الخروج",
+    });
+  }
 };
+
 
 // controllers/authController.js
 exports.getMe = async (req, res) => {
