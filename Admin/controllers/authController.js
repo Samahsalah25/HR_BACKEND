@@ -56,7 +56,7 @@ exports.login = async (req, res) => {
   }
 };
 
-// @desc Logout user
+
 // controllers/authController.js أو حسب مكانك
 exports.logout = (req, res) => {
   try {

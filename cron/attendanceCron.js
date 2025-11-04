@@ -76,8 +76,6 @@
 
 // module.exports = setupAttendanceCron;
 
-
-
 const { DateTime } = require("luxon");
 const cron = require("node-cron");
 const Branch = require("../Admin/models/branchSchema");
@@ -85,46 +83,64 @@ const Employee = require("../Admin/models/employee");
 const Attendance = require("../Admin/models/Attendance");
 const Request = require("../Admin/models/requestModel");
 
-function isWeekend(day, weekendDays) {
-  return weekendDays.includes(day);
+// مجموعة لحفظ الفروع اللي اتعملها كرون بالفعل
+const scheduledJobs = new Set();
+
+function isWeekend(dayName, weekendDays) {
+  return weekendDays.includes(dayName);
 }
 
 const setupAttendanceCron = () => {
   Branch.find()
     .then(branches => {
       branches.forEach(branch => {
+        // منع تكرار الكرون لنفس الفرع
+        if (scheduledJobs.has(branch._id.toString())) {
+          console.log(`⚠️ Cron job already exists for branch: ${branch.branchName}`);
+          return;
+        }
+        scheduledJobs.add(branch._id.toString());
+
         const [startHour, startMinute] = branch.workStart.split(":").map(Number);
 
-        // ⏰ بعد ساعة من بداية الدوام
+        // بعد ساعة من بداية الدوام
         const cronHour = startHour + Math.floor((startMinute + 60) / 60);
         const cronMinute = (startMinute + 60) % 60;
 
+        // إنشاء الكرون
         cron.schedule(`${cronMinute} ${cronHour} * * *`, async () => {
           try {
             const now = DateTime.now().setZone("Asia/Riyadh");
-            console.log(`🏁 Running absence cron for branch: ${branch.name} at ${now.toFormat("HH:mm")}`);
+            const todayName = now.setLocale("ar").weekdayLong; // اسم اليوم بالعربي (مثلاً الجمعة)
+            console.log(`🏁 Running absence cron for branch: ${branch.branchName} (${todayName}) at ${now.toFormat("HH:mm")}`);
 
-            const dayOfWeek = now.weekday % 7;
-            if (isWeekend(dayOfWeek, branch.weekendDays)) return;
+            // لو اليوم دا إجازة أسبوعية للفرع
+            if (isWeekend(todayName, branch.weekendDays)) {
+              console.log(`⛱️ Skipping branch ${branch.branchName} (weekend: ${todayName})`);
+              return;
+            }
 
+            // جلب الموظفين في الفرع
             const employees = await Employee.find({ workplace: branch._id });
+            console.log(`👥 Found ${employees.length} employees in ${branch.branchName}`);
 
             for (const employee of employees) {
               const startOfDay = now.startOf("day").toJSDate();
               const endOfDay = now.endOf("day").toJSDate();
 
-              // ✅ تحقق إن ما فيش سجل لنفس اليوم قبل ما تضيف
+              // تحقق إن ما فيش سجل Attendance لنفس اليوم
               const existing = await Attendance.findOne({
                 employee: employee._id,
+                branch: branch._id,
                 date: { $gte: startOfDay, $lte: endOfDay },
               });
 
               if (existing) {
-                console.log(`↩️ Skipping ${employee._id} (already has record today)`);
+                console.log(`↩️ Skipping ${employee.fullName || employee._id} (record exists today)`);
                 continue;
               }
 
-              // ⛱️ تحقق من الإجازة المقبولة
+              // تحقق من وجود إجازة مقبولة للموظف
               const leave = await Request.findOne({
                 employee: employee._id,
                 type: "إجازة",
@@ -133,26 +149,31 @@ const setupAttendanceCron = () => {
                 "leave.endDate": { $gte: startOfDay },
               });
 
-              if (!leave) {
-                await Attendance.create({
-                  employee: employee._id,
-                  branch: branch._id,
-                  date: now.toJSDate(),
-                  status: "غائب", // غياب مبدئي
-                });
-
-                console.log(`🚫 Marked initially absent: ${employee._id} (${branch.name})`);
-              } else {
-                console.log(`✅ ${employee._id} is on approved leave`);
+              if (leave) {
+                console.log(`✅ ${employee.fullName || employee._id} is on approved leave`);
+                continue;
               }
+
+              // إنشاء سجل غياب جديد
+              await Attendance.create({
+                employee: employee._id,
+                branch: branch._id,
+                date: now.toJSDate(),
+                status: "غائب",
+                createdAutomatically: true, // ممكن تستخدمها لتفرقي الغياب التلقائي من اليدوي
+              });
+
+              console.log(`🚫 Marked absent: ${employee.fullName || employee._id} (${branch.branchName})`);
             }
           } catch (err) {
-            console.error("Error in attendance cron:", err);
+            console.error("❌ Error in attendance cron:", err);
           }
         });
+
+        console.log(`🕒 Cron job scheduled for ${branch.branchName} at ${cronHour}:${cronMinute}`);
       });
     })
-    .catch(err => console.error("Error fetching branches:", err));
+    .catch(err => console.error("❌ Error fetching branches:", err));
 };
 
 module.exports = setupAttendanceCron;
