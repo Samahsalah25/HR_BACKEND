@@ -164,12 +164,14 @@ async function getAddressFromCoordinates(lat, lng) {
   try {
     const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ar`;
     const { data } = await axios.get(url);
+    console.log('data' ,data)
     return data.display_name || "غير محدد";
   } catch (error) {
     console.error("Geocoding error:", error.message);
     return "غير محدد";
   }
 }
+
 
 
 
