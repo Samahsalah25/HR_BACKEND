@@ -31,9 +31,11 @@ const createEmployeeSchema = Joi.object({
     "string.length": "معرّف القسم يجب أن يكون 24 حرف"
   }),
   manager: Joi.string().hex().length(24).allow(null).optional().messages({
-    "string.hex": "معرّف المدير يجب أن يكون ObjectId صحيح",
-    "string.length": "معرّف المدير يجب أن يكون 24 حرف"
-  }),
+  "string.hex": "معرّف المدير يجب أن يكون ObjectId صحيح",
+  "string.length": "معرّف المدير يجب أن يكون 24 حرف",
+  "any.allowOnly": "لا يمكن أن يكون معرّف المدير فارغًا أو غير صالح"
+}),
+
   employmentType: Joi.string().valid('Full-Time', 'Part-Time', 'Contract').messages({
     "any.only": "نوع التوظيف يجب أن يكون Full-Time أو Part-Time أو Contract"
   }),
