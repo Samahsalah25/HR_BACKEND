@@ -6,7 +6,8 @@ const employeeSchema = new mongoose.Schema(
     jobTitle: { type: String },
     employeeNumber: { type: String, unique: true },
     department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
-    manager: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
+  manager: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null } ,
+
     employmentType: { type: String, enum: ['Full-Time', 'Part-Time', 'Contract'] },
 
     contract: {
