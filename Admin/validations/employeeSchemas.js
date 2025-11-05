@@ -30,7 +30,7 @@ const createEmployeeSchema = Joi.object({
     "string.hex": "معرّف القسم يجب أن يكون ObjectId صحيح",
     "string.length": "معرّف القسم يجب أن يكون 24 حرف"
   }),
-  manager: Joi.string().hex().length(24).allow("").messages({
+  manager: Joi.string().hex().length(24).allow(null).messages({
     "string.hex": "معرّف المدير يجب أن يكون ObjectId صحيح",
     "string.length": "معرّف المدير يجب أن يكون 24 حرف"
   }),
@@ -105,7 +105,7 @@ const updateEmployeeSchema = Joi.object({
   email: Joi.string().email(),
   employeeNumber: Joi.string(),
   department: Joi.string().hex().length(24),
-  manager: Joi.string().hex().length(24).allow(""),
+  manager: Joi.string().hex().length(24).allow(null),
   employmentType: Joi.string().valid('Full-Time', 'Part-Time', 'Contract'),
 
   contractStart: Joi.date(),
