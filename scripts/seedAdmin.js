@@ -42,6 +42,10 @@ const seedAdmin = async () => {
       role: 'ADMIN',
     });
 
+
+                                      
+         
+                   
     // 🔹 إنشاء الأدمن كموظف برقم مميز علشان يقدر يسجل دخول بنفس النظام
     const employee = await Employee.create({
       name: 'Super Admin',
