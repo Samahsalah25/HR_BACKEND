@@ -166,7 +166,7 @@ const server = http.createServer(app);
 // ========= CORS إعدادات =========
 const allowedOrigins = [
   "http://localhost:5173", 
-  "https://darkslategrey-lapwing-199993.hostingersite.com"
+  "https://blanchedalmond-spider-630297.hostingersite.com"
 ];
 
 const corsOptions = {
