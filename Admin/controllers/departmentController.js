@@ -4,7 +4,7 @@ exports.createDepartment = async (req, res) => {
   try {
     const { name, description } = req.body; 
     const exists = await Department.findOne({ name });
-    if (exists) return res.status(400).json({ message: 'Department already exists' });
+    if (exists) return res.status(400).json({ message: 'اسم القسم موجود بالفعل' });
 
     const department = await Department.create({ name, description }); 
     res.status(201).json(department);
