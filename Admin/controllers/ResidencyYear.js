@@ -4,7 +4,7 @@ exports.createResidencyYear = async (req, res) => {
   try {
     const { year } = req.body;
     const exists = await ResidencyYear.findOne({ year });
-    if (exists) return res.status(400).json({ message: 'Residency year already exists' });
+    if (exists) return res.status(400).json({ message: ' سنة الإقامة بالفعل موجودة' });
 
     const newYear = await ResidencyYear.create({ year });
     res.status(201).json(newYear);
@@ -32,6 +32,9 @@ exports.updateResidencyYear = async (req, res) => {
     if (!residencyYear) {
       return res.status(404).json({ message: 'الإقامة غير موجودة' });
     }
+      const exists = await ResidencyYear.findOne({ year });
+    if (exists) return res.status(400).json({ message: ' سنة الإقامة بالفعل موجودة' });
+
 
     // check if residency year is used in employees
     const isUsed = await Employee.exists({ "residency.duration": id });
