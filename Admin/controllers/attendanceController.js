@@ -744,6 +744,123 @@ const getMonthlyAttendanceForEmployee = async (req, res) => {
 
 // افترضنا إن LeaveBalance, Employee, Attendance موجودين ومستورَدِين
 
+// const monthlyReport = async (req, res) => {
+//   try {
+//     const nowUTC = DateTime.utc();
+//     const year = nowUTC.year;
+//     const startOfMonth = nowUTC.startOf('month').toJSDate();
+//     const endOfMonth = nowUTC.endOf('month').toJSDate();
+
+//     // الرصيد الاساسي للشركة (document where employee: null)
+//     const baseLeaveBalance = await LeaveBalance.findOne({ employee: null });
+//     if (!baseLeaveBalance) {
+//       return res.status(404).json({ message: "لم يتم العثور على الرصيد الأساسي للإجازات" });
+//     }
+
+//     // حساب totalBase (مجموع كل الأنواع) — لو انتي عايزة بس annual غيري السطر ده ل lb.annual
+//     const baseTotalAllTypes = (
+//       (baseLeaveBalance.annual || 0) +
+//       (baseLeaveBalance.sick || 0) +
+//       (baseLeaveBalance.marriage || 0) +
+//       (baseLeaveBalance.emergency || 0) +
+//       (baseLeaveBalance.maternity || 0) +
+//       (baseLeaveBalance.unpaid || 0)
+//     );
+
+//     // جلب الموظفين
+//     const employees = await Employee.find()
+//       .populate("department")
+//       .populate("workplace")
+//       .populate("user");
+
+//     const reports = [];
+
+//     for (const employee of employees) {
+//       // حضور الشهر
+//       const attendances = await Attendance.find({
+//         employee: employee._id,
+//         date: { $gte: startOfMonth, $lte: endOfMonth }
+//       });
+
+//       const present = attendances.filter(a => a.status === "حاضر").length;
+//       const late = attendances.filter(a => a.status === "متأخر").length;
+//       const absent = attendances.filter(a => a.status === "غائب").length;
+//       const attendedDays = present + late;
+
+//       // جلب LeaveBalance للموظف (إن وجد)
+//       const lb = await LeaveBalance.findOne({ employee: employee._id });
+
+//       // إذا لم يوجد LeaveBalance للموظف نعتبره يأخذ القيم من base
+//       let totalLeaveBalance = baseTotalAllTypes;
+//       let remainingLeave = baseTotalAllTypes;
+//       let totalLeaveTaken = 0;
+
+//       if (lb) {
+//         // calc employee total (sum الأنواع عند الموظف) — هذا يعكس الرصيد المتبقي بتقسيم الأنواع
+//         const employeeTotalAllTypes = (
+//           (lb.annual || 0) +
+//           (lb.sick || 0) +
+//           (lb.marriage || 0) +
+//           (lb.emergency || 0) +
+//           (lb.maternity || 0) +
+//           (lb.unpaid || 0)
+//         );
+
+//         totalLeaveBalance = baseTotalAllTypes; // ثابت: نأخذ Base كمرجع للكُل (طلبك)
+
+//         // إذا فيه حقل remaining مستخدم (مفضّل) خليه مصدرنا الأول
+//         if (typeof lb.remaining === "number") {
+//           remainingLeave = lb.remaining;
+//           totalLeaveTaken = totalLeaveBalance - remainingLeave;
+//         } else {
+//           // fallback: لو مفيش remaining، نحسب remaining من مجموع الحقول الحالية عند الموظف
+//           remainingLeave = employeeTotalAllTypes;
+//           totalLeaveTaken = totalLeaveBalance - remainingLeave;
+//         }
+//       } else {
+//         // لا يوجد رصيد موظف، نعامل الموظف كأنه لم يستخدم شي
+//         totalLeaveBalance = baseTotalAllTypes;
+//         remainingLeave = baseTotalAllTypes;
+//         totalLeaveTaken = 0;
+//       }
+
+//       // تأكد عدم الحصول على أرقام سالبة
+//       if (totalLeaveTaken < 0) totalLeaveTaken = 0;
+//       if (remainingLeave < 0) remainingLeave = 0;
+
+//       reports.push({
+//         _id: employee._id,
+//         name: employee.name,
+//         email: employee.user?.email || "",
+//         department: employee.department?.name || "N/A",
+//         jobTitle: employee.jobTitle || "",
+//         attendance: { present: attendedDays, late, absent },
+//         leaves: { total: totalLeaveBalance, taken: totalLeaveTaken, remaining: remainingLeave }
+//       });
+//     }
+
+//     const formattedMonth = nowUTC.setLocale('ar-EG').toLocaleString({ month: 'long' });
+
+//     res.json({
+//       month: `${formattedMonth} ${year}`,
+//       baseLeave: {
+//         annual: baseLeaveBalance.annual,
+//         sick: baseLeaveBalance.sick,
+//         marriage: baseLeaveBalance.marriage,
+//         emergency: baseLeaveBalance.emergency,
+//         maternity: baseLeaveBalance.maternity,
+//         unpaid: baseLeaveBalance.unpaid,
+//         total: baseTotalAllTypes
+//       },
+//       reports
+//     });
+
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ error: "Server Error", details: err.message });
+//   }
+// };
+
 const monthlyReport = async (req, res) => {
   try {
     const nowUTC = DateTime.utc();
@@ -751,16 +868,12 @@ const monthlyReport = async (req, res) => {
     const startOfMonth = nowUTC.startOf('month').toJSDate();
     const endOfMonth = nowUTC.endOf('month').toJSDate();
 
-    // الرصيد الاساسي للشركة (document where employee: null)
+    // الرصيد الأساسي للشركة
     const baseLeaveBalance = await LeaveBalance.findOne({ employee: null });
     if (!baseLeaveBalance) {
       return res.status(404).json({ message: "لم يتم العثور على الرصيد الأساسي للإجازات" });
     }
 
-    // حساب totalBase (مجموع كل الأنواع) — لو انتي عايزة بس annual غيري السطر ده ل lb.annual
- const baseTotalAllTypes = baseLeaveBalance.annual || 0;
-
-    // جلب الموظفين
     const employees = await Employee.find()
       .populate("department")
       .populate("workplace")
@@ -769,7 +882,6 @@ const monthlyReport = async (req, res) => {
     const reports = [];
 
     for (const employee of employees) {
-      // حضور الشهر
       const attendances = await Attendance.find({
         employee: employee._id,
         date: { $gte: startOfMonth, $lte: endOfMonth }
@@ -780,40 +892,21 @@ const monthlyReport = async (req, res) => {
       const absent = attendances.filter(a => a.status === "غائب").length;
       const attendedDays = present + late;
 
-      // جلب LeaveBalance للموظف (إن وجد)
       const lb = await LeaveBalance.findOne({ employee: employee._id });
 
-      // إذا لم يوجد LeaveBalance للموظف نعتبره يأخذ القيم من base
-      let totalLeaveBalance = baseTotalAllTypes;
-      let remainingLeave = baseTotalAllTypes;
-      let totalLeaveTaken = 0;
+      // إعداد نوع الإجازات
+      const leaveTypes = ["annual", "sick", "marriage", "emergency", "maternity", "unpaid"];
+      const leaves = {};
 
-      if (lb) {
-        // calc employee total (sum الأنواع عند الموظف) — هذا يعكس الرصيد المتبقي بتقسيم الأنواع
-      const employeeTotalAllTypes = lb.annual || 0;
+      leaveTypes.forEach((type) => {
+        const base = baseLeaveBalance[type] || 0;
+        const empValue = lb ? lb[type] : undefined;
 
+        const remaining = typeof empValue === "number" ? empValue : base;
+        const taken = base - remaining;
 
-        totalLeaveBalance = baseTotalAllTypes; // ثابت: نأخذ Base كمرجع للكُل (طلبك)
-
-        // إذا فيه حقل remaining مستخدم (مفضّل) خليه مصدرنا الأول
-        if (typeof lb.remaining === "number") {
-          remainingLeave = lb.remaining;
-          totalLeaveTaken = totalLeaveBalance - remainingLeave;
-        } else {
-          // fallback: لو مفيش remaining، نحسب remaining من مجموع الحقول الحالية عند الموظف
-          remainingLeave = employeeTotalAllTypes;
-          totalLeaveTaken = totalLeaveBalance - remainingLeave;
-        }
-      } else {
-        // لا يوجد رصيد موظف، نعامل الموظف كأنه لم يستخدم شي
-        totalLeaveBalance = baseTotalAllTypes;
-        remainingLeave = baseTotalAllTypes;
-        totalLeaveTaken = 0;
-      }
-
-      // تأكد عدم الحصول على أرقام سالبة
-      if (totalLeaveTaken < 0) totalLeaveTaken = 0;
-      if (remainingLeave < 0) remainingLeave = 0;
+        leaves[type] = { taken: Math.max(taken, 0), remaining: Math.max(remaining, 0) };
+      });
 
       reports.push({
         _id: employee._id,
@@ -822,7 +915,7 @@ const monthlyReport = async (req, res) => {
         department: employee.department?.name || "N/A",
         jobTitle: employee.jobTitle || "",
         attendance: { present: attendedDays, late, absent },
-        leaves: { total: totalLeaveBalance, taken: totalLeaveTaken, remaining: remainingLeave }
+        leaves
       });
     }
 
@@ -837,7 +930,6 @@ const monthlyReport = async (req, res) => {
         emergency: baseLeaveBalance.emergency,
         maternity: baseLeaveBalance.maternity,
         unpaid: baseLeaveBalance.unpaid,
-        total: baseTotalAllTypes
       },
       reports
     });
@@ -847,7 +939,6 @@ const monthlyReport = async (req, res) => {
     res.status(500).json({ error: "Server Error", details: err.message });
   }
 };
-
 
 
 
