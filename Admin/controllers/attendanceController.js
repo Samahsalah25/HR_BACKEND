@@ -828,7 +828,7 @@ const monthlyReport = async (req, res) => {
       if (totalLeaveTaken < 0) totalLeaveTaken = 0;
       if (remainingLeave < 0) remainingLeave = 0;
 
-    reports.push({
+ reports.push({
   _id: employee._id,
   name: employee.name,
   email: employee.user?.email || "",
@@ -836,40 +836,39 @@ const monthlyReport = async (req, res) => {
   jobTitle: employee.jobTitle || "",
   attendance: { present: attendedDays, late, absent },
   leaves: {
-    // كل أنواع الإجازات بشكل مفصل
     annual: {
       total: lb?.annual ?? baseLeaveBalance.annual,
-      taken: lb?.annualTaken ?? 0,   // لو عندك حقل مأخوذ لكل نوع
-      remaining: (lb?.annual ?? baseLeaveBalance.annual) - (lb?.annualTaken ?? 0)
+      remaining: lb?.annualRemaining ?? lb?.annual ?? baseLeaveBalance.annual,
+      taken: (lb?.annual ?? baseLeaveBalance.annual) - (lb?.annualRemaining ?? lb?.annual ?? baseLeaveBalance.annual)
     },
     sick: {
       total: lb?.sick ?? baseLeaveBalance.sick,
-      taken: lb?.sickTaken ?? 0,
-      remaining: (lb?.sick ?? baseLeaveBalance.sick) - (lb?.sickTaken ?? 0)
+      remaining: lb?.sickRemaining ?? lb?.sick ?? baseLeaveBalance.sick,
+      taken: (lb?.sick ?? baseLeaveBalance.sick) - (lb?.sickRemaining ?? lb?.sick ?? baseLeaveBalance.sick)
     },
     marriage: {
       total: lb?.marriage ?? baseLeaveBalance.marriage,
-      taken: lb?.marriageTaken ?? 0,
-      remaining: (lb?.marriage ?? baseLeaveBalance.marriage) - (lb?.marriageTaken ?? 0)
+      remaining: lb?.marriageRemaining ?? lb?.marriage ?? baseLeaveBalance.marriage,
+      taken: (lb?.marriage ?? baseLeaveBalance.marriage) - (lb?.marriageRemaining ?? lb?.marriage ?? baseLeaveBalance.marriage)
     },
     emergency: {
       total: lb?.emergency ?? baseLeaveBalance.emergency,
-      taken: lb?.emergencyTaken ?? 0,
-      remaining: (lb?.emergency ?? baseLeaveBalance.emergency) - (lb?.emergencyTaken ?? 0)
+      remaining: lb?.emergencyRemaining ?? lb?.emergency ?? baseLeaveBalance.emergency,
+      taken: (lb?.emergency ?? baseLeaveBalance.emergency) - (lb?.emergencyRemaining ?? lb?.emergency ?? baseLeaveBalance.emergency)
     },
     maternity: {
       total: lb?.maternity ?? baseLeaveBalance.maternity,
-      taken: lb?.maternityTaken ?? 0,
-      remaining: (lb?.maternity ?? baseLeaveBalance.maternity) - (lb?.maternityTaken ?? 0)
+      remaining: lb?.maternityRemaining ?? lb?.maternity ?? baseLeaveBalance.maternity,
+      taken: (lb?.maternity ?? baseLeaveBalance.maternity) - (lb?.maternityRemaining ?? lb?.maternity ?? baseLeaveBalance.maternity)
     },
     unpaid: {
       total: lb?.unpaid ?? baseLeaveBalance.unpaid,
-      taken: lb?.unpaidTaken ?? 0,
-      remaining: (lb?.unpaid ?? baseLeaveBalance.unpaid) - (lb?.unpaidTaken ?? 0)
+      remaining: lb?.unpaidRemaining ?? lb?.unpaid ?? baseLeaveBalance.unpaid,
+      taken: (lb?.unpaid ?? baseLeaveBalance.unpaid) - (lb?.unpaidRemaining ?? lb?.unpaid ?? baseLeaveBalance.unpaid)
     },
     total: totalLeaveBalance,
-    taken: totalLeaveTaken,
-    remaining: remainingLeave
+    remaining: remainingLeave,
+    taken: totalLeaveTaken
   }
 });
 
