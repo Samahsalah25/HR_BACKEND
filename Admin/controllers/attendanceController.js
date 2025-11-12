@@ -828,15 +828,51 @@ const monthlyReport = async (req, res) => {
       if (totalLeaveTaken < 0) totalLeaveTaken = 0;
       if (remainingLeave < 0) remainingLeave = 0;
 
-      reports.push({
-        _id: employee._id,
-        name: employee.name,
-        email: employee.user?.email || "",
-        department: employee.department?.name || "N/A",
-        jobTitle: employee.jobTitle || "",
-        attendance: { present: attendedDays, late, absent },
-        leaves: { total: totalLeaveBalance, taken: totalLeaveTaken, remaining: remainingLeave }
-      });
+    reports.push({
+  _id: employee._id,
+  name: employee.name,
+  email: employee.user?.email || "",
+  department: employee.department?.name || "N/A",
+  jobTitle: employee.jobTitle || "",
+  attendance: { present: attendedDays, late, absent },
+  leaves: {
+    // كل أنواع الإجازات بشكل مفصل
+    annual: {
+      total: lb?.annual ?? baseLeaveBalance.annual,
+      taken: lb?.annualTaken ?? 0,   // لو عندك حقل مأخوذ لكل نوع
+      remaining: (lb?.annual ?? baseLeaveBalance.annual) - (lb?.annualTaken ?? 0)
+    },
+    sick: {
+      total: lb?.sick ?? baseLeaveBalance.sick,
+      taken: lb?.sickTaken ?? 0,
+      remaining: (lb?.sick ?? baseLeaveBalance.sick) - (lb?.sickTaken ?? 0)
+    },
+    marriage: {
+      total: lb?.marriage ?? baseLeaveBalance.marriage,
+      taken: lb?.marriageTaken ?? 0,
+      remaining: (lb?.marriage ?? baseLeaveBalance.marriage) - (lb?.marriageTaken ?? 0)
+    },
+    emergency: {
+      total: lb?.emergency ?? baseLeaveBalance.emergency,
+      taken: lb?.emergencyTaken ?? 0,
+      remaining: (lb?.emergency ?? baseLeaveBalance.emergency) - (lb?.emergencyTaken ?? 0)
+    },
+    maternity: {
+      total: lb?.maternity ?? baseLeaveBalance.maternity,
+      taken: lb?.maternityTaken ?? 0,
+      remaining: (lb?.maternity ?? baseLeaveBalance.maternity) - (lb?.maternityTaken ?? 0)
+    },
+    unpaid: {
+      total: lb?.unpaid ?? baseLeaveBalance.unpaid,
+      taken: lb?.unpaidTaken ?? 0,
+      remaining: (lb?.unpaid ?? baseLeaveBalance.unpaid) - (lb?.unpaidTaken ?? 0)
+    },
+    total: totalLeaveBalance,
+    taken: totalLeaveTaken,
+    remaining: remainingLeave
+  }
+});
+
     }
 
     const formattedMonth = nowUTC.setLocale('ar-EG').toLocaleString({ month: 'long' });
