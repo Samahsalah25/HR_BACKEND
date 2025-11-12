@@ -20,7 +20,7 @@ exports.createContract = async (req, res) => {
     if (!duration) return res.status(400).json({ message: 'Contract duration is required' });
 
     const exists = await Contract.findOne({ name });
-    if (exists) return res.status(400).json({ message: 'Contract already exists' });
+    if (exists) return res.status(400).json({ message: '  العقد موجود بالفعل' });
 
     const contract = await Contract.create({ name, duration, unit });
     res.status(201).json(contract);
@@ -53,6 +53,11 @@ exports.updateContract = async (req, res) => {
 
     const contract = await Contract.findById(id);
     if (!contract) return res.status(404).json({ message: "Contract not found" });
+
+    const existing = await Contract.findOne({ name: req.body.name });
+if (existing) {
+  return res.status(400).json({ message: "العقد موجود بالفعل" });
+}
 
     // check if contract already used in employees
     const isUsed = await Employee.exists({ "contract.duration": id });

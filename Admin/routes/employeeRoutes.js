@@ -10,7 +10,7 @@ const  {
 }=require('../validations/employeeSchemas');
 
 router.post('/',authenticate,authorizeRoles('HR' ,"ADMIN"), validate(createEmployeeSchema),createEmployee);
-
+router.patch('/:id' ,authenticate ,authorizeRoles('HR' ,"ADMIN"), validate(createEmployeeSchema),createEmployee)
 //here get workstartTime and date:
 router.get('/status' ,authenticate ,employeeStatus)
 
