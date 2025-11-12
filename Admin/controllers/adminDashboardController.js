@@ -561,6 +561,60 @@ exports.getCompanyLeavePolicy = async (req, res) => {
 
 
 
+// exports.getEmployeesByLeaveType = async (req, res) => {
+//   try {
+//     const { type } = req.params;
+
+//     // الأنواع المسموح بها من الإجازات
+//     const validTypes = ["annual", "sick", "marriage", "emergency", "maternity", "unpaid"];
+//     if (!validTypes.includes(type)) {
+//       return res.status(400).json({
+//         success: false,
+//         message: `نوع الإجازة "${type}" غير صحيح`
+//       });
+//     }
+
+//     //  عدد الأيام الأصلي لكل نوع إجازة (رصيد الشركة)
+//     const totalDaysByType = {
+//       annual: 21,
+//       sick: 7,
+//       marriage: 3,
+//       emergency: 5,
+//       maternity: 90,
+//       unpaid: 0
+//     };
+
+//     // جلب جميع السجلات اللي عندها موظف موجود فعلاً
+//     const balances = await LeaveBalance.find({
+//       employee: { $exists: true, $ne: null }
+//     }).populate("employee", "name employeeNumber");
+
+//     //  بناء التقرير فقط للموظفين الموجودين فعلاً
+//     const report = balances
+//       .filter(b => b.employee) // استبعاد اللي اتحذف موظفهم
+//       .map(b => ({
+//         employeeName: b.employee.name,
+//         employeeNumber: b.employee.employeeNumber,
+//         leaveType: type,
+//         totalDays: totalDaysByType[type],
+//         usedDays: totalDaysByType[type] - (b[type] || 0),
+//         remainingDays: b[type] || 0
+//       }));
+//     res.status(200).json({
+//       success: true,
+//       count: report.length,
+//       data: report
+//     });
+
+//   } catch (error) {
+//     console.error(" خطأ في getEmployeesByLeaveType:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "حدث خطأ أثناء جلب تقرير الإجازات",
+//       error: error.message
+//     });
+//   }
+// };
 exports.getEmployeesByLeaveType = async (req, res) => {
   try {
     const { type } = req.params;
@@ -574,32 +628,40 @@ exports.getEmployeesByLeaveType = async (req, res) => {
       });
     }
 
-    //  عدد الأيام الأصلي لكل نوع إجازة (رصيد الشركة)
-    const totalDaysByType = {
-      annual: 21,
-      sick: 7,
-      marriage: 3,
-      emergency: 5,
-      maternity: 90,
-      unpaid: 0
-    };
+    //  جلب رصيد الشركة الأساسي (document اللي employee = null)
+    const companyBase = await LeaveBalance.findOne({ employee: null });
+    if (!companyBase) {
+      return res.status(404).json({
+        success: false,
+        message: "لم يتم العثور على رصيد الإجازات الأساسي للشركة"
+      });
+    }
 
-    // جلب جميع السجلات اللي عندها موظف موجود فعلاً
+    // جلب جميع سجلات الموظفين اللي عندهم رصيد إجازات
     const balances = await LeaveBalance.find({
       employee: { $exists: true, $ne: null }
     }).populate("employee", "name employeeNumber");
 
-    //  بناء التقرير فقط للموظفين الموجودين فعلاً
+    // 👇 بناء التقرير
     const report = balances
-      .filter(b => b.employee) // استبعاد اللي اتحذف موظفهم
-      .map(b => ({
-        employeeName: b.employee.name,
-        employeeNumber: b.employee.employeeNumber,
-        leaveType: type,
-        totalDays: totalDaysByType[type],
-        usedDays: totalDaysByType[type] - (b[type] || 0),
-        remainingDays: b[type] || 0
-      }));
+      .filter(b => b.employee)
+      .map(b => {
+        // الرصيد الأساسي لهذا النوع من الشركة
+        const totalDays = companyBase[type] ?? 0;
+        // الباقي فعلاً عند الموظف
+        const remainingDays = b[type] ?? totalDays;
+        // المأخوذ نحسبه بالطرح
+        const usedDays = totalDays - remainingDays;
+
+        return {
+          employeeName: b.employee.name,
+          employeeNumber: b.employee.employeeNumber,
+          leaveType: type,
+          totalDays,
+          usedDays: usedDays < 0 ? 0 : usedDays,
+          remainingDays: remainingDays < 0 ? 0 : remainingDays
+        };
+      });
 
     res.status(200).json({
       success: true,
@@ -608,7 +670,7 @@ exports.getEmployeesByLeaveType = async (req, res) => {
     });
 
   } catch (error) {
-    console.error(" خطأ في getEmployeesByLeaveType:", error);
+    console.error("خطأ في getEmployeesByLeaveType:", error);
     res.status(500).json({
       success: false,
       message: "حدث خطأ أثناء جلب تقرير الإجازات",
@@ -616,6 +678,7 @@ exports.getEmployeesByLeaveType = async (req, res) => {
     });
   }
 };
+
 
 
 
