@@ -827,8 +827,7 @@ const monthlyReport = async (req, res) => {
       // تأكد عدم الحصول على أرقام سالبة
       if (totalLeaveTaken < 0) totalLeaveTaken = 0;
       if (remainingLeave < 0) remainingLeave = 0;
-
- reports.push({
+reports.push({
   _id: employee._id,
   name: employee.name,
   email: employee.user?.email || "",
@@ -837,40 +836,63 @@ const monthlyReport = async (req, res) => {
   attendance: { present: attendedDays, late, absent },
   leaves: {
     annual: {
-      total: lb?.annual ?? baseLeaveBalance.annual,
-      remaining: lb?.annualRemaining ?? lb?.annual ?? baseLeaveBalance.annual,
-      taken: (lb?.annual ?? baseLeaveBalance.annual) - (lb?.annualRemaining ?? lb?.annual ?? baseLeaveBalance.annual)
+      total: baseLeaveBalance.annual,
+      remaining: lb?.annual ?? baseLeaveBalance.annual,
+      taken: baseLeaveBalance.annual - (lb?.annual ?? baseLeaveBalance.annual)
     },
     sick: {
-      total: lb?.sick ?? baseLeaveBalance.sick,
-      remaining: lb?.sickRemaining ?? lb?.sick ?? baseLeaveBalance.sick,
-      taken: (lb?.sick ?? baseLeaveBalance.sick) - (lb?.sickRemaining ?? lb?.sick ?? baseLeaveBalance.sick)
+      total: baseLeaveBalance.sick,
+      remaining: lb?.sick ?? baseLeaveBalance.sick,
+      taken: baseLeaveBalance.sick - (lb?.sick ?? baseLeaveBalance.sick)
     },
     marriage: {
-      total: lb?.marriage ?? baseLeaveBalance.marriage,
-      remaining: lb?.marriageRemaining ?? lb?.marriage ?? baseLeaveBalance.marriage,
-      taken: (lb?.marriage ?? baseLeaveBalance.marriage) - (lb?.marriageRemaining ?? lb?.marriage ?? baseLeaveBalance.marriage)
+      total: baseLeaveBalance.marriage,
+      remaining: lb?.marriage ?? baseLeaveBalance.marriage,
+      taken: baseLeaveBalance.marriage - (lb?.marriage ?? baseLeaveBalance.marriage)
     },
     emergency: {
-      total: lb?.emergency ?? baseLeaveBalance.emergency,
-      remaining: lb?.emergencyRemaining ?? lb?.emergency ?? baseLeaveBalance.emergency,
-      taken: (lb?.emergency ?? baseLeaveBalance.emergency) - (lb?.emergencyRemaining ?? lb?.emergency ?? baseLeaveBalance.emergency)
+      total: baseLeaveBalance.emergency,
+      remaining: lb?.emergency ?? baseLeaveBalance.emergency,
+      taken: baseLeaveBalance.emergency - (lb?.emergency ?? baseLeaveBalance.emergency)
     },
     maternity: {
-      total: lb?.maternity ?? baseLeaveBalance.maternity,
-      remaining: lb?.maternityRemaining ?? lb?.maternity ?? baseLeaveBalance.maternity,
-      taken: (lb?.maternity ?? baseLeaveBalance.maternity) - (lb?.maternityRemaining ?? lb?.maternity ?? baseLeaveBalance.maternity)
+      total: baseLeaveBalance.maternity,
+      remaining: lb?.maternity ?? baseLeaveBalance.maternity,
+      taken: baseLeaveBalance.maternity - (lb?.maternity ?? baseLeaveBalance.maternity)
     },
     unpaid: {
-      total: lb?.unpaid ?? baseLeaveBalance.unpaid,
-      remaining: lb?.unpaidRemaining ?? lb?.unpaid ?? baseLeaveBalance.unpaid,
-      taken: (lb?.unpaid ?? baseLeaveBalance.unpaid) - (lb?.unpaidRemaining ?? lb?.unpaid ?? baseLeaveBalance.unpaid)
+      total: baseLeaveBalance.unpaid,
+      remaining: lb?.unpaid ?? baseLeaveBalance.unpaid,
+      taken: baseLeaveBalance.unpaid - (lb?.unpaid ?? baseLeaveBalance.unpaid)
     },
-    total: totalLeaveBalance,
-    remaining: remainingLeave,
-    taken: totalLeaveTaken
+    // الإجماليات
+    total: (
+      baseLeaveBalance.annual +
+      baseLeaveBalance.sick +
+      baseLeaveBalance.marriage +
+      baseLeaveBalance.emergency +
+      baseLeaveBalance.maternity +
+      baseLeaveBalance.unpaid
+    ),
+    remaining: (
+      (lb?.annual ?? baseLeaveBalance.annual) +
+      (lb?.sick ?? baseLeaveBalance.sick) +
+      (lb?.marriage ?? baseLeaveBalance.marriage) +
+      (lb?.emergency ?? baseLeaveBalance.emergency) +
+      (lb?.maternity ?? baseLeaveBalance.maternity) +
+      (lb?.unpaid ?? baseLeaveBalance.unpaid)
+    ),
+    taken: (
+      (baseLeaveBalance.annual - (lb?.annual ?? baseLeaveBalance.annual)) +
+      (baseLeaveBalance.sick - (lb?.sick ?? baseLeaveBalance.sick)) +
+      (baseLeaveBalance.marriage - (lb?.marriage ?? baseLeaveBalance.marriage)) +
+      (baseLeaveBalance.emergency - (lb?.emergency ?? baseLeaveBalance.emergency)) +
+      (baseLeaveBalance.maternity - (lb?.maternity ?? baseLeaveBalance.maternity)) +
+      (baseLeaveBalance.unpaid - (lb?.unpaid ?? baseLeaveBalance.unpaid))
+    )
   }
 });
+
 
     }
 
