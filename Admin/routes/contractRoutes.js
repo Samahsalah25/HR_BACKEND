@@ -19,6 +19,6 @@ router.get('/', getContracts);
 router.get('/:id',authenticate,authorizeRoles('HR' ,'ADMIN'), getContractById);
 router.post('/',authenticate,authorizeRoles('ADMIN' ,'HR') ,validate(createContractSchema), createContract);
 router.patch('/:id' ,authenticate ,authorizeRoles('ADMIN' ,'HR'),validate(updateContractSchema),updateContract)
-router.delete('/:id',authenticate,authorizeRoles('HR' ,'HR'), deleteContract);
+router.delete('/:id',authenticate,authorizeRoles('HR' ,'ADMIN'), deleteContract);
 
 module.exports = router;
