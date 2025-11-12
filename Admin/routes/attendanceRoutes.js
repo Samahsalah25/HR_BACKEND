@@ -25,7 +25,7 @@ router.get('/dailyState' ,authenticate,authorizeRoles('HR'),dailyState) ;
 router.get('/dailyStateOnrbrach' ,authenticate,authorizeRoles('HR'),dailyStateBranch) ;
 
 //dailyAttendanceTable   لكل الفروع 
-router.get('/dailyAttendanceTable' ,authenticate,authorizeRoles('HR'),dailyAttendanceTable)
+router.get('/dailyAttendanceTable' ,authenticate,authorizeRoles('HR',"Admin"),dailyAttendanceTable)
 
 //  هنجيب جدول الحضور لفرع معين
  router.get('/dailyAttendanceTableOnebranch' ,authenticate ,authorizeRoles('HR'),dailyAttendanceTableOnebranch)

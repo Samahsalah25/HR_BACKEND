@@ -508,7 +508,8 @@ const dailyAttendanceTable = async (req, res) => {
     const table = attendances.map(a => ({
       employeeName: a.employee.name,
       departmentName: a.employee.department ? a.employee.department.name : "غير محدد",
-      status: a.status
+      status: a.status ,
+      lateMinutes: a.lateMinutes || 0,
     }));
 
     res.json({ table });
