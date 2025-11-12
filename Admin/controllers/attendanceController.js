@@ -758,14 +758,7 @@ const monthlyReport = async (req, res) => {
     }
 
     // حساب totalBase (مجموع كل الأنواع) — لو انتي عايزة بس annual غيري السطر ده ل lb.annual
-    const baseTotalAllTypes = (
-      (baseLeaveBalance.annual || 0) +
-      (baseLeaveBalance.sick || 0) +
-      (baseLeaveBalance.marriage || 0) +
-      (baseLeaveBalance.emergency || 0) +
-      (baseLeaveBalance.maternity || 0) +
-      (baseLeaveBalance.unpaid || 0)
-    );
+ const baseTotalAllTypes = baseLeaveBalance.annual || 0;
 
     // جلب الموظفين
     const employees = await Employee.find()
@@ -797,14 +790,8 @@ const monthlyReport = async (req, res) => {
 
       if (lb) {
         // calc employee total (sum الأنواع عند الموظف) — هذا يعكس الرصيد المتبقي بتقسيم الأنواع
-        const employeeTotalAllTypes = (
-          (lb.annual || 0) +
-          (lb.sick || 0) +
-          (lb.marriage || 0) +
-          (lb.emergency || 0) +
-          (lb.maternity || 0) +
-          (lb.unpaid || 0)
-        );
+      const employeeTotalAllTypes = lb.annual || 0;
+
 
         totalLeaveBalance = baseTotalAllTypes; // ثابت: نأخذ Base كمرجع للكُل (طلبك)
 
