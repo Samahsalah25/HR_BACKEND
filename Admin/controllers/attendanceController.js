@@ -125,7 +125,7 @@ const checkIn = async (req, res) => {
       branch.location.coordinates[1],
       branch.location.coordinates[0]
     );
-    if (distance > 20) return res.status(400).json({ message: "أنت بعيد عن موقع الفرع" });
+    if (distance > 300) return res.status(400).json({ message: "أنت بعيد عن موقع الفرع" });
 
     // الوقت الحالي بتوقيت السعودية
     const now = moment().tz("Asia/Riyadh");
@@ -234,7 +234,7 @@ const checkOut = async (req, res) => {
       branch.location.coordinates[1],
       branch.location.coordinates[0]
     );
-    if (distance > 20) return res.status(400).json({ message: "لا يمكنك تسجيل الانصراف خارج الفرع" });
+    if (distance > 300) return res.status(400).json({ message: "لا يمكنك تسجيل الانصراف خارج الفرع" });
 
     // الوقت الحالي بتوقيت السعودية
     const now = moment().tz("Asia/Riyadh");
