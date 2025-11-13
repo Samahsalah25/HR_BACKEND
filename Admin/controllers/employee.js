@@ -234,7 +234,71 @@ exports.createEmployee = async (req, res) => {
 
 
 //هنجيت هنا علشان نختاره وقت الميتنج او وقت المهام
- exports.getEmployees = async (req, res) => {
+//  exports.getEmployees = async (req, res) => {
+//   try {
+//     // هجيب الـ Employee اللي بيمثل اليوزر الحالي
+//     const currentEmp = await Employee.findOne({ user: req.user._id })
+//       .populate("department")
+//       .populate("workplace")
+//       .populate("user", "name email role");
+
+//     if (!currentEmp) {
+//       return res.status(404).json({ success: false, message: "الموظف غير موجود" });
+//     }
+
+//     let employees = [];
+
+//     if (req.user.role === "HR") {
+//       // HR يشوف الكل
+//       employees = await Employee.find()
+//         .populate("department", "name")
+//         .populate("workplace", "name location")
+//         .populate("manager", "name jobTitle")
+//         .populate("user", "name email role");
+//     } 
+//     else if (req.user.role === "Manager") {
+//       // Manager يشوف موظفين القسم + مدراء الأقسام التانية
+//       employees = await Employee.find({
+//         $or: [
+//           { department: currentEmp.department }, // موظفين قسمه
+//           { "user.role": "Manager" }             // مدراء
+//         ]
+//       })
+//         .populate("department", "name")
+//         .populate("workplace", "name location")
+//         .populate("manager", "name jobTitle")
+//         .populate("user", "name email role");
+//     } 
+//     else if (req.user.role === "EMPLOYEE") {
+//       // EMPLOYEE يشوف نفسه + زمايله في نفس القسم (مش HR/Manager)
+//       employees = await Employee.find({
+//         department: currentEmp.department
+//       })
+//         .populate("department", "name")
+//         .populate("workplace", "name location")
+//         .populate("manager", "name jobTitle")
+//         .populate("user", "name email role");
+
+//       // فلترة: استبعد HR & Manager
+//       employees = employees.filter(emp => 
+//         emp.user.role !== "HR" && emp.user.role !== "Manager"
+//       );
+//     }
+
+//     res.json({
+//       success: true,
+//       count: employees.length,
+//       data: employees
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       message: "خطأ في استرجاع الموظفين",
+//       error: error.message
+//     });
+//   }
+// };
+exports.getEmployees = async (req, res) => {
   try {
     // هجيب الـ Employee اللي بيمثل اليوزر الحالي
     const currentEmp = await Employee.findOne({ user: req.user._id })
@@ -249,16 +313,17 @@ exports.createEmployee = async (req, res) => {
     let employees = [];
 
     if (req.user.role === "HR") {
-      // HR يشوف الكل
-      employees = await Employee.find()
+      // HR يشوف الكل ما عدا نفسه
+      employees = await Employee.find({ _id: { $ne: currentEmp._id } })
         .populate("department", "name")
         .populate("workplace", "name location")
         .populate("manager", "name jobTitle")
         .populate("user", "name email role");
     } 
     else if (req.user.role === "Manager") {
-      // Manager يشوف موظفين القسم + مدراء الأقسام التانية
+      // Manager يشوف موظفين قسمه + مدراء آخرين، مستبعد نفسه
       employees = await Employee.find({
+        _id: { $ne: currentEmp._id },
         $or: [
           { department: currentEmp.department }, // موظفين قسمه
           { "user.role": "Manager" }             // مدراء
@@ -270,8 +335,9 @@ exports.createEmployee = async (req, res) => {
         .populate("user", "name email role");
     } 
     else if (req.user.role === "EMPLOYEE") {
-      // EMPLOYEE يشوف نفسه + زمايله في نفس القسم (مش HR/Manager)
+      // EMPLOYEE يشوف زمايله في نفس القسم فقط، مستبعد نفسه
       employees = await Employee.find({
+        _id: { $ne: currentEmp._id },
         department: currentEmp.department
       })
         .populate("department", "name")
