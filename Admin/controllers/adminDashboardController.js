@@ -462,7 +462,8 @@ exports.getEmployeesSummary = async (req, res) => {
                 emp.contract.end
               ).toLocaleDateString("ar-EG")}`
             : "غير محدد",
-        carriedLeaves: leaveBalance?.remaining || 0,
+      carriedLeaves: leaveBalance?.annual || 0,
+
       });
     }
 
