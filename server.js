@@ -161,6 +161,7 @@ const setupAttendanceCron = require('./cron/attendanceCron.js');
 const startTaskStatusCron = require('./cron/tasksCorn.js');
 
 const app = express();
+app.set("trust proxy", 1);
 const server = http.createServer(app);
 
 // ========= CORS إعدادات =========
