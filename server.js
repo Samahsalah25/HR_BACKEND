@@ -151,6 +151,7 @@ const meetingRouts = require('./Admin/routes/meetingRoute.js');
 const systemSettingsRoutes = require("./Admin/routes/SystemSettingsRoute.js");
 const adminDashboardRoute =require("./Admin/routes/adminDashboardRoute.js");
 const residencyRoutesEmployee = require("./Admin/routes/residencyEmployeeRoutes.js");
+const reportexcelReports=require("./Admin/routes/reportForexcelRoute.js");
 
 // DB & scripts
 const connectDB = require('./config/db.js');
@@ -212,6 +213,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/settings/system", systemSettingsRoutes);
 app.use("/api/admindahshboard" ,adminDashboardRoute) ;
 app.use("/api/residenciesEmployee", residencyRoutesEmployee);
+app.use("/api/excelReports" ,reportexcelReports)
 
 // ========= Socket.io =========
 const io = new Server(server, {
