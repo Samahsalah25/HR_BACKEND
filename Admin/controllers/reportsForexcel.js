@@ -8,6 +8,8 @@ const mongoose = require('mongoose');
 const moment = require('moment');
 const Request = require('../models/requestModel');
 const LeaveBalance =require('../models/leaveBalanceModel')
+const Department =require('../models/depaertment')
+const Record =require('../models/licence')
 
 /* ---------------- Helpers ---------------- */
 
@@ -884,5 +886,490 @@ exports.newEmployeesReport = async (req, res) => {
     res.status(500).json({ success: false, message: 'خطأ في إنشاء التقرير', error: err });
   }
 };
+
+
+async function getAddressFromCoordinates(lat, lng) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ar`;
+
+    const { data } = await axios.get(url, {
+      headers: {
+       "User-Agent": "HR-Dashboard/1.0 (malaksalah@gmail.com)"
+
+      }
+    });
+
+    if (data && data.display_name) {
+      return data.display_name;
+    } else {
+      return "غير محدد";
+    }
+  } catch (error) {
+    console.error("Geocoding error:", error.message);
+    return "غير محدد";
+  }
+}
+
+//  تقارير الفروع 
+//1... view branch
+exports.branchOverviewReport = async (req, res) => {
+  try {
+    const branches = await Branch.find();
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Branch Overview");
+
+    ws.columns = [
+      { header: "اسم الفرع", key: "name", width: 25 },
+      { header: "العنوان", key: "address", width: 40 },
+      { header: "بداية الدوام", key: "start", width: 15 },
+      { header: "نهاية الدوام", key: "end", width: 15 },
+      { header: "مهلة السماح", key: "grace", width: 15 },
+      { header: "دقائق التأخير المسموحة", key: "late", width: 20 },
+      { header: "أيام الإجازة", key: "weekends", width: 20 },
+      { header: "عدد الأقسام", key: "deptCount", width: 15 },
+      { header: "عدد الموظفين", key: "empCount", width: 15 },
+    ];
+
+    for (const br of branches) {
+      const lat = br.location.coordinates[1];
+      const lng = br.location.coordinates[0];
+
+      const address = await getAddressFromCoordinates(lat, lng);
+
+      const employees = await Employee.find({ workplace: br._id })
+        .populate("department", "name");
+
+      const uniqueDepts = new Set(
+        employees.map((e) => e.department?.name).filter(Boolean)
+      );
+
+      ws.addRow({
+        name: br.name,
+        address,
+        start: br.workStart,
+        end: br.workEnd,
+        grace: br.gracePeriod,
+        late: br.allowedLateMinutes,
+        weekends: br.weekendDays.join(", "),
+        deptCount: uniqueDepts.size,
+        empCount: employees.length,
+      });
+    }
+
+    await sendWorkbook(res, wb, "branch_overview.xlsx");
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error generating branch overview report" });
+  }
+};
+
+//2) employee count in every branch
+exports.employeesPerBranchReport = async (req, res) => {
+  try {
+    const branches = await Branch.find();
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Employees per Branch");
+
+    ws.columns = [
+      { header: "اسم الفرع", key: "branch", width: 25 },
+      { header: "عدد الموظفين", key: "count", width: 20 }
+    ];
+
+    for (const br of branches) {
+      const employees = await Employee.find({ workplace: br._id });
+      
+      ws.addRow({
+        branch: br.name,
+        count: employees.length,
+      });
+    }
+
+    await sendWorkbook(res, wb, "employees_per_branch.xlsx");
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error generating employee count report" });
+  }
+};
+
+//3 new employees   New Employees Per Branch (آخر 90 يوما
+exports.newEmployeesReport = async (req, res) => {
+  try {
+    const sinceDate = new Date();
+    sinceDate.setDate(sinceDate.getDate() - 90); // آخر 3 شهور
+
+    const branches = await Branch.find();
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("New Employees");
+
+    ws.columns = [
+      { header: "اسم الفرع", key: "branch", width: 25 },
+      { header: "اسم الموظف", key: "name", width: 25 },
+      { header: "تاريخ التعيين", key: "created", width: 20 }
+    ];
+
+    for (const br of branches) {
+      const newEmployees = await Employee.find({
+        workplace: br._id,
+        createdAt: { $gte: sinceDate }
+      });
+
+      newEmployees.forEach((emp) => {
+        ws.addRow({
+          branch: br.name,
+          name: emp.name,
+          created: emp.contract.start.toISOString().split("T")[0]
+        });
+      });
+    }
+
+    await sendWorkbook(res, wb, "new_employees.xlsx");
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error generating new employees report" });
+  }
+};
+
+//4) Departments Inside Each Branch
+exports.departmentsPerBranchReport = async (req, res) => {
+  try {
+    const branches = await Branch.find();
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Departments per Branch");
+
+    ws.columns = [
+      { header: "اسم الفرع", key: "branch", width: 25 },
+      { header: "الأقسام داخل الفرع", key: "departments", width: 40 },
+      { header: "عدد الأقسام", key: "deptCount", width: 20 }
+    ];
+
+    for (const br of branches) {
+      const employees = await Employee.find({ workplace: br._id })
+        .populate("department", "name");
+
+      const uniqueDepts = [...new Set(
+        employees.map((e) => e.department?.name).filter(Boolean)
+      )];
+
+      ws.addRow({
+        branch: br.name,
+        departments: uniqueDepts.join("، "),
+        deptCount: uniqueDepts.length
+      });
+    }
+
+    await sendWorkbook(res, wb, "departments_per_branch.xlsx");
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error generating department report" });
+  }
+};
+
+
+// departments reports
+//1)قائمة الأقسام + عدد الموظفين بكل قسم
+
+exports.departmentsSummaryReport = async (req, res) => {
+  try {
+    const departments = await Department.find();
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Departments Summary");
+
+    ws.columns = [
+      { header: "القسم", key: "name", width: 30 },
+      { header: "الوصف", key: "description", width: 40 },
+      { header: "عدد الموظفين", key: "totalEmployees", width: 20 },
+    ];
+
+    for (const dep of departments) {
+      const count = await Employee.countDocuments({ department: dep._id });
+
+      ws.addRow({
+        name: dep.name,
+        description: dep.description || "—",
+        totalEmployees: count
+      });
+    }
+
+    await sendWorkbook(res, wb, "departments_summary.xlsx");
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error generating department summary report" });
+  }
+};
+//2) تفاصيل موظفي كل قسم
+exports.departmentEmployeesDetailedReport = async (req, res) => {
+  try {
+    const employees = await Employee.find()
+      .populate("department", "name")
+      .populate("workplace", "name")
+      .sort({ "department.name": 1, name: 1 });
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Department Employees");
+
+    ws.columns = [
+      { header: "القسم", key: "department", width: 25 },
+      { header: "اسم الموظف", key: "name", width: 30 },
+      { header: "الرقم الوظيفي", key: "empNo", width: 15 },
+      { header: "المسمى الوظيفي", key: "jobTitle", width: 20 },
+      { header: "الفرع", key: "branch", width: 20 },
+      { header: "تاريخ التعيين", key: "hiredAt", width: 20 }
+    ];
+
+    employees.forEach(emp => {
+      ws.addRow({
+        department: emp.department?.name || "—",
+        name: emp.name,
+        empNo: emp.employeeNumber || "—",
+        jobTitle: emp.jobTitle || "—",
+        branch: emp.workplace?.name || "—",
+        hiredAt: emp.contract.start ? moment(emp.contract.start).format("YYYY-MM-DD") : "—",
+      });
+    });
+
+    await sendWorkbook(res, wb, "department_employees_details.xlsx");
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error generating department employees report" });
+  }
+};
+
+//3) الأقسام بدون موظفين
+exports.departmentsWithoutEmployeesReport = async (req, res) => {
+  try {
+    const departments = await Department.find();
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Empty Departments");
+
+    ws.columns = [
+      { header: "القسم", key: "name", width: 30 },
+      { header: "الوصف", key: "description", width: 40 },
+      { header: "الحالة", key: "status", width: 20 }
+    ];
+
+    for (const dep of departments) {
+      const count = await Employee.countDocuments({ department: dep._id });
+
+      if (count === 0) {
+        ws.addRow({
+          name: dep.name,
+          description: dep.description || "—",
+          status: "لا يوجد موظفين"
+        });
+      }
+    }
+
+    await sendWorkbook(res, wb, "departments_without_employees.xlsx");
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error generating empty departments report" });
+  }
+};
+
+//4)متوسط الرواتب في كل قسم
+exports.departmentSalaryAnalyticsReport = async (req, res) => {
+  try {
+    const departments = await Department.find();
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Department Salary Analytics");
+
+    ws.columns = [
+      { header: "القسم", key: "name", width: 25 },
+      { header: "عدد الموظفين", key: "count", width: 15 },
+      { header: "أعلى راتب", key: "max", width: 15 },
+      { header: "أقل راتب", key: "min", width: 15 },
+      { header: "متوسط الرواتب", key: "avg", width: 20 }
+    ];
+
+    for (const dep of departments) {
+      const employees = await Employee.find({ department: dep._id });
+
+      if (!employees.length) continue;
+
+      const salaries = employees.map(e => e.salary.total || 0);
+
+      ws.addRow({
+        name: dep.name,
+        count: employees.length,
+        max: Math.max(...salaries),
+        min: Math.min(...salaries),
+        avg: (salaries.reduce((a, b) => a + b, 0) / salaries.length).toFixed(2)
+      });
+    }
+
+    await sendWorkbook(res, wb, "department_salary_analytics.xlsx");
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error generating salary analytics report" });
+  }
+};
+
+// residency:
+
+//1) تقرير جميع السجلات
+exports.recordsMasterReport = async (req, res) => {
+  try {
+    const records = await Record.find()
+      .populate("branch", "name location");
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("All Records");
+
+    ws.columns = [
+      { header: "الفئة", key: "category", width: 20 },
+      { header: "النوع", key: "type", width: 25 },
+      { header: "رقم السجل", key: "number", width: 20 },
+      { header: "الفرع", key: "branch", width: 25 },
+      { header: "تاريخ الإصدار", key: "issueDate", width: 15 },
+      { header: "تاريخ الانتهاء", key: "expiryDate", width: 15 },
+      { header: "الحالة", key: "status", width: 15 },
+      { header: "عدد المرفقات", key: "attachments", width: 15 }
+    ];
+
+    records.forEach(rec => {
+      ws.addRow({
+        category: rec.category,
+        type: rec.type,
+        number: rec.number || "—",
+        branch: rec.branch?.name || "—",
+        issueDate: rec.issueDate ? moment(rec.issueDate).format("YYYY-MM-DD") : "—",
+        expiryDate: rec.expiryDate ? moment(rec.expiryDate).format("YYYY-MM-DD") : "—",
+        status: rec.status,
+        attachments: rec.attachments?.length || 0
+      });
+    });
+
+    await sendWorkbook(res, wb, "records_master.xlsx");
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+//السجلات المنتهية2..) 
+exports.expiredRecordsReport = async (req, res) => {
+  try {
+    const today = new Date();
+
+    const records = await Record.find({
+      expiryDate: { $lte: today }
+    }).populate("branch", "name");
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Expired Records");
+
+    ws.columns = [
+      { header: "الفئة", key: "category", width: 20 },
+      { header: "النوع", key: "type", width: 25 },
+      { header: "رقم السجل", key: "number", width: 20 },
+      { header: "الفرع", key: "branch", width: 25 },
+      { header: "تاريخ الانتهاء", key: "expiryDate", width: 15 },
+      { header: "الحالة", key: "status", width: 15 }
+    ];
+
+    records.forEach(rec => {
+      ws.addRow({
+        category: rec.category,
+        type: rec.type,
+        number: rec.number || "—",
+        branch: rec.branch?.name || "—",
+        expiryDate: rec.expiryDate ? moment(rec.expiryDate).format("YYYY-MM-DD") : "—",
+        status: "منتهي"
+      });
+    });
+
+    await sendWorkbook(res, wb, "expired_records.xlsx");
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+//3) السجلات حسب الفروع
+exports.recordsByBranchReport = async (req, res) => {
+  try {
+    const branches = await Branch.find();
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Records by Branch");
+
+    ws.columns = [
+      { header: "الفرع", key: "branch", width: 25 },
+      { header: "عدد السجلات", key: "count", width: 15 },
+      { header: "تفاصيل السجلات", key: "details", width: 50 }
+    ];
+
+    for (const branch of branches) {
+      const branchRecords = await Record.find({ branch: branch._id });
+
+      ws.addRow({
+        branch: branch.name,
+        count: branchRecords.length,
+        details: branchRecords.map(r => `${r.type} (${r.number || "—"})`).join(" - ")
+      });
+    }
+
+    await sendWorkbook(res, wb, "records_by_branch.xlsx");
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+//4)  السجلات اللي هتنتهي خلال 3 شهور
+exports.recordsEndingIn3Months = async (req, res) => {
+  try {
+    const within = 90; // ثابت → ٣ شهور
+
+    const today = new Date();
+    const edge = new Date();
+    edge.setDate(edge.getDate() + within);
+
+    const records = await Record.find({
+      expiryDate: { $gte: today, $lte: edge }
+    }).populate("branch", "name");
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet(`Expiring within 3 months`);
+
+    ws.columns = [
+      { header: "الفئة", key: "category", width: 20 },
+      { header: "النوع", key: "type", width: 25 },
+      { header: "رقم السجل", key: "number", width: 20 },
+      { header: "الفرع", key: "branch", width: 25 },
+      { header: "تاريخ الانتهاء", key: "expiryDate", width: 15 },
+      { header: "الأيام المتبقية", key: "remaining", width: 15 }
+    ];
+
+    records.forEach(rec => {
+      const remainingDays = Math.ceil((rec.expiryDate - today) / (1000 * 60 * 60 * 24));
+
+      ws.addRow({
+        category: rec.category,
+        type: rec.type,
+        number: rec.number || "—",
+        branch: rec.branch?.name || "—",
+        expiryDate: rec.expiryDate ? moment(rec.expiryDate).format("YYYY-MM-DD") : "—",
+        remaining: remainingDays
+      });
+    });
+
+    await sendWorkbook(res, wb, `records_expiring_in_3_months.xlsx`);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 
 
