@@ -56,7 +56,7 @@ router.get('/employee/newEmployeesReport' ,newEmployeesReport) // / تقرير �
 router.get('/branches/branchOverviewReport' ,branchOverviewReport) ///1... view branch
 router.get('/branches/employeesPerBranchReport' ,employeesPerBranchReport) //2) employee count in every branch
 router.get('/branches/newEmployeesReport' ,newEmployeesReport) //3 new employees   New Employees Per Branch (آخر 90 يوما
-router.get('/brances/departmentsPerBranchReport' ,departmentsPerBranchReport ) //4) Departments Inside Each Branch
+router.get('/branches/departmentsPerBranchReport' ,departmentsPerBranchReport ) //4) Departments Inside Each Branch
 
 //get departments
 router.get('/departments/departmentsSummaryReport' ,departmentsSummaryReport) //1)قائمة الأقسام + عدد الموظفين بكل قسم

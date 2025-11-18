@@ -831,7 +831,7 @@ exports.employeeReport = async (req, res) => {
     return res.status(500).json({ message: "Error generating employee report", error: err });
   }
 };
-
+// تقرير ب اخر موظفين موجودين
 exports.newEmployeesReport = async (req, res) => {
   try {
     const today = new Date();
