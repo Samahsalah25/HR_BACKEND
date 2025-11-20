@@ -8,3 +8,6 @@ const setTokenCookie = (res, token) => {
     maxAge: 30 * 24 * 60 * 60 * 1000 // 30 يوم
   });
 };
+
+
+module.exports = setTokenCookie;
