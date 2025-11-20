@@ -46,6 +46,7 @@ exports.login = async (req, res) => {
     setTokenCookie(res, token);
 
     res.json({
+      token,
       _id: user._id,
       name: user.name,
       role: user.role,
