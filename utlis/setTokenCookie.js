@@ -1,12 +1,12 @@
 const setTokenCookie = (res, token) => {
+const setTokenCookie = (res, token) => {
   res.cookie('token', token, {
-    httpOnly: true, // خليها true
-    secure: "none",   // على local لازم false
-    sameSite: 'lax', // على local كفاية
+    httpOnly: true,
+    secure: false,       // false على localhost
+    sameSite: 'lax',     // Lax كفاية للـ local
     maxAge: 30 * 24 * 60 * 60 * 1000
   });
 };
-
 
 
 module.exports = setTokenCookie;
