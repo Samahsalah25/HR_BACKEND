@@ -168,7 +168,8 @@ const server = http.createServer(app);
 // ========= CORS إعدادات =========
 const allowedOrigins = [
   "http://localhost:5173", 
-  "https://blanchedalmond-spider-630297.hostingersite.com"
+  "https://blanchedalmond-spider-630297.hostingersite.com" ,
+  "https://hr-ui-update.vercel.app"
 ];
 
 const corsOptions = {

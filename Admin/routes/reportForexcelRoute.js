@@ -70,8 +70,8 @@ router.get('/residency/recordsMasterReport' ,recordsMasterReport) //1)//1) تق�
 router.get('/residency/expiredRecordsReport' ,expiredRecordsReport ) ////السجلات المنتهية2..)  
 router.get('/residency/recordsByBranchReport' ,recordsByBranchReport) //3) السجلات حسب الفروع
 router.get('/residency/recordsEndingIn3Months' ,recordsEndingIn3Months ) //4) السجلات اللي هتنتهي خلال 3 شهور
-
-
+                    
+     
 module.exports = router;
 
 
