@@ -31,12 +31,10 @@ exports.login = async (req, res) => {
   try {
     const { employeeNumber, password } = req.body;
 
-    // نجيب الـ Employee برقم التعريفي
     const employee = await Employee.findOne({ employeeNumber }).populate('user');
     if (!employee || !employee.user) {
       return res.status(401).json({ message: 'الرقم التعريفي او كلمة المرور غير صحيحة' });
     }
-
     const user = employee.user;
 
     const isMatch = await user.matchPassword(password);
