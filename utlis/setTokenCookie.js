@@ -19,7 +19,7 @@ const setTokenCookie = (res, token) => {
     httpOnly: true,
     secure: isProduction,              // Production = true / Local = false
     sameSite: isProduction ? "none" : "lax",
-      domain: isProduction ? ".hostingersite.com" : undefined,
+    
     maxAge: 15 * 60 * 1000,
   });
 };
