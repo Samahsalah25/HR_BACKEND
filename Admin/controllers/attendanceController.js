@@ -196,6 +196,7 @@ const checkIn = async (req, res) => {
   });
 }
 
+console.log('cookie token:', req.cookies.token);
 
     res.status(201).json({
       message: (attendance.status === "حاضر" || attendance.status === "متأخر")

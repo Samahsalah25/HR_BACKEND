@@ -43,15 +43,7 @@ exports.login = async (req, res) => {
     const token = generateToken(user._id, user.role);
    
     setTokenCookie(res, token);
-   const cookieToken = req.cookies.token;  
-   if (cookieToken == token) {
-  console.log("نفس التوكن ");
-} else {
-  console.log("مش نفس التوكن ❌");
-}
-
-
- 
+   
 
     res.json({
       _id: user._id,
