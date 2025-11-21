@@ -21,13 +21,12 @@ const setTokenCookie = (res, token) => {
   //   sameSite: isProduction ? "none" : "lax",
   //   maxAge: 15 * 60 * 1000,
   // });
-  res.cookie("token", token, {
-  httpOnly: true,
-  secure: true,               // HTTPS، موجود عندك
-  sameSite: "none",           // cross-domain
-  domain: ".hostingersite.com", // أي subdomain من Hostinger
-  maxAge: 15 * 60 * 1000,
-});
+   res.cookie("token", token, {
+    httpOnly: true,
+    secure: isProduction,        // HTTPS مطلوب في production
+    sameSite: isProduction ? "lax" : "lax", // بدل none، لاقبلها أكثر على iOS
+    maxAge: 15 * 60 * 1000,
+  });
 
 };
 
