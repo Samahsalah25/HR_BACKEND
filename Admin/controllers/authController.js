@@ -65,7 +65,7 @@ exports.logout = (req, res) => {
   secure: process.env.NODE_ENV === "production",
   sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
 });
-سس
+
 
     res.status(200).json({
       success: true,
