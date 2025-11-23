@@ -60,11 +60,12 @@ exports.login = async (req, res) => {
 // controllers/authController.js أو حسب مكانك
 exports.logout = (req, res) => {
   try {
-    res.clearCookie("token", {
-      httpOnly: true,
-      secure: true,      // لازم نفس القيمة زي login
-      sameSite: "none",  // لازم نفس القيمة زي login
-    });
+   res.clearCookie("token", {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+});
+سس
 
     res.status(200).json({
       success: true,

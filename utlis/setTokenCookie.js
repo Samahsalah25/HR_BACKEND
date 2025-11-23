@@ -18,15 +18,14 @@ const setTokenCookie = (res, token) => {
   // res.cookie("token", token, {
   //   httpOnly: true,
   //   secure: isProduction,              // Production = true / Local = false
-  //   sameSite: is8Production ? "none" : "lax",
+  //   sameSite: isProduction ? "none" : "lax",
   //   maxAge: 15 * 60 * 1000,
   // });
-  
-  res.cookie("token", token, {
+    res.cookie("token", token, {
     httpOnly: true,
-    secure: false,              // Production = true / Local = false
-    sameSite:"lax",
-    maxAge: 1000*60*60*24*7,
+    secure: isProduction,        // Local = false / Production = true
+    sameSite: isProduction ? "none" : "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
   });
    
 
