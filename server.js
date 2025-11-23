@@ -203,9 +203,9 @@ app.use(session({
 
   cookie: {
     httpOnly: true,
-    maxAge: 1000 * 60 * 60 * 24 * 7, // أسبوع
-    secure: false,  // خليها false حتى لو HTTPS
-    sameSite: "lax"
+    maxAge: 1000 * 60 * 60 * 24 * 7,
+    secure: true,          // مهم جداً جداً
+    sameSite: "none",      // لأن الفرونت على دومين مختلف
   },
 
   store: MongoStore.create({
