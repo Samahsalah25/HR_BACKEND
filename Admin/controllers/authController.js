@@ -27,6 +27,59 @@ exports.register = async (req, res) => {
 };
 
 // @desc Login user
+// exports.login = async (req, res) => {
+//   try {
+//     const { employeeNumber, password } = req.body;
+
+//     const employee = await Employee.findOne({ employeeNumber }).populate('user');
+//     if (!employee || !employee.user) {
+//       return res.status(401).json({ message: 'الرقم التعريفي او كلمة المرور غير صحيحة' });
+//     }
+//     const user = employee.user;
+
+//     const isMatch = await user.matchPassword(password);
+//     if (!isMatch) return res.status(401).json({ message: 'الرقم التعريفي او كلمة المرور غير صحيحة' });
+
+//     const token = generateToken(user._id, user.role);
+   
+//     setTokenCookie(res, token);
+   
+
+//     res.json({
+//       _id: user._id,
+//       name: user.name,
+//       role: user.role,
+//       employeeNumber: employee.employeeNumber
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
+
+// // controllers/authController.js أو حسب مكانك
+// exports.logout = (req, res) => {
+//   try {
+//    res.clearCookie("token", {
+//   httpOnly: true,
+//   secure: process.env.NODE_ENV === "production",
+//   sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+// });
+
+
+//     res.status(200).json({
+//       success: true,
+//       message: "تم تسجيل الخروج بنجاح",
+//     });
+//   } catch (error) {
+//     console.error("Logout error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "حدث خطأ أثناء تسجيل الخروج",
+//     });
+//   }
+// };
+
 exports.login = async (req, res) => {
   try {
     const { employeeNumber, password } = req.body;
@@ -35,41 +88,50 @@ exports.login = async (req, res) => {
     if (!employee || !employee.user) {
       return res.status(401).json({ message: 'الرقم التعريفي او كلمة المرور غير صحيحة' });
     }
+
     const user = employee.user;
 
     const isMatch = await user.matchPassword(password);
-    if (!isMatch) return res.status(401).json({ message: 'الرقم التعريفي او كلمة المرور غير صحيحة' });
+    if (!isMatch) {
+      return res.status(401).json({ message: 'الرقم التعريفي او كلمة المرور غير صحيحة' });
+    }
 
-    const token = generateToken(user._id, user.role);
-   
-    setTokenCookie(res, token);
-   
+    // ❌ مفيش JWT هنا
+    // ❌ مفيش setTokenCookie
 
-    res.json({
-      _id: user._id,
-      name: user.name,
+    // 🔥 بناء الـ session
+    req.session.user = {
+      id: user._id,
       role: user.role,
-      employeeNumber: employee.employeeNumber
+      employeeNumber: employee.employeeNumber,
+      name: user.name,
+    };
+
+    // 🔥 رجّعي البيانات عادي
+    res.json({
+      success: true,
+      message: "تم تسجيل الدخول بنجاح",
+      user: {
+        _id: user._id,
+        name: user.name,
+        role: user.role,
+        employeeNumber: employee.employeeNumber
+      }
     });
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-
-// controllers/authController.js أو حسب مكانك
 exports.logout = (req, res) => {
   try {
-   res.clearCookie("token", {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-});
-
-
-    res.status(200).json({
-      success: true,
-      message: "تم تسجيل الخروج بنجاح",
+    req.session.destroy(() => {
+      res.clearCookie("connect.sid");
+      res.json({
+        success: true,
+        message: "تم تسجيل الخروج بنجاح"
+      });
     });
   } catch (error) {
     console.error("Logout error:", error);

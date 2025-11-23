@@ -153,6 +153,9 @@ const adminDashboardRoute =require("./Admin/routes/adminDashboardRoute.js");
 const residencyRoutesEmployee = require("./Admin/routes/residencyEmployeeRoutes.js");
 const reportexcelReports=require("./Admin/routes/reportForexcelRoute.js");
 
+const session = require("express-session");
+const MongoStore = require("connect-mongo");
+
 // DB & scripts
 const connectDB = require('./config/db.js');
 const seedAdmin = require('./scripts/seedAdmin.js');
@@ -190,6 +193,26 @@ app.use(helmet());
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(morgan('dev'));
+
+
+
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+
+  cookie: {
+    httpOnly: true,
+    maxAge: 1000 * 60 * 60 * 24 * 7, // أسبوع
+    secure: false,  // خليها false حتى لو HTTPS
+    sameSite: "lax"
+  },
+
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGO_URI,
+    collectionName: "sessions"
+  })
+}));
 
 // ========= Static files =========
 app.use('/uploads/tasks', express.static(path.join(__dirname, 'Admin', 'uploads', 'tasks')));
