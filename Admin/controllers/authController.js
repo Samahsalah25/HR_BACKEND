@@ -42,14 +42,15 @@ exports.login = async (req, res) => {
 
     const token = generateToken(user._id, user.role);
    
-    setTokenCookie(res, token);
+    // setTokenCookie(res, token);
    
 
     res.json({
       _id: user._id,
       name: user.name,
       role: user.role,
-      employeeNumber: employee.employeeNumber
+      employeeNumber: employee.employeeNumber ,
+        token,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
