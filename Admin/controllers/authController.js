@@ -144,15 +144,46 @@ exports.logout = (req, res) => {
 
 
 // controllers/authController.js
+// exports.getMe = async (req, res) => {
+//   try {
+//     // هات اليوزر من الـ token
+//     const user = await User.findById(req.user._id).select("-password");
+//     if (!user) {
+//       return res.status(404).json({ success: false, message: "المستخدم غير موجود" });
+//     }
+
+//     // هات الامبلوي اللي مربوط باليوزر ده
+//     const employee = await Employee.findOne({ user: user._id })
+//       .populate("department", "name")
+//       .populate("workplace", "name location");
+
+//     res.json({
+//       success: true,
+//       user: {
+//         ...user.toObject(),
+//         employee: employee ? employee.toObject() : null,
+//       },
+//     });
+//   } catch (err) {
+//     res.status(500).json({ success: false, message: err.message });
+//   }
+// };
+
 exports.getMe = async (req, res) => {
   try {
-    // هات اليوزر من الـ token
-    const user = await User.findById(req.user._id).select("-password");
+    // اليوزر جاي من السيشن
+    const sessionUser = req.session.user;
+    if (!sessionUser) {
+      return res.status(401).json({ success: false, message: "غير مصرح لك" });
+    }
+
+    // هات بيانات اليوزر الحقيقية من الداتابيز
+    const user = await User.findById(sessionUser.id).select("-password");
     if (!user) {
       return res.status(404).json({ success: false, message: "المستخدم غير موجود" });
     }
 
-    // هات الامبلوي اللي مربوط باليوزر ده
+    // هات employee اللي مربوط باليوزر
     const employee = await Employee.findOne({ user: user._id })
       .populate("department", "name")
       .populate("workplace", "name location");
@@ -161,12 +192,11 @@ exports.getMe = async (req, res) => {
       success: true,
       user: {
         ...user.toObject(),
-        employee: employee ? employee.toObject() : null,
+        employee: employee || null,
       },
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
-
 
