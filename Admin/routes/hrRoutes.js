@@ -10,6 +10,18 @@ const  {
 }=require('../validations/employeeSchemas');
 // Login (يوزر يدخل)
 
+const multer = require("multer");
+const storage = multer.diskStorage({
+  destination: function(req, file, cb) {
+    cb(null, "uploads/documents");
+  },
+  filename: function(req, file, cb) {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + "-" + file.originalname);
+  }
+});
+const upload = multer({ storage });
+
 
 // جلب كل الموظفين اللي رولهم Employee
 router.get('/' , getAllEmployees);
@@ -23,6 +35,6 @@ router.get('/getAllContracts' ,getAllContracts)
 router.get('/getOneemployee/:id' , getEmployeeById)
 router.post('/' ,validate(createEmployeeSchema) ,createEmployee)
 router.delete('/deleteEmployee/:id' ,deleteEmployee)
-router.patch('/updateemployee/:id' ,validate(updateEmployeeSchema),updateEmployee)
+router.patch('/updateemployee/:id' , upload.array("documents"),validate(updateEmployeeSchema),updateEmployee)
                             
 module.exports = router;

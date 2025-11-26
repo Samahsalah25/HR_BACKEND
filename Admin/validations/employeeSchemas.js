@@ -78,8 +78,19 @@ const createEmployeeSchema = Joi.object({
     transportAllowance: Joi.number().min(0),
     otherAllowance: Joi.number().min(0)
   }),
-
-  // 📞 بيانات الاتصال
+documents: Joi.array().items(
+    Joi.object({
+      name: Joi.string().required().messages({
+        "string.base": "اسم الملف يجب أن يكون نص",
+        "any.required": "اسم الملف مطلوب"
+      }),
+      url: Joi.string().required().messages({
+        "string.base": "رابط الملف يجب أن يكون نص",
+        "any.required": "رابط الملف مطلوب"
+      })
+    })
+  ).optional()  ,
+  //  بيانات الاتصال
   contactInfo: Joi.object({
     phone: Joi.string().allow("").messages({
       "string.base": "رقم الهاتف يجب أن يكون نص"
@@ -137,6 +148,13 @@ const updateEmployeeSchema = Joi.object({
     phone: Joi.string().allow(""),
     address: Joi.string().allow("")
   }).optional(),
+  documents: Joi.array().items(
+  Joi.object({
+    name: Joi.string(),
+    url: Joi.string()
+  })
+).optional()
+ ,
   bankInfo: Joi.object({
     iban: Joi.string().allow(""),
     bankName: Joi.string().allow(""),

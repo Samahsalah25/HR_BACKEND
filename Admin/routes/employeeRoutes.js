@@ -9,7 +9,20 @@ const  {
   updateEmployeeSchema
 }=require('../validations/employeeSchemas');
 
-router.post('/',authenticate,authorizeRoles('HR' ,"ADMIN"), validate(createEmployeeSchema),createEmployee);
+const multer = require("multer");
+const storage = multer.diskStorage({
+  destination: function(req, file, cb) {
+    cb(null, "uploads/documents");
+  },
+  filename: function(req, file, cb) {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + "-" + file.originalname);
+  }
+});
+const upload = multer({ storage });
+
+
+router.post('/',authenticate,authorizeRoles('HR' ,"ADMIN"), upload.array("documents"), validate(createEmployeeSchema), createEmployee);
 router.patch('/:id' ,authenticate ,authorizeRoles('HR' ,"ADMIN"), validate(createEmployeeSchema),createEmployee)
 //here get workstartTime and date:
 router.get('/status' ,authenticate ,employeeStatus)

@@ -41,6 +41,7 @@ const mongoose = require('mongoose');
 //   },
 //   { timestamps: true }
 // );
+
 const employeeSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
@@ -94,6 +95,14 @@ const employeeSchema = new mongoose.Schema(
       swift: { type: String },
       accountNumber: { type: String } 
     },
+    documents: [
+  {
+    name: { type: String },      
+    url: { type: String },      
+    uploadedAt: { type: Date, default: Date.now }
+  }
+],
+
 
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
   },

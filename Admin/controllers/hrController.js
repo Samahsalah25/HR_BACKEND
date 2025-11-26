@@ -388,6 +388,10 @@ bankInfo: {
         transportAllowance: employee.salary?.transportAllowance || 0,
         otherAllowance: employee.salary?.otherAllowance || 0,
       },
+      documents: employee.documents?.map(doc => ({
+    name: doc.name,
+    url: doc.url
+  })) || []
     };
 
     res.status(200).json(result);
@@ -729,6 +733,17 @@ const updateEmployee = async (req, res) => {
       end.setFullYear(end.getFullYear() + employee.residency.duration.year);
       employee.residency.end = end;
     }
+
+   // بعد إنشاء الموظف
+if (req.files && req.files.length > 0) {
+  employee.documents = req.files.map(file => ({
+    name: file.originalname,
+    url: file.path, 
+  }));
+  await employee.save({ session });
+}
+
+
 
     await employee.save({ session });
     await session.commitTransaction();

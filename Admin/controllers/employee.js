@@ -8,85 +8,18 @@ const Contract = require("../models/Contract");
 const Task = require('../models/Task');
 const Request=require('../models/requestModel')
 const Counter = require("../models/counterSchema");
-
-
-exports.employeeOverview = async (req, res) => {
-  try {
-    const userId = req.user.id;
-
-    // نجيب الموظف
-    const employee = await Employee.findOne({ user: userId }).populate("contract");
-    if (!employee) {
-      return res.status(404).json({ error: "الموظف غير موجود" });
-    }
-
-    // نجيب رصيد الإجازات
-    const leaveBalance = await LeaveBalance.findOne({ employee: employee._id });
-
-    // نحسب الإجمالي
-    let totalRemaining = 0;
-    if (leaveBalance) {
-      totalRemaining =
-        (leaveBalance.annual || 0) +
-        (leaveBalance.sick || 0) +
-        (leaveBalance.marriage || 0) +
-        (leaveBalance.emergency || 0) +
-        (leaveBalance.maternity || 0) +
-        (leaveBalance.unpaid || 0);
-    }
-
-    // نحسب الغياب السنوي
-    const startOfYear = new Date(new Date().getFullYear(), 0, 1);
-    const absences = await Attendance.countDocuments({
-      employee: employee._id,
-      status: "غائب",
-      date: { $gte: startOfYear }
-    });
-
-    // نحسب الأيام لحد انتهاء العقد
-    let daysUntilContractEnd = null;
-    if (employee.contract?.end) {
-      const today = new Date();
-      const diff = new Date(employee.contract.end) - today;
-      daysUntilContractEnd = Math.max(Math.ceil(diff / (1000 * 60 * 60 * 24)), 0);
-    }
-
-    res.json({
-      name: employee.name,
-      jobTitle: employee.jobTitle,
-      leaveBalances: leaveBalance
-        ? {
-            annual: leaveBalance.annual,
-            sick: leaveBalance.sick,
-            marriage: leaveBalance.marriage,
-            emergency: leaveBalance.emergency,
-            maternity: leaveBalance.maternity,
-            unpaid: leaveBalance.unpaid,
-            totalRemaining
-          }
-        : {},
-      annualAbsences: absences,
-      daysUntilContractEnd
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "خطأ في السيرفر" });
+const multer = require("multer");
+const storage = multer.diskStorage({
+  destination: function(req, file, cb) {
+    cb(null, "uploads/documents");
+  },
+  filename: function(req, file, cb) {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + "-" + file.originalname);
   }
-};
+});
+const upload = multer({ storage });
 
-
-
-
-
-// 🆔 توليد الرقم الوظيفي
-async function generateEmployeeNumber(session) {
-  const counter = await Counter.findOneAndUpdate(
-    { key: "employeeNumber" },
-    { $inc: { value: 1 } },
-    { new: true, upsert: true, session }
-  );
-  return `EMP-${String(counter.value).padStart(5, "0")}`;
-}
 
 exports.createEmployee = async (req, res) => {
   const session = await mongoose.startSession();
@@ -184,6 +117,14 @@ exports.createEmployee = async (req, res) => {
       end.setFullYear(end.getFullYear() + residencyDuration.year);
       employee.residency.end = end;
     }
+// بعد إنشاء الموظف
+if (req.files && req.files.length > 0) {
+  employee.documents = req.files.map(file => ({
+    name: file.originalname,
+    url: file.path, 
+  }));
+  await employee.save({ session });
+}
 
     await employee.save({ session });
 
@@ -233,6 +174,84 @@ exports.createEmployee = async (req, res) => {
     res.status(500).json({ message: "حدث خطأ أثناء إنشاء الموظف", error: error.message });
   }
 };
+
+
+// 🆔 توليد الرقم الوظيفي
+async function generateEmployeeNumber(session) {
+  const counter = await Counter.findOneAndUpdate(
+    { key: "employeeNumber" },
+    { $inc: { value: 1 } },
+    { new: true, upsert: true, session }
+  );
+  return `EMP-${String(counter.value).padStart(5, "0")}`;
+}
+exports.employeeOverview = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // نجيب الموظف
+    const employee = await Employee.findOne({ user: userId }).populate("contract");
+    if (!employee) {
+      return res.status(404).json({ error: "الموظف غير موجود" });
+    }
+
+    // نجيب رصيد الإجازات
+    const leaveBalance = await LeaveBalance.findOne({ employee: employee._id });
+
+    // نحسب الإجمالي
+    let totalRemaining = 0;
+    if (leaveBalance) {
+      totalRemaining =
+        (leaveBalance.annual || 0) +
+        (leaveBalance.sick || 0) +
+        (leaveBalance.marriage || 0) +
+        (leaveBalance.emergency || 0) +
+        (leaveBalance.maternity || 0) +
+        (leaveBalance.unpaid || 0);
+    }
+
+    // نحسب الغياب السنوي
+    const startOfYear = new Date(new Date().getFullYear(), 0, 1);
+    const absences = await Attendance.countDocuments({
+      employee: employee._id,
+      status: "غائب",
+      date: { $gte: startOfYear }
+    });
+
+    // نحسب الأيام لحد انتهاء العقد
+    let daysUntilContractEnd = null;
+    if (employee.contract?.end) {
+      const today = new Date();
+      const diff = new Date(employee.contract.end) - today;
+      daysUntilContractEnd = Math.max(Math.ceil(diff / (1000 * 60 * 60 * 24)), 0);
+    }
+
+    res.json({
+      name: employee.name,
+      jobTitle: employee.jobTitle,
+      leaveBalances: leaveBalance
+        ? {
+            annual: leaveBalance.annual,
+            sick: leaveBalance.sick,
+            marriage: leaveBalance.marriage,
+            emergency: leaveBalance.emergency,
+            maternity: leaveBalance.maternity,
+            unpaid: leaveBalance.unpaid,
+            totalRemaining
+          }
+        : {},
+      annualAbsences: absences,
+      daysUntilContractEnd
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "خطأ في السيرفر" });
+  }
+};
+
+
+
+
 
 // exports.createEmployee = async (req, res) => {
 //   const session = await mongoose.startSession();
