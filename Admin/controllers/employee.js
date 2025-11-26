@@ -188,24 +188,30 @@ exports.createEmployee = async (req, res) => {
     await employee.save({ session });
 
     // 🕓 إنشاء رصيد الإجازات
-const companyLeaves = await LeaveBalance.findOne({ employee: null }).session(session);
-if (!companyLeaves) throw new Error("رصيد الإجازات الافتراضي غير موجود");
+    // 🕓 إنشاء رصيد الإجازات
+    const companyLeaves = await LeaveBalance.findOne({ employee: null }).session(session);
+    if (!companyLeaves) {
+      throw new Error("رصيد الإجازات الافتراضي للشركة غير محدد");
+    }
 
-// مسح _id القديم قبل النسخ
-const leaveData = companyLeaves.toObject();
-delete leaveData._id;
+    const totalLeaveBalance =
+      companyLeaves.annual +
+      companyLeaves.sick +
+      companyLeaves.marriage +
+      companyLeaves.emergency +
+      companyLeaves.maternity +
+      companyLeaves.unpaid;
 
-await LeaveBalance.create([{
-  employee: employee._id,
-  ...leaveData,
-  remaining: companyLeaves.annual +
-             companyLeaves.sick +
-             companyLeaves.marriage +
-             companyLeaves.emergency +
-             companyLeaves.maternity +
-             companyLeaves.unpaid
-}], { session });
-
+    await LeaveBalance.create([{
+      employee: employee._id,
+      annual: companyLeaves.annual,
+      sick: companyLeaves.sick,
+      marriage: companyLeaves.marriage,
+      emergency: companyLeaves.emergency,
+      maternity: companyLeaves.maternity,
+      unpaid: companyLeaves.unpaid,
+      remaining: totalLeaveBalance
+    }], { session });
 
     await session.commitTransaction();
     session.endSession();
