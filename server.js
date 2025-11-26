@@ -195,6 +195,8 @@ app.use(morgan('dev'));
 app.use('/uploads/tasks', express.static(path.join(__dirname, 'Admin', 'uploads', 'tasks')));
 app.use('/uploads/requests', express.static(path.join(__dirname, 'uploads/requests')));
 app.use('/uploads/meetings', express.static(path.join(__dirname, 'uploads', 'meetings')));
+app.use('/uploads/documents', express.static(path.join(__dirname, 'Admin', 'uploads', 'documents')));
+
 
 // ========= Routes =========
 app.use('/api/auth', authRoutes);
