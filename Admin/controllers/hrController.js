@@ -638,12 +638,149 @@ const getManagerss = async (req, res) => {
 // };
 
 
+// const updateEmployee = async (req, res) => {
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
+
+//   try {
+//     const { id } = req.params;
+//     const {
+//       name,
+//       email,
+//       jobTitle,
+//       department,
+//       manager,
+//       employmentType,
+//       contractStart,
+//       contractDurationId,
+//       residencyStart,
+//       residencyDurationId,
+//       residencyAdditionNumber,
+//       residencyIssuingAuthority,
+//       residencyInsuranceNumber,
+//       residencyNationality,
+//       residencyType,
+//       workHoursPerWeek,
+//       workplace,
+//       salary,
+//       contactInfo,
+//       bankInfo
+//     } = req.body;
+
+//     let employee = await Employee.findById(id)
+//       .populate("user")
+//       .populate("contract.duration")
+//       .populate("residency.duration")
+//       .session(session);
+
+//     if (!employee) {
+//       await session.abortTransaction();
+//       session.endSession();
+//       return res.status(404).json({ message: "الموظف غير موجود" });
+//     }
+
+//     // تحديث بيانات المستخدم
+//     if (employee.user) {
+//       if (name) employee.user.name = name;
+//       if (email) employee.user.email = email;
+//       await employee.user.save({ session });
+//     }
+
+//     // تحديث البيانات الأساسية (غير قابل للتغيير: employeeNumber)
+//     if (name) employee.name = name;
+//     if (jobTitle) employee.jobTitle = jobTitle;
+//     if (department) employee.department = department;
+//     if (manager) employee.manager = manager;
+//     if (employmentType) employee.employmentType = employmentType;
+//     if (workHoursPerWeek) employee.workHoursPerWeek = workHoursPerWeek;
+//     if (workplace) employee.workplace = workplace;
+//     if (salary) employee.salary = salary;
+//     if (contactInfo) employee.contactInfo = contactInfo;
+//     if (bankInfo) employee.bankInfo = bankInfo;
+
+//     // تحديث العقد
+//     if (contractStart) employee.contract.start = contractStart;
+//     if (contractDurationId) employee.contract.duration = contractDurationId;
+
+//     // تحديث بيانات الإقامة
+//     if (residencyStart) employee.residency.start = residencyStart;
+//     if (residencyDurationId) employee.residency.duration = residencyDurationId;
+//     if (residencyAdditionNumber) employee.residency.additionNumber = residencyAdditionNumber;
+//     if (residencyIssuingAuthority) employee.residency.issuingAuthority = residencyIssuingAuthority;
+//     if (residencyInsuranceNumber) employee.residency.insuranceNumber = residencyInsuranceNumber;
+//     if (residencyNationality) employee.residency.nationality = residencyNationality;
+//     if (residencyType) employee.residency.type = residencyType;
+
+//     await employee.populate([
+//       { path: "contract.duration" },
+//       { path: "residency.duration" }
+//     ]);
+
+//     // حساب نهاية العقد
+//     if (employee.contract.start && employee.contract.duration) {
+//       const end = new Date(employee.contract.start);
+//       if (employee.contract.duration.unit === "years") {
+//         end.setFullYear(end.getFullYear() + employee.contract.duration.duration);
+//       } else if (employee.contract.duration.unit === "months") {
+//         end.setMonth(end.getMonth() + employee.contract.duration.duration);
+//       }
+//       employee.contract.end = end;
+//     }
+
+//     // حساب نهاية الإقامة
+//     if (employee.residency.start && employee.residency.duration) {
+//       const end = new Date(employee.residency.start);
+//       end.setFullYear(end.getFullYear() + employee.residency.duration.year);
+//       employee.residency.end = end;
+//     }
+
+//    // بعد إنشاء الموظف
+// if (req.files && req.files.length > 0) {
+//   employee.documents = req.files.map(file => ({
+//     name: file.originalname,
+//     url: file.path, 
+//   }));
+//   await employee.save({ session });
+// }
+
+
+
+//     await employee.save({ session });
+//     await session.commitTransaction();
+//     session.endSession();
+
+//     const updatedEmployee = await Employee.findById(id)
+//       .populate("user")
+//       .populate("contract.duration")
+//       .populate("residency.duration");
+
+//     res.status(200).json({
+//       message: "✅ تم تحديث بيانات الموظف بنجاح",
+//       employee: updatedEmployee
+//     });
+
+//   } catch (error) {
+//     await session.abortTransaction();
+//     session.endSession();
+//     console.error("❌ Update employee error:", error);
+//     res.status(500).json({
+//       message: "حدث خطأ أثناء تحديث الموظف",
+//       error: error.message
+//     });
+//   }
+// };
 const updateEmployee = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
     const { id } = req.params;
+
+    // parse nested objects لو جت كـ JSON string من الفرونت
+    let contactInfo = req.body.contactInfo ? JSON.parse(req.body.contactInfo) : {};
+    let bankInfo = req.body.bankInfo ? JSON.parse(req.body.bankInfo) : {};
+    let salary = req.body.salary ? JSON.parse(req.body.salary) : {};
+
     const {
       name,
       email,
@@ -661,10 +798,7 @@ const updateEmployee = async (req, res) => {
       residencyNationality,
       residencyType,
       workHoursPerWeek,
-      workplace,
-      salary,
-      contactInfo,
-      bankInfo
+      workplace
     } = req.body;
 
     let employee = await Employee.findById(id)
@@ -686,7 +820,7 @@ const updateEmployee = async (req, res) => {
       await employee.user.save({ session });
     }
 
-    // تحديث البيانات الأساسية (غير قابل للتغيير: employeeNumber)
+    // تحديث البيانات الأساسية
     if (name) employee.name = name;
     if (jobTitle) employee.jobTitle = jobTitle;
     if (department) employee.department = department;
@@ -699,10 +833,12 @@ const updateEmployee = async (req, res) => {
     if (bankInfo) employee.bankInfo = bankInfo;
 
     // تحديث العقد
+    employee.contract = employee.contract || {};
     if (contractStart) employee.contract.start = contractStart;
     if (contractDurationId) employee.contract.duration = contractDurationId;
 
     // تحديث بيانات الإقامة
+    employee.residency = employee.residency || {};
     if (residencyStart) employee.residency.start = residencyStart;
     if (residencyDurationId) employee.residency.duration = residencyDurationId;
     if (residencyAdditionNumber) employee.residency.additionNumber = residencyAdditionNumber;
@@ -711,10 +847,16 @@ const updateEmployee = async (req, res) => {
     if (residencyNationality) employee.residency.nationality = residencyNationality;
     if (residencyType) employee.residency.type = residencyType;
 
-    await employee.populate([
-      { path: "contract.duration" },
-      { path: "residency.duration" }
-    ]);
+    // إضافة المستندات الجديدة بدون مسح القديم
+    if (req.files && req.files.length > 0) {
+      employee.documents = [
+        ...(employee.documents || []),
+        ...req.files.map(file => ({
+          name: file.originalname,
+          url: file.path,
+        }))
+      ];
+    }
 
     // حساب نهاية العقد
     if (employee.contract.start && employee.contract.duration) {
@@ -734,17 +876,7 @@ const updateEmployee = async (req, res) => {
       employee.residency.end = end;
     }
 
-   // بعد إنشاء الموظف
-if (req.files && req.files.length > 0) {
-  employee.documents = req.files.map(file => ({
-    name: file.originalname,
-    url: file.path, 
-  }));
-  await employee.save({ session });
-}
-
-
-
+    // حفظ كل التعديلات
     await employee.save({ session });
     await session.commitTransaction();
     session.endSession();
