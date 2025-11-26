@@ -368,6 +368,16 @@ const getEmployeeById = async (req, res) => {
       residencyAdditionNumber: employee.residency?.additionNumber || "",
       residencyIssuingAuthority: employee.residency?.issuingAuthority || "",
       residencyInsuranceNumber: employee.residency?.insuranceNumber || "",
+contactInfo: {
+  phone: employee.contactInfo?.phone || "",
+  address: employee.contactInfo?.address || "",
+},
+bankInfo: {
+  bankName: employee.bankInfo?.bankName || "",
+  iban: employee.bankInfo?.iban || "",
+  swift: employee.bankInfo?.swift || "",
+  accountNumber: employee.bankInfo?.accountNumber || "",
+},
 
       // 💰 الراتب
       salary: {
