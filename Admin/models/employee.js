@@ -1,40 +1,98 @@
 const mongoose = require('mongoose');
 
+// const employeeSchema = new mongoose.Schema(
+//   {
+//     name: { type: String, required: true },
+//     jobTitle: { type: String },
+//     employeeNumber: { type: String, unique: true },
+//     department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
+//   manager: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null } ,
+
+//     employmentType: { type: String, enum: ['Full-Time', 'Part-Time', 'Contract'] },
+
+//     contract: {
+//       start: { type: Date },
+//       duration: { type: mongoose.Schema.Types.ObjectId, ref: 'Contract' },
+//       end: { type: Date } // هنا مش هنحسبها بالـ getter
+//     },
+
+//      residency: {
+//        nationality: { type: String },  
+//       start: { type: Date },
+//       duration: { type: mongoose.Schema.Types.ObjectId, ref: 'ResidencyYear' },
+//       end: { type: Date },
+//       additionNumber: { type: String },          // رقم الإقامة
+//       issuingAuthority: { type: String },        // الجهة المصدرة
+//       insuranceNumber: { type: String },         // الرقم التأميني
+//       type: { type: String }            // نوع الإقامة
+//     },
+
+//     workHoursPerWeek: { type: Number },
+//     workplace: { type: mongoose.Schema.Types.ObjectId, ref: "Branch" },
+//     salary: {
+//       base: { type: Number, default: 0 },
+//       housingAllowance: { type: Number, default: 0 },
+//       transportAllowance: { type: Number, default: 0 },
+//       otherAllowance: { type: Number, default: 0 },
+//       total: { type: Number, default: 0 }
+//     },
+
+//     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+//   },
+//   { timestamps: true }
+// );
 const employeeSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     jobTitle: { type: String },
     employeeNumber: { type: String, unique: true },
+
     department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
-  manager: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null } ,
+    manager: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null },
 
     employmentType: { type: String, enum: ['Full-Time', 'Part-Time', 'Contract'] },
 
     contract: {
       start: { type: Date },
       duration: { type: mongoose.Schema.Types.ObjectId, ref: 'Contract' },
-      end: { type: Date } // هنا مش هنحسبها بالـ getter
+      end: { type: Date }
     },
 
-     residency: {
-       nationality: { type: String },  
+    residency: {
+      nationality: { type: String },
       start: { type: Date },
       duration: { type: mongoose.Schema.Types.ObjectId, ref: 'ResidencyYear' },
       end: { type: Date },
-      additionNumber: { type: String },          // رقم الإقامة
-      issuingAuthority: { type: String },        // الجهة المصدرة
-      insuranceNumber: { type: String },         // الرقم التأميني
-      type: { type: String }            // نوع الإقامة
+      additionNumber: { type: String },
+      issuingAuthority: { type: String },
+      insuranceNumber: { type: String },
+      type: { type: String }
     },
 
     workHoursPerWeek: { type: Number },
     workplace: { type: mongoose.Schema.Types.ObjectId, ref: "Branch" },
+
+    //  الرواتب
     salary: {
       base: { type: Number, default: 0 },
       housingAllowance: { type: Number, default: 0 },
       transportAllowance: { type: Number, default: 0 },
       otherAllowance: { type: Number, default: 0 },
       total: { type: Number, default: 0 }
+    },
+
+    // بيانات الاتصال
+    contactInfo: {
+      phone: { type: String },
+      address: { type: String }
+    },
+
+    //  بيانات الحساب البنكي
+    bankInfo: {
+      iban: { type: String },
+      bankName: { type: String },
+      swift: { type: String },
+      accountNumber: { type: String } 
     },
 
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
