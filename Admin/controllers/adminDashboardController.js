@@ -456,6 +456,7 @@ exports.getEmployeesSummary = async (req, res) => {
         department: emp.department?.name || "غير محدد",
         role: emp.user?.role || "غير محدد", // ✅ أضفنا الدور
         contractDurationName: emp.contract?.duration?.name || "غير محدد",
+           residencyNationality: emp.residency?.nationality || " غير محدد" ,
         contractPeriod:
           emp.contract?.start && emp.contract?.end
             ? `${new Date(emp.contract.start).toLocaleDateString("ar-EG")} - ${new Date(
