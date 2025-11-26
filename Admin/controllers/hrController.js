@@ -45,6 +45,8 @@ const getAllEmployees = async (req, res) => {
         email: emp.user.email,
         department: emp.department ? emp.department.name : null,
         jobTitle: emp.jobTitle,
+            employeeNumber: emp.employeeNumber || "",        
+    residencyNationality: emp.residency?.nationality || "", 
         contractStart: emp.contract.start,
         contractEnd: emp.contract.end,
         contractDuration: contractDurationText,
