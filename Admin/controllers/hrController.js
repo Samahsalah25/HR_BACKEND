@@ -763,10 +763,16 @@ if (req.files && req.files.length > 0) {
     });
 
   } catch (error) {
-     await session.abortTransaction();
+    await session.abortTransaction();
   session.endSession();
-  console.error("❌ Update employee error:", error);
-  console.error("❌ Update employee error (stringified):", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+
+  // طباعة مفصلة
+  if (error.response) {
+    // لو الخطأ من axios أو cloudinary
+    console.error("❌ Error response data:", JSON.stringify(error.response.data, null, 2));
+  }
+  console.error("❌ Full error object:", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+
   res.status(500).json({
     message: "حدث خطأ أثناء تحديث الموظف",
     error: error.message
