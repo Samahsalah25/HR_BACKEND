@@ -878,11 +878,15 @@ let salary = typeof req.body.salary === "string"
     }
 
     // حساب نهاية الإقامة
-    if (employee.residency.start && employee.residency.duration) {
-      const end = new Date(employee.residency.start);
-      end.setFullYear(end.getFullYear() + employee.residency.duration.year);
-      employee.residency.end = end;
-    }
+ // حساب نهاية الإقامة حسب السكيما الحالية
+if (employee.residency.start && employee.residency.duration) {
+  const end = new Date(employee.residency.start);
+
+  // duration.year = عدد السنين اللي هتزودها
+  end.setFullYear(end.getFullYear() + employee.residency.duration.year);
+
+  employee.residency.end = end;
+}
 
     // حفظ كل التعديلات
     await employee.save({ session });
