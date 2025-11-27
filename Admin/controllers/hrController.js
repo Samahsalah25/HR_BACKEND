@@ -777,9 +777,17 @@ const updateEmployee = async (req, res) => {
     const { id } = req.params;
 
     // parse nested objects لو جت كـ JSON string من الفرونت
-    let contactInfo = req.body.contactInfo ? JSON.parse(req.body.contactInfo) : {};
-    let bankInfo = req.body.bankInfo ? JSON.parse(req.body.bankInfo) : {};
-    let salary = req.body.salary ? JSON.parse(req.body.salary) : {};
+   let contactInfo = typeof req.body.contactInfo === "string"
+  ? JSON.parse(req.body.contactInfo)
+  : req.body.contactInfo || {};
+
+let bankInfo = typeof req.body.bankInfo === "string"
+  ? JSON.parse(req.body.bankInfo)
+  : req.body.bankInfo || {};
+
+let salary = typeof req.body.salary === "string"
+  ? JSON.parse(req.body.salary)
+  : req.body.salary || {};
 
     const {
       name,
