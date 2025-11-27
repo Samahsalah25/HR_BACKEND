@@ -776,21 +776,10 @@ const updateEmployee = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // دالة مساعدة لتحويل string JSON لـ object بأمان
-    const parseJSONSafe = (input) => {
-      if (!input) return {};
-      if (typeof input === "object") return input;
-      try {
-        return JSON.parse(input);
-      } catch (err) {
-        throw new Error(`حقل غير صالح: ${input}`);
-      }
-    };
-
-    // تحويل الحقول المعقدة بأمان
-    let contactInfo = parseJSONSafe(req.body.contactInfo);
-    let bankInfo = parseJSONSafe(req.body.bankInfo);
-    let salary = parseJSONSafe(req.body.salary);
+    // parse nested objects لو جت كـ JSON string من الفرونت
+    let contactInfo = req.body.contactInfo ? JSON.parse(req.body.contactInfo) : {};
+    let bankInfo = req.body.bankInfo ? JSON.parse(req.body.bankInfo) : {};
+    let salary = req.body.salary ? JSON.parse(req.body.salary) : {};
 
     const {
       name,
@@ -887,6 +876,7 @@ const updateEmployee = async (req, res) => {
       employee.residency.end = end;
     }
 
+    // حفظ كل التعديلات
     await employee.save({ session });
     await session.commitTransaction();
     session.endSession();
@@ -905,7 +895,8 @@ const updateEmployee = async (req, res) => {
     await session.abortTransaction();
     session.endSession();
     console.error("❌ Update employee error:", error);
-    res.status(500).json({ message: error.message });
+
+     res.status(500).json({ message: error.message, stack: error.stack });
   }
 };
 
