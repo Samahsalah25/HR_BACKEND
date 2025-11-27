@@ -895,6 +895,7 @@ const updateEmployee = async (req, res) => {
     await session.abortTransaction();
     session.endSession();
     console.error("❌ Update employee error:", error);
+  res.status(500).json({ message: error.message, stack: error.stack });
     res.status(500).json({
       message: "حدث خطأ أثناء تحديث الموظف",
       error: error.message
