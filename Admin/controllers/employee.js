@@ -8,17 +8,6 @@ const Contract = require("../models/Contract");
 const Task = require('../models/Task');
 const Request=require('../models/requestModel')
 const Counter = require("../models/counterSchema");
-const multer = require("multer");
-const storage = multer.diskStorage({
-  destination: function(req, file, cb) {
-    cb(null, "uploads/documents");
-  },
-  filename: function(req, file, cb) {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + "-" + file.originalname);
-  }
-});
-const upload = multer({ storage });
 
 
 exports.createEmployee = async (req, res) => {

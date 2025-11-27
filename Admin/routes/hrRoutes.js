@@ -10,16 +10,28 @@ const  {
 }=require('../validations/employeeSchemas');
 // Login (يوزر يدخل)
 
+// cloudinary-config.js
+const { v2: cloudinary } = require("cloudinary");
 const multer = require("multer");
-const storage = multer.diskStorage({
-  destination: function(req, file, cb) {
-    cb(null, "uploads/documents");
-  },
-  filename: function(req, file, cb) {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + "-" + file.originalname);
-  }
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+
+// إعداد Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.CLOUD_KEY,
+  api_secret: process.env.CLOUD_SECRET,
 });
+
+// إعداد التخزين على Cloudinary
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: "employee-documents", // مجلد التخزين على Cloudinary
+    allowed_formats: ["jpg", "png", "pdf", "docx", "txt"], // الصيغ المسموحة
+  },
+});
+
+// إعداد Multer
 const upload = multer({ storage });
 
 
@@ -35,6 +47,11 @@ router.get('/getAllContracts' ,getAllContracts)
 router.get('/getOneemployee/:id' , getEmployeeById)
 router.post('/' ,validate(createEmployeeSchema) ,createEmployee)
 router.delete('/deleteEmployee/:id' ,deleteEmployee)
-router.patch('/updateemployee/:id' , upload.array("documents"),validate(updateEmployeeSchema),updateEmployee)
+router.patch(
+  '/updateemployee/:id',
+  upload.array("newDocuments"), // ← الاسم لازم يطابق اسم الحقل في FormData من الفرونت
+  validate(updateEmployeeSchema),
+  updateEmployee
+);
                             
 module.exports = router;
