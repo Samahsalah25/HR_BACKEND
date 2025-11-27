@@ -644,6 +644,9 @@ const updateEmployee = async (req, res) => {
 
   try {
     const { id } = req.params;
+    console.log("Files:", req.files);
+console.log("Body:", req.body);
+
     const {
       name,
       email,
