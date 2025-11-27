@@ -763,13 +763,14 @@ if (req.files && req.files.length > 0) {
     });
 
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    console.error("❌ Update employee error:", error);
-    res.status(500).json({
-      message: "حدث خطأ أثناء تحديث الموظف",
-      error: error.message
-    });
+     await session.abortTransaction();
+  session.endSession();
+  console.error("❌ Update employee error:", error);
+  console.error("❌ Update employee error (stringified):", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+  res.status(500).json({
+    message: "حدث خطأ أثناء تحديث الموظف",
+    error: error.message
+  });
   }
 };
 
