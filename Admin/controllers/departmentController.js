@@ -42,7 +42,7 @@ exports.updateDepartment = async (req, res) => {
 
     const department = await Department.findByIdAndUpdate(id, req.body, {
       new: true,
-      runValidators: true, // ✅ يخلي الـ mongoose يطبق الـ validation
+      runValidators: true, //  يخلي الـ mongoose يطبق الـ validation
     });
 
     if (!department)

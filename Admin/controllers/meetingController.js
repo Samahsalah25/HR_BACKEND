@@ -5,141 +5,6 @@ const { cleanupUploadedFile } = require("../../utlis/cleanupUploadedFile");
 const { io, onlineUsers } = require("../../server");
 const Notification = require("../models/notification");
 const mongoose = require("mongoose");
-// const createMeeting = async (req, res) => {
-//   try {
-//     const {
-//       title,
-//       subTitle,
-//       description,
-//       day,        // "YYYY-MM-DD"
-//       startTime,  // "HH:mm"
-//       endTime,    // "HH:mm"
-//       type,
-//       meetingLink,
-//       participants,
-//       repeat,
-//       status
-//     } = req.body;
-
-//     // جلب بيانات الـ creator
-//     const creatorEmp = await Employee.findOne({ user: req.user._id })
-//       .populate("department workplace manager user");
-//     if (!creatorEmp) {
-//       cleanupUploadedFile(req);
-//       return res.status(404).json({ success: false, message: "المستخدم غير مرتبط بموظف" });
-//     }
-
-//     const creatorRole = req.user.role;
-
-//     // التحقق من صلاحيات المشاركين
-//     for (let participantId of participants) {
-//       const participantEmp = await Employee.findById(participantId).populate("department user");
-
-//       if (!participantEmp) {
-//         cleanupUploadedFile(req);
-//         return res.status(404).json({ success: false, message: "مشارك غير موجود" });
-//       }
-
-//       let allowed = false;
-
-//       if (creatorRole === "Manager") {
-//         allowed = true;
-//       } else if (creatorRole === "EMPLOYEE") {
-//         if (participantEmp._id.equals(creatorEmp._id)) {
-//           allowed = true;
-//         } else if (
-//           creatorEmp.department &&
-//           participantEmp.department &&
-//           creatorEmp.department.equals(participantEmp.department) &&
-//           participantEmp.user.role === "EMPLOYEE"
-//         ) {
-//           allowed = true;
-//         } else if (
-//           creatorEmp.manager &&
-//           participantEmp._id.equals(creatorEmp.manager._id)
-//         ) {
-//           allowed = true;
-//         }
-//       }
-
-//       if (!allowed) {
-//         cleanupUploadedFile(req);
-//         return res.status(403).json({
-//           success: false,
-//           message: `غير مسموح لك بعمل ميتنج مع ${participantEmp.name}`,
-//         });
-//       }
-//     }
-
-//     // تجهيز المرفقات
-//     const attachments = req.file
-//       ? [
-//           {
-//             filename: req.file.filename,
-//             originalname: req.file.originalname,
-//             path: `/uploads/meetings/${req.file.filename}`,
-//           },
-//         ]
-//       : [];
-
-//     // إنشاء الميتنج
-//     const meeting = new Meeting({
-//       title,
-//       subTitle,
-//       description,
-//       day,
-//       startTime,
-//       endTime,
-//       type,
-//       meetingLink,
-//       participants,
-//       repeat,
-//       status,
-//       createdBy: creatorEmp._id,
-//       attachments,
-//     });
-
-//     await meeting.save();
-
-
-
-// //  إرسال إشعار للمشاركين
-// const io = req.app.get("io");
-// const onlineUsers = req.app.get("onlineUsers");
-
-// for (let participantId of participants) {
-//   const notification = await Notification.create({
-//     employee: participantId,
-//     type: "meeting",
-//     message: `تمت إضافتك إلى اجتماع بعنوان "${title}" يوم ${day}`,
-//     link: `/meetings/${meeting._id}`,
-//   });
-
-//   const socketId = onlineUsers.get(participantId.toString());
-//   if (socketId) {
-//     io.to(socketId).emit("notification", notification);
-//   }
-// }
-
-
-
-
-
-
-//     res.status(201).json({
-//       success: true,
-//       message: "تم إنشاء الميتنج بنجاح",
-//       data: meeting,
-//     });
-//   } catch (error) {
-//     cleanupUploadedFile(req);
-//     res.status(500).json({
-//       success: false,
-//       message: "خطأ في إنشاء الميتنج",
-//       error: error.message,
-//     });
-//   }
-// };
 
 const createMeeting = async (req, res) => {
   try {
@@ -396,9 +261,6 @@ const attachments = req.file
 
 
 
-
-
-    // تحديث الحقول العادية
     meeting.title = title ?? meeting.title;
     meeting.subTitle = subTitle ?? meeting.subTitle;
     meeting.description = description ?? meeting.description;
@@ -485,13 +347,13 @@ console.log('u[dated metting' ,meeting)
 
 const getallMyMeetings = async (req, res) => {
   try {
-    // 1️⃣ جلب الـ Employee المرتبط بالـ logged-in user
+   
     const emp = await Employee.findOne({ user: req.user._id });
     if (!emp) {
       return res.status(404).json({ success: false, message: "الموظف غير موجود" });
     }
 
-    // 2️⃣ جلب الاجتماعات المتعلقة بالموظف
+    //  جلب الاجتماعات المتعلقة بالموظف
     const meetings = await Meeting.find({
       $or: [
         { createdBy: emp._id },
@@ -503,7 +365,7 @@ const getallMyMeetings = async (req, res) => {
       .select("_id title startTime endTime day status createdBy participants")
       .lean();
 
-    // 3️⃣ دالة لتحويل الوقت من "HH:mm" لصيغة 12 ساعة ص/م
+    // \\ دالة لتحويل الوقت من "HH:mm" لصيغة 12 ساعة ص/م
     const formatTime = (timeStr) => {
       if (!timeStr) return "00:00";
       const [hourStr, minStr] = timeStr.split(":");
@@ -514,7 +376,7 @@ const getallMyMeetings = async (req, res) => {
       return `${hour}:${minute} ${ampm}`;
     };
 
-    // 4️⃣ تنسيق الاجتماعات للـ frontend
+  
     const formatted = meetings.map(meeting => ({
       _id: meeting._id,
       date: meeting.day.toISOString().split("T")[0], // yyyy-mm-dd
@@ -528,7 +390,7 @@ const getallMyMeetings = async (req, res) => {
       participants: meeting.participants.map(p => p.name),
     }));
 
-    // 5️⃣ إرسال الريسبونس
+ 
     res.status(200).json({
       success: true,
       count: formatted.length,
@@ -561,7 +423,7 @@ const deleteMeeting = async (req, res) => {
       return res.status(404).json({ success: false, message: "الاجتماع غير موجود" });
     }
 
-    // تحقق إنه صاحب الاجتماع
+ 
     const emp = await Employee.findOne({ user: req.user._id });
     if (!emp) {
       return res.status(404).json({ success: false, message: "المستخدم غير مرتبط بموظف" });

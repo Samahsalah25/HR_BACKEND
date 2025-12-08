@@ -2,7 +2,7 @@
 const Notification = require("../models/notification"); 
 const Employee = require("../models/employee"); 
 
-// دالة مساعدة تجيب employeeId من req.user
+
 async function resolveEmployeeId(req) {
   if (!req.user?._id) return null;
   const emp = await Employee.findOne({ user: req.user._id }).select("_id");
@@ -85,7 +85,7 @@ exports.markAllRead = async (req, res) => {
     return res.json({
       success: true,
       message: "تم تعليم كل الإشعارات كمقروءة",
-      modifiedCount: result.modifiedCount, // عدد اللي اتعدلوا
+      modifiedCount: result.modifiedCount, 
     });
   } catch (err) {
     console.error("markAllRead:", err);

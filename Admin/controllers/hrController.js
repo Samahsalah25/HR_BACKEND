@@ -96,24 +96,22 @@ const createEmployee = async (req, res) => {
       role
     } = req.body;
 
-    // ✅ تأكيد إن اللي بيضيف HR فقط
+   
     if (req.user.role !== "HR") {
       return res.status(403).json({ message: "ليس لديك صلاحية لإضافة موظف جديد" });
     }
 
-    // ✅ تأكد من وجود البريد الإلكتروني مسبقًا
+ 
     const existingUser = await User.findOne({ email }).session(session);
     if (existingUser) {
       return res.status(400).json({ message: `البريد الإلكتروني ${email} مستخدم بالفعل` });
     }
 
-    // ✅ تأكد من عدم تكرار رقم الموظف
     const existingEmployee = await Employee.findOne({ employeeNumber }).session(session);
     if (existingEmployee) {
       return res.status(400).json({ message: `رقم الموظف ${employeeNumber} مستخدم بالفعل` });
     }
 
-    // ✅ استرجاع بيانات العقد (اختياري)
     let contractDuration = null;
     if (contractDurationId) {
       contractDuration = await Contract.findById(contractDurationId).session(session);
@@ -122,7 +120,7 @@ const createEmployee = async (req, res) => {
       }
     }
 
-    // ✅ استرجاع بيانات الإقامة (اختياري)
+    //  استرجاع بيانات الإقامة 
     let residencyDuration = null;
     if (residencyDurationId) {
       residencyDuration = await ResidencyYear.findById(residencyDurationId).session(session);
@@ -131,10 +129,10 @@ const createEmployee = async (req, res) => {
       }
     }
 
-    // ✅ إنشاء المستخدم
+  
     const user = await User.create([{ name, email, password, role: role || "EMPLOYEE" }], { session });
 
-    // ✅ إنشاء الموظف
+ 
     let employee = await Employee.create([{
       name,
       jobTitle,
@@ -163,7 +161,7 @@ const createEmployee = async (req, res) => {
 
     employee = employee[0];
 
-    // ✅ حساب تاريخ نهاية العقد تلقائيًا
+    //  حساب تاريخ نهاية العقد تلقائيًا
     if (employee.contract.start && contractDuration) {
       const end = new Date(employee.contract.start);
       if (contractDuration.unit === "years") {
@@ -174,7 +172,7 @@ const createEmployee = async (req, res) => {
       employee.contract.end = end;
     }
 
-    // ✅ حساب تاريخ نهاية الإقامة تلقائيًا
+    //  حساب تاريخ نهاية الإقامة تلقائيًا
     if (employee.residency.start && residencyDuration) {
       const end = new Date(employee.residency.start);
       end.setFullYear(end.getFullYear() + residencyDuration.year);
@@ -183,7 +181,7 @@ const createEmployee = async (req, res) => {
 
     await employee.save({ session });
 
-    // ✅ إنشاء رصيد الإجازات الافتراضي
+    //  إنشاء رصيد الإجازات الافتراضي
     const companyLeaves = await LeaveBalance.findOne({ employee: null }).session(session);
     if (!companyLeaves) {
       throw new Error("رصيد الإجازات الافتراضي للشركة غير محدد");
@@ -211,7 +209,7 @@ const createEmployee = async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
-    // ✅ جلب الموظف بعد الـ populate
+    //  جلب الموظف بعد الـ populate
     const populatedEmployee = await Employee.findById(employee._id)
       .populate("contract.duration")
       .populate("residency.duration");
@@ -225,7 +223,7 @@ const createEmployee = async (req, res) => {
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-    console.error("❌ Error details:", error);
+    console.error(" Error details:", error);
     res.status(500).json({
       message: "حدث خطأ أثناء إنشاء الموظف",
       error: error.message
@@ -289,8 +287,8 @@ const getAllContracts = async (req, res) => {
     const today = new Date();
 
     const employees = await Employee.find()
-      .populate('user', 'name') // نجيب اسم الموظف
-      .populate('contract.duration'); // نجيب تفاصيل العقد
+      .populate('user', 'name') 
+      .populate('contract.duration'); 
 
     const contracts = employees
       .filter(emp => emp.contract && emp.contract.start && emp.contract.end) // اللي عنده عقد
@@ -329,7 +327,6 @@ const getEmployeeById = async (req, res) => {
       return res.status(404).json({ message: "الموظف غير موجود" });
     }
 
-    // ✅ نجهز البيانات بشكل منسق للـ frontend
     const result = {
       id: employee._id,
       name: employee.name,
@@ -346,7 +343,7 @@ const getEmployeeById = async (req, res) => {
       workplace: employee.workplace?._id || null,
       workplaceName: employee.workplace?.name || "",
 
-      // 🧾 العقد
+      // العقد
       contractStart: employee.contract?.start || null,
       contractEnd: employee.contract?.end || null,
       contractDurationId: employee.contract?.duration?._id || null,
@@ -356,7 +353,7 @@ const getEmployeeById = async (req, res) => {
           }`
         : null,
 
-      // 🪪 بيانات الإقامة
+      //  بيانات الإقامة
       residencyStart: employee.residency?.start || null,
       residencyEnd: employee.residency?.end || null,
       residencyDurationId: employee.residency?.duration?._id || null,
@@ -381,7 +378,7 @@ bankInfo: {
   accountNumber: employee.bankInfo?.accountNumber || "",
 },
 
-      // 💰 الراتب
+      //  الراتب
       salary: {
         base: employee.salary?.base || 0,
         housingAllowance: employee.salary?.housingAllowance || 0,
@@ -396,7 +393,7 @@ bankInfo: {
 
     res.status(200).json(result);
   } catch (err) {
-    console.error("❌ خطأ في getEmployeeById:", err);
+    console.error(" خطأ في getEmployeeById:", err);
     res.status(500).json({ message: "حدث خطأ في السيرفر" });
   }
 };
@@ -516,128 +513,7 @@ const getManagerss = async (req, res) => {
 };
 
 
-//update employee here
-// Update Employee
-// const updateEmployee = async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     const {
-//       name,
-//       email,
-      
-//       jobTitle,
-//       employeeNumber,
-//       department,
-//       manager,
-//       employmentType,
-//       contractStart,
-//       contractDurationId,
-//       residencyStart,
-//       residencyDurationId,
-//       residencyAdditionNumber,
-//       residencyIssuingAuthority,
-//       residencyInsuranceNumber,
-//       residencyNationality,
-//       residencyType,
-//       workHoursPerWeek,
-//       workplace,
-//       salary,
-//     } = req.body;
-
-//     // تأكيد الصلاحيات
-//     // if (req.user.role !== "HR") {
-//     //   return res.status(403).json({ message: "ليس لديك صلاحية لتعديل بيانات الموظف" });
-//     // }
-
-//     // جلب الموظف مع populate
-//     let employee = await Employee.findById(id)
-//       .populate("user")
-//       .populate("contract.duration")
-//       .populate("residency.duration");
-
-//     if (!employee) {
-//       return res.status(404).json({ message: "الموظف غير موجود" });
-//     }
-
-//     // تحديث بيانات المستخدم (User)
-//     if (employee.user) {
-//       if (name) employee.user.name = name;
-//       if (email) employee.user.email = email;
-      
-//       await employee.user.save();
-//     }
-
-//     // تحديث البيانات الأساسية
-//     if (name) employee.name = name;
-//     if (jobTitle) employee.jobTitle = jobTitle;
-//     if (employeeNumber) employee.employeeNumber = employeeNumber;
-//     if (department) employee.department = department;
-//     if (manager) employee.manager = manager;
-//     if (employmentType) employee.employmentType = employmentType;
-//     if (workHoursPerWeek) employee.workHoursPerWeek = workHoursPerWeek;
-//     if (workplace) employee.workplace = workplace;
-//     if (salary) employee.salary = salary;
-
-//     // تحديث العقد
-//     if (contractStart) employee.contract.start = contractStart;
-//     if (contractDurationId) employee.contract.duration = contractDurationId;
-
-//     // تحديث بيانات الإقامة
-//     if (residencyStart) employee.residency.start = residencyStart;
-//     if (residencyDurationId) employee.residency.duration = residencyDurationId;
-//     if (residencyAdditionNumber) employee.residency.additionNumber = residencyAdditionNumber;
-//     if (residencyIssuingAuthority) employee.residency.issuingAuthority = residencyIssuingAuthority;
-//     if (residencyInsuranceNumber) employee.residency.insuranceNumber = residencyInsuranceNumber;
-//     if (residencyNationality) employee.residency.nationality = residencyNationality;
-//     if (residencyType) employee.residency.type = residencyType;
-
-//     // إعادة تحميل مدة العقد والإقامة
-//     await employee.populate([
-//       { path: "contract.duration" },
-//       { path: "residency.duration" }
-//     ]);
-
-//     // حساب نهاية العقد
-//     if (employee.contract.start && employee.contract.duration) {
-//       const end = new Date(employee.contract.start);
-//       if (employee.contract.duration.unit === "years") {
-//         end.setFullYear(end.getFullYear() + employee.contract.duration.duration);
-//       } else if (employee.contract.duration.unit === "months") {
-//         end.setMonth(end.getMonth() + employee.contract.duration.duration);
-//       }
-//       employee.contract.end = end;
-//     }
-
-//     // حساب نهاية الإقامة
-//     if (employee.residency.start && employee.residency.duration) {
-//       const end = new Date(employee.residency.start);
-//       end.setFullYear(end.getFullYear() + employee.residency.duration.year);
-//       employee.residency.end = end;
-//     }
-
-//     await employee.save();
-
-//     // بعد التحديث نرجع البيانات كاملة
-//     const updatedEmployee = await Employee.findById(id)
-//       .populate("user")
-//       .populate("contract.duration")
-//       .populate("residency.duration");
-
-//     res.status(200).json({
-//       message: "تم تحديث بيانات الموظف بنجاح ✅",
-//       employee: updatedEmployee
-//     });
-
-//   } catch (error) {
-//     console.error("❌ Update employee error:", error);
-//     res.status(500).json({
-//       message: "حدث خطأ أثناء تحديث الموظف",
-//       error: error.message
-//     });
-//   }
-// };
-
-
+//update employee
 const updateEmployee = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -758,24 +634,21 @@ if (req.files && req.files.length > 0) {
       .populate("residency.duration");
 
     res.status(200).json({
-      message: "✅ تم تحديث بيانات الموظف بنجاح",
+      message: " تم تحديث بيانات الموظف بنجاح",
       employee: updatedEmployee
     });
 
   } catch (error) {
-    await session.abortTransaction();
+   await session.abortTransaction();
   session.endSession();
-
-  // طباعة مفصلة
-  if (error.response) {
-    // لو الخطأ من axios أو cloudinary
-    console.error("❌ Error response data:", JSON.stringify(error.response.data, null, 2));
+  console.error(" Update employee error:", error);           // هذا لطباعة كامل الـ error object
+  if (error instanceof multer.MulterError) {
+    console.error("MulterError details:", error.field, error.message);
   }
-  console.error("❌ Full error object:", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
-
   res.status(500).json({
     message: "حدث خطأ أثناء تحديث الموظف",
-    error: error.message
+    error: error.toString(),    //  
+    stack: error.stack          
   });
   }
 };

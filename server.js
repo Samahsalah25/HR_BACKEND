@@ -152,7 +152,9 @@ const systemSettingsRoutes = require("./Admin/routes/SystemSettingsRoute.js");
 const adminDashboardRoute =require("./Admin/routes/adminDashboardRoute.js");
 const residencyRoutesEmployee = require("./Admin/routes/residencyEmployeeRoutes.js");
 const reportexcelReports=require("./Admin/routes/reportForexcelRoute.js");
-
+const jobOpeningRoutes=require("./Admin/routes/jobOpeningRoutes.js");
+const applicationRoutes=require("./Admin/routes/applicantRoutes.js");
+const interviewRoutes= require("./Admin/routes/interviewRoutes.js")
 // DB & scripts
 const connectDB = require('./config/db.js');
 const seedAdmin = require('./scripts/seedAdmin.js');
@@ -216,7 +218,10 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/settings/system", systemSettingsRoutes);
 app.use("/api/admindahshboard" ,adminDashboardRoute) ;
 app.use("/api/residenciesEmployee", residencyRoutesEmployee);
-app.use("/api/excelReports" ,reportexcelReports)
+app.use("/api/excelReports" ,reportexcelReports);
+app.use("/api/jobopening" ,jobOpeningRoutes);
+app.use("/api/applications",applicationRoutes);
+app.use("/api/interviews", interviewRoutes);
 
 // ========= Socket.io =========
 const io = new Server(server, {

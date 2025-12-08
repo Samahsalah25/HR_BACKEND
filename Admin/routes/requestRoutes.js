@@ -23,7 +23,7 @@ const {createRequestSchema ,updateRequestSchema ,addNoteSchema}=require('../vali
 const validate=require('../middlesware/validate');
 
 // الموظف ينشئ طلب
-router.post('/', authenticate,authorizeRoles('HR','EMPLOYEE'),validate(createRequestSchema), createRequest);
+router.post('/', authenticate,authorizeRoles('HR','EMPLOYEE' ,'Manager'),validate(createRequestSchema), createRequest);
 
 // عرض الطلبات (الموظف : طلباته، HR/Admin : الكل + فلترة)
 router.get('/',getRequests);

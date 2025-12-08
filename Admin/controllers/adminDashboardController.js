@@ -326,13 +326,13 @@ exports.getBranchesDetails = async (req, res) => {
 // };
 exports.getBranchesWithDepartments = async (req, res) => {
   try {
-    // 1️⃣ كل الأقسام في الشركة (حتى بدون موظفين)
+    //  كل الأقسام في الشركة (حتى بدون موظفين)
     const allDepartments = await Department.find().lean();
 
-    // 2️⃣ كل الفروع
+    //  كل الفروع
     const branches = await Branch.find();
 
-    // 3️⃣ كل الموظفين مع بيانات القسم والمدير
+    //  كل الموظفين مع بيانات القسم والمدير
     const employees = await Employee.find()
       .populate("department manager", "name description")
       .populate("workplace", "name")
@@ -340,7 +340,7 @@ exports.getBranchesWithDepartments = async (req, res) => {
 
     const branchDetails = [];
 
-    // 4️⃣ بناء تفاصيل الفروع
+    //  بناء تفاصيل الفروع
     for (const branch of branches) {
       const employeesInBranch = employees.filter(
         (emp) => emp.workplace?._id?.toString() === branch._id.toString()
@@ -372,7 +372,7 @@ exports.getBranchesWithDepartments = async (req, res) => {
       });
     }
 
-    // 5️⃣ الإخراج النهائي
+    //  الإخراج النهائي
     res.status(200).json({
       success: true,
       allDepartments: allDepartments.map((dept) => ({
@@ -454,7 +454,7 @@ exports.getEmployeesSummary = async (req, res) => {
         name: emp.name || "غير محدد",
         employeeNumber: emp.employeeNumber || "غير محدد",
         department: emp.department?.name || "غير محدد",
-        role: emp.user?.role || "غير محدد", // ✅ أضفنا الدور
+        role: emp.user?.role || "غير محدد", //  أضفنا الدور
         contractDurationName: emp.contract?.duration?.name || "غير محدد",
            residencyNationality: emp.residency?.nationality || " غير محدد" ,
         contractPeriod:
@@ -474,7 +474,7 @@ exports.getEmployeesSummary = async (req, res) => {
       employees: summaries,
     });
   } catch (error) {
-    console.error("❌ خطأ أثناء جلب ملخص الموظفين:", error);
+    console.error(" خطأ أثناء جلب ملخص الموظفين:", error);
     res.status(500).json({
       success: false,
       message: "حدث خطأ أثناء جلب ملخص الموظفين",
@@ -644,7 +644,7 @@ exports.getEmployeesByLeaveType = async (req, res) => {
       employee: { $exists: true, $ne: null }
     }).populate("employee", "name employeeNumber");
 
-    // 👇 بناء التقرير
+    // بناء التقرير
     const report = balances
       .filter(b => b.employee)
       .map(b => {
@@ -684,7 +684,7 @@ exports.getEmployeesByLeaveType = async (req, res) => {
 
 
 
-// ✅ عرض جميع بيانات الإقامة
+//  عرض جميع بيانات الإقامة
 
 exports.getResidencyData = async (req, res) => {
   try {

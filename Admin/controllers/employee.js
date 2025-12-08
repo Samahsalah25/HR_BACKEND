@@ -40,13 +40,13 @@ exports.createEmployee = async (req, res) => {
       bankInfo
     } = req.body;
 
-    // ✉️ تحقق البريد
+    //  تحقق البريد
     const existingUser = await User.findOne({ email }).session(session);
     if (existingUser) {
       return res.status(400).json({ message: `البريد ${email} مستخدم بالفعل` });
     }
 
-    // 🧾 المدد
+    //  المدد
     const contractDuration = contractDurationId
       ? await Contract.findById(contractDurationId).session(session)
       : null;
@@ -55,13 +55,13 @@ exports.createEmployee = async (req, res) => {
       ? await ResidencyYear.findById(residencyDurationId).session(session)
       : null;
 
-    // 👨‍💻 إنشاء المستخدم
+    //  إنشاء المستخدم
     const user = await User.create([{ name, email, password, role: role || "EMPLOYEE" }], { session });
 
-    // 🔢 توليد رقم الموظف
+    //  توليد رقم الموظف
     const generatedEmpNo = await generateEmployeeNumber(session);
 
-    // 👷 إنشاء الموظف
+    // إنشاء الموظف
     let employee = await Employee.create([{
       name,
       jobTitle,
@@ -92,7 +92,7 @@ exports.createEmployee = async (req, res) => {
 
     employee = employee[0];
 
-    // 📅 حساب نهاية العقد
+    //  حساب نهاية العقد
     if (employee.contract.start && contractDuration) {
       const end = new Date(employee.contract.start);
       if (contractDuration.unit === "years") end.setFullYear(end.getFullYear() + contractDuration.duration);
@@ -100,7 +100,7 @@ exports.createEmployee = async (req, res) => {
       employee.contract.end = end;
     }
 
-    // 📅 حساب نهاية الإقامة
+    //  حساب نهاية الإقامة
     if (employee.residency.start && residencyDuration) {
       const end = new Date(employee.residency.start);
       end.setFullYear(end.getFullYear() + residencyDuration.year);
@@ -117,8 +117,8 @@ if (req.files && req.files.length > 0) {
 
     await employee.save({ session });
 
-    // 🕓 إنشاء رصيد الإجازات
-    // 🕓 إنشاء رصيد الإجازات
+    //  إنشاء رصيد الإجازات
+
     const companyLeaves = await LeaveBalance.findOne({ employee: null }).session(session);
     if (!companyLeaves) {
       throw new Error("رصيد الإجازات الافتراضي للشركة غير محدد");
@@ -146,13 +146,13 @@ if (req.files && req.files.length > 0) {
     await session.commitTransaction();
     session.endSession();
 
-    // 🌟 Populate للعرض
+    //  Populate للعرض
     const populatedEmployee = await Employee.findById(employee._id)
       .populate("contract.duration")
       .populate("residency.duration");
 
     res.status(201).json({
-      message: "✅ تم إنشاء الموظف بنجاح",
+      message: " تم إنشاء الموظف بنجاح",
       user: user[0],
       employee: populatedEmployee
     });
@@ -165,7 +165,7 @@ if (req.files && req.files.length > 0) {
 };
 
 
-// 🆔 توليد الرقم الوظيفي
+//  توليد الرقم الوظيفي
 async function generateEmployeeNumber(session) {
   const counter = await Counter.findOneAndUpdate(
     { key: "employeeNumber" },
@@ -717,7 +717,7 @@ exports.getMyAttendanceThroughMonth = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // نجيب الموظف المرتبط باليوزر
+
     const employee = await Employee.findOne({ user: userId });
     if (!employee) {
       return res.status(404).json({ error: "الموظف غير مرتبط بالحساب" });

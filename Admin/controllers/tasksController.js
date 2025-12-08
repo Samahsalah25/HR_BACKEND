@@ -61,10 +61,10 @@ const getAlltasks = async (req, res) => {
    const tasks = await Task.find()
   .populate({
     path: 'assignedTo',
-    select: 'fullName department',   // ✅ رجع بس الاسم والقسم
+    select: 'fullName department',   //  رجع بس الاسم والقسم
     populate: {
       path: 'user',
-      select: ' name email'                // ✅ رجع بس الإيميل
+      select: ' name email'                //  رجع بس الإيميل
     }
   })
   .populate('assignedBy', 'fullName email')
@@ -157,78 +157,12 @@ const taskByemployee = async (req, res) => {
   }
 };
 
-// POST create new task (ملف واحد: attachment)
-// const createTasks = async (req, res) => {
-//   try {
-//     const { title, description, assignedTo, dueDate } = req.body || {};
-
-//     if (!title || !description || !assignedTo || !dueDate) {
-//       cleanupUploadedFile(req);
-//       return res.status(400).json({
-//         success: false,
-//         message: 'حقول مطلوبة مفقودة: title, description, assignedTo, dueDate'
-//       });
-//     }
-
-//     const employee = await Employee.findById(assignedTo);
-//     if (!employee) {
-//       cleanupUploadedFile(req);
-//       return res.status(404).json({ success: false, message: 'الموظف غير موجود' });
-//     }
-
-//     const parsedDueDate = parseISODate(dueDate);
-//     if (!parsedDueDate) {
-//       cleanupUploadedFile(req);
-//       return res.status(400).json({ success: false, message: 'التاريخ غير صالح (استخدم YYYY-MM-DD)' });
-//     }
-
-//     // 📌 تجهيز المرفق كـ URL مش path
-//     const attachments = req.file
-//       ? [
-//           {
-//             filename: req.file.filename,
-//             originalname: req.file.originalname,
-//             path: `/uploads/tasks/${req.file.filename}` // ✅ URL
-//           }
-//         ]
-//       : [];
-
-//     const task = new Task({
-//       title,
-//       description,
-//       assignedTo,
-//       assignedBy: req.user.id,
-//       dueDate: parsedDueDate,
-//       attachments
-//     });
-
-//     await task.save();
-
-//     await task.populate([
-//       { path: 'assignedBy', select: 'name email' },
-//       { path: 'assignedTo', populate: { path: 'user', select: 'name email role' } }
-//     ]);
-
-//     res.status(201).json({
-//       success: true,
-//       message: 'تم إنشاء المهمة بنجاح',
-//       data: task
-//     });
-//   } catch (error) {
-//     cleanupUploadedFile(req);
-//     res.status(400).json({
-//       success: false,
-//       message: 'خطأ في إنشاء المهمة',
-//       error: error.message
-//     });
-//   }
-// };
 
 //
 const createTasks = async (req, res) => {
   try {
     const { title, description, assignedTo, dueDate ,priority,assignDate } = req.body || {};
-        console.log("📦 Payload from frontend:", req.body)
+        console.log(" Payload from frontend:", req.body)
 
     if (!title || !description || !assignedTo || !dueDate) {
       cleanupUploadedFile(req);
@@ -313,7 +247,7 @@ const createTasks = async (req, res) => {
       return res.status(403).json({ success: false, message: 'غير مسموح لك بعمل تاسك لهذا الموظف' });
     }
 
-    // تجهيز المرفقات
+
     const attachments = req.file
       ? [
           {
@@ -457,7 +391,7 @@ const updateTask = async (req, res) => {
       }
     }
 
-    // تحديث المرفقات إذا موجودة
+  
     if (req.file) {
       task.attachments = [{
         filename: req.file.filename,
@@ -497,7 +431,7 @@ const deleteTask = async (req, res) => {
       return res.status(404).json({ success: false, message: 'المهمة غير موجودة' });
     }
 
-    // (اختياري) مسح ملفات المرفقات من الديسك
+    // () مسح ملفات المرفقات من الديسك
     if (task.attachments && task.attachments.length) {
       task.attachments.forEach(att => {
         if (att.path) {
@@ -605,7 +539,7 @@ const getTaskById = async (req, res) => {
     const taskId = req.params.id;
 
     const task = await Task.findById(taskId)
-      .populate('assignedTo', 'name email jobTitle user') // أو زوّدي أي فيلد موجود عندك في Employee
+      .populate('assignedTo', 'name email jobTitle user') 
       .populate('assignedBy', 'name email'); // من User
 
     if (!task) {

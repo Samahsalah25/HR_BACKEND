@@ -20,59 +20,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // =============== Create (الموظف ينشئ طلب) ===============
-// =============== Create Request ===============
-// exports.createRequest = [
-//   upload.array('attachments'), // لو فيه ملفات
-//   async (req, res) => {
-//     try {
-//       const { type, leave, complaint, appeal, allowance, insurance } = req.body;
 
-//       if (!type) return res.status(400).json({ message: 'نوع الطلب مطلوب' });
-
-//      // المستخدم لازم يكون موظف
-//       // if (req.user.role !== 'EMPLOYEE') {
-//       //   return res.status(403).json({ message: 'هذا الإجراء متاح للموظفين فقط' });
-//       // }
-
-//       // جيب Employee المرتبط باليوزر الحالي
-//       const employeeDoc = await Employee.findOne({ user: req.user._id });
-//       if (!employeeDoc) return res.status(404).json({ message: 'لم يتم العثور على بيانات الموظف' });
-
-//       // تجهيز المرفقات (لو موجودة)
-//       let attachments = [];
-//       if (req.files && req.files.length > 0) {
-//         attachments = req.files.map(file => ({
-//           filename: file.originalname,
-//           url: `/uploads/requests/${file.filename}`
-//         }));
-//       }
-
-//       // تحقق من النوع لو String أو Object
-//       const leaveData = leave && typeof leave === 'string' ? JSON.parse(leave) : leave;
-//       const complaintData = complaint && typeof complaint === 'string' ? JSON.parse(complaint) : complaint;
-//       const appealData = appeal && typeof appeal === 'string' ? JSON.parse(appeal) : appeal;
-//       const allowanceData = allowance && typeof allowance === 'string' ? JSON.parse(allowance) : allowance;
-//       const insuranceData = insurance && typeof insurance === 'string' ? JSON.parse(insurance) : insurance;
-
-//       // إنشاء الطلب
-//       const request = await Request.create({
-//         employee: employeeDoc._id,
-//         type,
-//         leave: leaveData,
-//         complaint: complaintData,
-//         appeal: appealData,
-//         allowance: allowanceData,
-//         insurance: insuranceData,
-//         attachments
-//       });
-
-//       res.status(201).json({ message: 'تم إنشاء الطلب بنجاح', request });
-//     } catch (e) {
-//       console.error(e);
-//       res.status(500).json({ message: 'خطأ أثناء إنشاء الطلب', error: e.message });
-//     }
-//   }
-// ];
 exports.createRequest = [
   upload.array('attachments'),
   async (req, res) => {
@@ -114,7 +62,7 @@ exports.createRequest = [
       const expenseData = expense && typeof expense === 'string' ? JSON.parse(expense) : expense;
       const invoiceData = invoice && typeof invoice === 'string' ? JSON.parse(invoice) : invoice;
 
-      // تجهيز الداتا الأساسية
+  
       let requestData = {
         employee: employeeDoc._id,
         type,
@@ -180,10 +128,10 @@ exports.getRequests = async (req, res) => {
         populate: { path: 'department', select: 'name' }
       });
 
-    // ✅ فلترة الطلبات اللي ليها موظف موجود بس
+
     items = items.filter(r => r.employee);
 
-    // جدول مختصر
+    // 
     const table = items.map(r => ({
       id: r._id,
       employeeName: r.employee?.name || '-',
@@ -237,7 +185,7 @@ exports.getBranchRequests = async (req, res) => {
       Request.countDocuments(query)
     ]);
 
-    // جدول مختصر
+
     const table = items.map(r => ({
       id: r._id,
       employeeName: r.employee?.name || '-',
@@ -308,7 +256,7 @@ exports.approveRequest = async (req, res) => {
     if (note) r.decisionNote = note;
 
     // ======== التعامل مع الإجازة ========
-   // ======== التعامل مع الإجازة ========
+
 if (r.type === 'إجازة' && r.leave?.startDate && r.leave?.endDate) {
   const leaveDays = Math.ceil(
     (new Date(r.leave.endDate) - new Date(r.leave.startDate)) / (1000 * 60 * 60 * 24)
@@ -339,7 +287,7 @@ if (r.type === 'إجازة' && r.leave?.startDate && r.leave?.endDate) {
   // خصم من النوع
   leaveBalance[balanceField] -= leaveDays;
 
-  // 👈 خصم كمان من الرصيد الكلي المتبقي
+  //  خصم كمان من الرصيد الكلي المتبقي
   if (leaveBalance.remaining < leaveDays) {
     return res.status(400).json({ message: 'الرصيد الكلي غير كافي' });
   }
@@ -563,6 +511,7 @@ exports.getRequestsByWorkplace = async (req, res) => {
 };
 
 
+
 //  get requests to one employee by id
 
 exports.getRequestsByEmployee = async (req, res) => {
@@ -579,6 +528,7 @@ exports.getRequestsByEmployee = async (req, res) => {
     res.status(500).json({ message: 'خطأ أثناء جلب الطلبات' });
   }
 };
+
 
 //update request 
 exports.updateRequest = [
