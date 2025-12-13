@@ -1328,7 +1328,7 @@ exports.recordsByBranchReport = async (req, res) => {
 //4)  السجلات اللي هتنتهي خلال 3 شهور
 exports.recordsEndingIn3Months = async (req, res) => {
   try {
-    const within = 90; // ثابت → ٣ شهور
+    const within = 90; // ثابت  ٣ شهور
 
     const today = new Date();
     const edge = new Date();

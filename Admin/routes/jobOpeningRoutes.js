@@ -9,7 +9,7 @@ const validate=require("../middlesware/validate.js");
 const router = express.Router();
 const createJobOpeningSchema=require("../validations/jobOpeningValidator.js")
 
-router.post("/", authenticate,validate(createJobOpeningSchema) , createJobOpening);
+router.post("/", authenticate,  createJobOpening);
 // get public
 // جلب كل الوظائف المنشورة
 router.get('/jobs', getPublishedJobs);
@@ -18,9 +18,9 @@ router.get('/jobs', getPublishedJobs);
 router.get('/jobs/:id', getPublishedJobById);
 
 
-router.get("/", authenticate, getAllJobOpenings);
+router.get("/", getAllJobOpenings);
 router.get("/:id", authenticate, getJobOpeningById);
-router.patch("/:id", authenticate, validate(createJobOpeningSchema) ,updateJobOpening);
+router.patch("/:id", authenticate,  updateJobOpening);
 router.delete("/:id", authenticate, deleteJobOpening);
 router.patch("/:id/status",authenticate, changeJobOpeningStatus);
 

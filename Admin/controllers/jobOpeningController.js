@@ -1,30 +1,32 @@
 // controllers/jobOpeningController.js
 
 const JobOpening =require("../models/JobOpening")
+const Applicant = require("../models/Applicant");
 
 // إنشاء طلب وظيفة جديدة
 exports.createJobOpening = async (req, res) => {
   try {
     const {
       title,
-      department, 
-      experienceRequired,
-      skills,
-      employmentType,
-      salaryRange,
-      description
-    } = req.body;
-
-    // نعمل الـ Job Opening
-    const jobOpening = await JobOpening.create({
-      title,
       department,
-      experienceRequired,
-      skills,
+      branch,
       employmentType,
       salaryRange,
       description,
-      requestedBy: req.user._id // من التوكن
+      skills,
+      requirements // object يحتوي على: experienceYears, gender, qualification, languages, other
+    } = req.body;
+
+    const jobOpening = await JobOpening.create({
+      title,
+      department,
+      branch,
+      employmentType,
+      salaryRange,
+      description,
+      skills,
+      requirements,
+      requestedBy: req.user._id,
     });
 
     res.status(201).json({
@@ -38,16 +40,39 @@ exports.createJobOpening = async (req, res) => {
 };
 
 
+
+
 exports.getAllJobOpenings = async (req, res) => {
   try {
     const openings = await JobOpening.find()
       .populate("department", "name") 
+      .populate("branch", "name")
       .populate("requestedBy", "name email");
-    res.json(openings);
+
+    // loop لكل وظيفة وحساب الإحصائيات
+    const result = await Promise.all(openings.map(async (job) => {
+      const applicants = await Applicant.find({ jobOpening: job._id });
+
+      const applicantsInfo = {
+        totalApplicants: applicants.length,
+        viewed: applicants.filter(a => a.viewedByHR && a.viewedByHR.length > 0).length,
+        suitable: applicants.filter(a => a.status === 'screened').length,
+        rejected: applicants.filter(a => a.status === 'rejected').length,
+        accepted: applicants.filter(a => a.status === 'hired').length,
+      };
+
+      return {
+        ...job.toObject(),
+        applicantsInfo
+      };
+    }));
+
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 exports.getJobOpeningById = async (req, res) => {
   try {
     const jobOpening = await JobOpening.findById(req.params.id)

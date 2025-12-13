@@ -6,11 +6,11 @@ const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'applicants_cv',
-    resource_type: 'raw', // PDF أو Word
+    resource_type: 'raw',
     public_id: (req, file) => Date.now() + '-' + file.originalname
   },
 });
 
-const parser = multer({ storage });
+const uploadCV = multer({ storage });
 
-module.exports = parser;
+module.exports = uploadCV;

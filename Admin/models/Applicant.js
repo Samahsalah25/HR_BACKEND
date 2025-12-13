@@ -35,7 +35,9 @@ const applicantSchema = new mongoose.Schema({
   },
   notes: {
     type: String,
-  }
+  } ,
+  viewedByHR: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
+
 }, { timestamps: true });
 
 module.exports = mongoose.model('Applicant', applicantSchema);
