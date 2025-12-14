@@ -84,19 +84,56 @@ exports.updateStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    const updated = await Applicant.findByIdAndUpdate(
-      id,
-      { status },
-      { new: true }
-    );
+    // هات المتقدم مع الوظيفة
+    const applicant = await Applicant.findById(id)
+      .populate("jobOpening", "title");
+
+    if (!applicant) {
+      return res.status(404).json({ success: false, message: "Applicant not found" });
+    }
+
+    applicant.status = status;
+    await applicant.save();
+
+    // ⬇ إرسال إيميل في حالة القبول أو الرفض فقط
+    if (status === "accepted") {
+      await sendEmail(
+        applicant.email,
+        "تم قبولك مبدئيًا 🎉",
+        `
+        <h3>مرحبًا ${applicant.name} 👋</h3>
+        <p>نود إعلامك بأنه تم <b>قبولك مبدئيًا</b> في وظيفة 
+        <b>${applicant.jobOpening.title}</b>.</p>
+        <p>سيتم التواصل معك قريبًا لاستكمال الإجراءات.</p>
+        <p>مع تمنياتنا بالتوفيق 🌟</p>
+        `
+      );
+    }
+
+    if (status === "rejected") {
+      await sendEmail(
+        applicant.email,
+        "نتيجة التقديم على الوظيفة",
+        `
+        <h3>مرحبًا ${applicant.name}</h3>
+        <p>نشكر اهتمامك بالتقديم على وظيفة 
+        <b>${applicant.jobOpening.title}</b>.</p>
+        <p>نأسف لإبلاغك بعدم اختيارك في هذه المرحلة.</p>
+        <p>نتمنى لك التوفيق في الفرص القادمة </p>
+        `
+      );
+    }
 
     res.status(200).json({
-      updated ,sucess:true
+      success: true,
+      applicant
     });
+
   } catch (err) {
-    res.status(500).json({ message: "Error updating status" });
+    res.status(500).json({ success: false, message: "Error updating status" });
   }
 };
+
 
 exports.updateNotes = async (req, res) => {
   try {
