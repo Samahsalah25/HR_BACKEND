@@ -30,7 +30,7 @@ exports.createInterview = async (req, res) => {
       `
     );
 
-    res.status(201).json(interview);
+    res.status(201).json({interview ,sucess:true});
 
   } catch (err) {
     console.error(err); 
