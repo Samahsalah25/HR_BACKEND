@@ -126,3 +126,144 @@ exports.updateInterviewResult = async (req, res) => {
   }
 };
 
+
+
+
+exports.getInterviewsOverview = async (req, res) => {
+  try {
+    const data = await Applicant.aggregate([
+      // join jobOpening
+      {
+        $lookup: {
+          from: "jobopenings",
+          localField: "jobOpening",
+          foreignField: "_id",
+          as: "job"
+        }
+      },
+      { $unwind: "$job" },
+
+      // join department
+      {
+        $lookup: {
+          from: "departments", // collection اسم الـ department
+          localField: "job.department",
+          foreignField: "_id",
+          as: "department"
+        }
+      },
+      { $unwind: "$department" },
+
+      // join interviews
+      {
+        $lookup: {
+          from: "interviews",
+          localField: "_id",
+          foreignField: "applicant",
+          as: "interviews"
+        }
+      },
+
+      // sort interviews by date
+      { $sort: { "interviews.date": 1 } },
+
+      // add calculated fields
+      {
+        $addFields: {
+          interviewsCount: { $size: "$interviews" },
+          lastInterview: { $last: "$interviews.date" },
+          lastInterviewTitle: { $last: "$interviews.title" },
+          hasPendingInterviews: {
+            $gt: [
+              {
+                $size: {
+                  $filter: {
+                    input: "$interviews",
+                    as: "i",
+                    cond: { $eq: ["$$i.result", "pending"] }
+                  }
+                }
+              },
+              0
+            ]
+          },
+          interviews: {
+            $map: {
+              input: "$interviews",
+              as: "i",
+              in: {
+                _id: "$$i._id",
+                title: "$$i.title",
+                date: "$$i.date",
+                time: "$$i.time",
+                type: "$$i.type",
+                location: "$$i.location",
+                result: "$$i.result",
+                rating: "$$i.rating",
+                notes: "$$i.notes",
+                isDone: {
+                  $cond: [
+                    {
+                      $or: [
+                        { $eq: ["$$i.result", "passed"] },
+                        { $eq: ["$$i.result", "failed"] }
+                      ]
+                    },
+                    true,
+                    false
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+
+      // map statusLabel
+      {
+        $addFields: {
+          statusLabel: {
+            $switch: {
+              branches: [
+                { case: { $eq: ["$status", "hired"] }, then: "تم تعينة" },
+                { case: { $eq: ["$status", "rejected"] }, then: "مرفوضة" }
+              ],
+              default: "قيد استكمال المقابلات"
+            }
+          }
+        }
+      },
+
+      // project final shape
+      {
+        $project: {
+          id: "$_id",
+          applicantName: "$name",
+          job: "$job.title",
+          department: "$department.name",
+          interviews: 1,
+          interviewsCount: 1,
+          lastInterview: 1,
+          interviewTitle: "$lastInterviewTitle",
+          hasPendingInterviews: 1,
+          status: "$statusLabel"
+        }
+      },
+
+      { $sort: { createdAt: -1 } }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      interviews: data
+    });
+
+  } catch (err) {
+    console.error("❌ REAL ERROR ===>", err);
+    res.status(500).json({
+      success: false,
+      message: err.message,
+      error: err
+    });
+  }
+};

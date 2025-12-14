@@ -10,12 +10,14 @@ const {
   createInterview,
   getApplicantInterviews,
   updateInterview,
-  updateInterviewResult
+  updateInterviewResult ,getInterviewsOverview
 } = require("../controllers/interviewController");
 const validate=require("../middlesware/validate");
 
 router.post("/", validate(createInterviewValidation), createInterview); 
+router.get("/overview", getInterviewsOverview);
 router.get("/:applicantId", getApplicantInterviews);
+
 router.patch("/:id", validate(updateInterviewValidation), updateInterview);
 router.patch("/:id/result", validate(updateInterviewResultValidation) ,updateInterviewResult);
 

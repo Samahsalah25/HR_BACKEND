@@ -109,7 +109,7 @@ exports.updateStatus = async (req, res) => {
         `
       );
     }
-
+ش
     if (status === "rejected") {
       await sendEmail(
         applicant.email,
