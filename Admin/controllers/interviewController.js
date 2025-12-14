@@ -24,7 +24,7 @@ exports.createInterview = async (req, res) => {
       <p>نود إبلاغك بأنه تم تحديد مقابلة لك على وظيفة <b>${applicant.jobOpening.title}</b>.</p>
       <p><b>المقابلة:</b> ${interview.title}</p>
       <p><b>النوع:</b> ${interview.type}</p>
-      <p><b>التاريخ:</b> ${interview.date}</p>
+      <p><b>التاريخ:</b> اليوم : ${interview.date}  : الساعة ${interview.time}</p>
       ${interview.location ? `<p><b>الموقع/الرابط:</b> ${interview.location}</p>` : ""}
       <p>نتمنى لك التوفيق ✨</p>
       `
