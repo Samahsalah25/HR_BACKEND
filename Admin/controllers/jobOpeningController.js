@@ -46,6 +46,7 @@ exports.createJobOpening = async (req, res) => {
 exports.getAllJobOpenings = async (req, res) => {
   try {
     const openings = await JobOpening.find()
+    .sort({ createdAt: -1 })
       .populate("department", "name") 
       .populate("branch", "name")
       .populate("requestedBy", "name email");
