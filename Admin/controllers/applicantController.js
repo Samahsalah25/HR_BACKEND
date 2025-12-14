@@ -90,7 +90,9 @@ exports.updateStatus = async (req, res) => {
       { new: true }
     );
 
-    res.status(200).json(updated);
+    res.status(200).json({
+      updated ,sucess:true
+    });
   } catch (err) {
     res.status(500).json({ message: "Error updating status" });
   }
