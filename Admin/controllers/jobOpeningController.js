@@ -31,7 +31,8 @@ exports.createJobOpening = async (req, res) => {
 
     res.status(201).json({
       message: "Job opening request created successfully",
-      jobOpening
+      jobOpening ,
+      success:true
     });
   } catch (err) {
     console.error(err);
