@@ -21,6 +21,10 @@ const interviewSchema = new mongoose.Schema({
     type: Date,
     required: true,
   },
+   time: {
+    type: String,
+    required: true,
+  } ,
   type: {
     type: String,
     enum: ['online', 'onsite'],

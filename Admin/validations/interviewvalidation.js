@@ -21,6 +21,10 @@ exports.createInterviewValidation = Joi.object({
     "any.required": "تاريخ المقابلة مطلوب",
     "date.base": "صيغة التاريخ غير صحيحة",
   }),
+    time: Joi.string().required().messages({
+    "any.required": "الوقت مطلوب",
+    "string.empty": "الوقت مطلوب",
+  }),
 
   type: Joi.string()
     .valid("online", "onsite")
@@ -39,6 +43,7 @@ exports.updateInterviewValidation = Joi.object({
   title: Joi.string().optional(),
   interviewer: Joi.string().optional(),
   date: Joi.date().optional(),
+    time: Joi.string().optional() ,
   type: Joi.string().valid("online", "onsite").optional(),
   location: Joi.string().allow("", null),
   notes: Joi.string().allow("", null),
