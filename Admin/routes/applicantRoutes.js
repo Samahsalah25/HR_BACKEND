@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { createApplicant, getAllApplicants  ,getApplicantById,
-  updateStatus,
+  updateStatus, getApplicantsByDepartment ,
   updateNotes} = require('../controllers/applicantController');
 
 const uploadCV = require('../middlesware/uploadCV');
@@ -13,6 +13,8 @@ router.post('/', uploadCV.single('cv') ,validateApplicant, createApplicant);
 
 // GET all applicants (Protected – HR)
 router.get('/', getAllApplicants);
+
+router.get('/getApplicantsByDepartment/:departmentId',getApplicantsByDepartment);
 
 // GET single applicant
 router.get("/:id", getApplicantById);

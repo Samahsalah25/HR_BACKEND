@@ -3,7 +3,7 @@ const express = require('express');
 const { createJobOpening, getAllJobOpenings ,getJobOpeningById,
   updateJobOpening,
   deleteJobOpening,
-  changeJobOpeningStatus ,getPublishedJobs, getPublishedJobById  }=require("../controllers/jobOpeningController.js") ;
+  changeJobOpeningStatus ,getPublishedJobs, getPublishedJobById ,getOpeningsGroupedByDepartment  }=require("../controllers/jobOpeningController.js") ;
 const authenticate =require( "../middlesware/authenticate.js");
 const validate=require("../middlesware/validate.js");
 const router = express.Router();
@@ -13,6 +13,7 @@ router.post("/", authenticate,  createJobOpening);
 // get public
 // جلب كل الوظائف المنشورة
 router.get('/jobs', getPublishedJobs);
+ router.get('/getOpeningsGroupedByDepartment' ,getOpeningsGroupedByDepartment) ;
 
 // جلب وظيفة واحدة بالتفاصيل
 router.get('/jobs/:id', getPublishedJobById);

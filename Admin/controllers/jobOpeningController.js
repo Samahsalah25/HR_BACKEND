@@ -190,3 +190,50 @@ exports.getPublishedJobById = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+
+
+// 
+     // GET /api/job-openings/grouped-by-department
+exports.getOpeningsGroupedByDepartment = async (req, res) => {
+  try {
+    const jobs = await JobOpening.find({ status: 'approved' })
+      .populate('department', 'name');
+
+    const result = await Promise.all(
+      jobs.map(async (job) => {
+        const count = await Applicant.countDocuments({
+          jobOpening: job._id
+        });
+
+        return {
+          _id: job._id,
+          title: job.title,
+          department: job.department,
+          applicantsCount: count
+        };
+      })
+    );
+
+    // group by department
+    const grouped = {};
+    result.forEach(job => {
+      const depId = job.department._id.toString();
+      if (!grouped[depId]) {
+        grouped[depId] = {
+          department: job.department,
+          jobs: []
+        };
+      }
+      grouped[depId].jobs.push({
+        _id: job._id,
+        title: job.title,
+        applicantsCount: job.applicantsCount
+      });
+    });
+
+    res.json(Object.values(grouped));
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

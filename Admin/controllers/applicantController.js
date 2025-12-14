@@ -111,4 +111,29 @@ exports.updateNotes = async (req, res) => {
   }              
 };         
                   
-                                
+
+                // GET /api/applicants/by-department/:departmentId
+exports.getApplicantsByDepartment = async (req, res) => {
+  try {
+    const { departmentId } = req.params;
+
+    const applicants = await Applicant.find()
+      .populate({
+        path: 'jobOpening',
+        match: { department: departmentId },
+        populate: { path: 'department', select: 'name' }
+      })
+      .sort({ createdAt: -1 });
+
+    // remove nulls
+    const filtered = applicants.filter(a => a.jobOpening);
+
+    res.json({
+      success: true,
+      applicants: filtered
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+           
