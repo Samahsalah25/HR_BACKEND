@@ -268,3 +268,73 @@ exports.getInterviewsOverview = async (req, res) => {
     });
   }
 };
+
+
+
+
+exports.getMyInterviews = async (req, res) => {
+  try {
+    const interviewerId = req.user._id; // جاي من auth middleware
+
+    const interviews = await Interview.find({ interviewer: interviewerId })
+      .populate({
+        path: "applicant",
+        select: "name jobOpening",
+        populate: {
+          path: "jobOpening",
+          select: "title"
+        }
+      })
+      .sort({ date: 1, time: 1 });
+
+    const now = new Date();
+
+    const formatted = interviews.map((i) => {
+      const interviewDate = new Date(i.date);
+
+      // 🧠 تحديد الحالة
+      let status = "لم تُجرَ بعد";
+
+      if (
+        interviewDate.toDateString() === now.toDateString() &&
+        i.result === "pending"
+      ) {
+        status = "جارية الآن";
+      }
+
+      if (i.result === "passed" || i.result === "failed") {
+        status = "تم إجراؤها";
+      }
+
+      return {
+        id: i._id,
+        applicantName: i.applicant.name,
+        title: i.title,
+        job: i.applicant.jobOpening.title,
+        day: i.date.toISOString().split("T")[0],
+        time: i.time,
+        status,
+        rate: i.rating ?? null,
+        notes: i.notes ?? "",
+        accepted:
+          i.result === "passed"
+            ? true
+            : i.result === "failed"
+            ? false
+            : null
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      interviews: formatted
+    });
+
+  } catch (err) {
+    console.error("❌ getMyInterviews error:", err);
+    res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
