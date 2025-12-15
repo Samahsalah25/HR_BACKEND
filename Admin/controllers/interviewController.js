@@ -220,30 +220,20 @@ exports.getInterviewsOverview = async (req, res) => {
       },
 
       // map statusLabel
-     {
-  $addFields: {
-    statusLabel: {
-      $cond: [
-        { $eq: ["$status", "hired"] },
-        "تم تعيينه",
-        {
-          $cond: [
-            { $eq: ["$status", "rejected"] },
-            "مرفوض",
-            {
-              $cond: [
-                { $gt: ["$interviewsCount", 0] },
-                "قيد استكمال المقابلات",
-                "لم يبدأ المقابلات"
-              ]
+      {
+        $addFields: {
+          statusLabel: {
+            $switch: {
+              branches: [
+                { case: { $eq: ["$status", "hired"] }, then: "تم تعينة" },
+                { case: { $eq: ["$status", "rejected"] }, then: "مرفوضة" } ,
+                   { case: { $eq: ["$status", "interview"] }, then: "قيد استكمال المقابلات"}
+              ],
+              default: " لم يتم تحديد مقابلات"
             }
-          ]
+          }
         }
-      ]
-    }
-  }
-}
-,
+      },
 
       // project final shape
       {
