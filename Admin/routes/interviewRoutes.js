@@ -16,14 +16,11 @@ const validate=require("../middlesware/validate");
 const  authenticate = require('../middlesware/authenticate');
 
 router.post("/", validate(createInterviewValidation), createInterview); 
+router.get("/myinterviews",authenticate,getMyInterviews);
 router.get("/overview", getInterviewsOverview);
-router.get(
-  "/my-interviews",
-authenticate,
-  getMyInterviews
-);
 
-router.get("/:applicantId", getApplicantInterviews);
+
+router.get("/applicant/:applicantId", getApplicantInterviews);
 
 router.patch("/:id", validate(updateInterviewValidation), updateInterview);
 router.patch("/:id/result", validate(updateInterviewResultValidation) ,updateInterviewResult);

@@ -1,6 +1,6 @@
 const Interview = require("../models/interviewModel");
 const Applicant = require("../models/Applicant");
-
+const Employee = require("../models/employee");
 
 const sendEmail = require("../../utlis/sendEmail");
 
@@ -270,13 +270,24 @@ exports.getInterviewsOverview = async (req, res) => {
 };
 
 
-
-
 exports.getMyInterviews = async (req, res) => {
   try {
-    const interviewerId = req.user._id; // جاي من auth middleware
+    console.log("USER FROM TOKEN:", req.user);
 
-    const interviews = await Interview.find({ interviewer: interviewerId })
+    // 1️⃣ نجيب الـ employee
+    const employee = await Employee.findOne({ user: req.user._id });
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found"
+      });
+    }
+
+    // 2️⃣ نجيب الانترفيوز مع applicant + job
+    const interviews = await Interview.find({
+      interviewer: employee._id
+    })
       .populate({
         path: "applicant",
         select: "name jobOpening",
@@ -289,10 +300,10 @@ exports.getMyInterviews = async (req, res) => {
 
     const now = new Date();
 
+    // 3️⃣ format response
     const formatted = interviews.map((i) => {
       const interviewDate = new Date(i.date);
 
-      // 🧠 تحديد الحالة
       let status = "لم تُجرَ بعد";
 
       if (
@@ -308,14 +319,20 @@ exports.getMyInterviews = async (req, res) => {
 
       return {
         id: i._id,
-        applicantName: i.applicant.name,
+        applicantName: i.applicant?.name,
+        job: i.applicant?.jobOpening?.title,
         title: i.title,
-        job: i.applicant.jobOpening.title,
         day: i.date.toISOString().split("T")[0],
         time: i.time,
+        type: i.type,
+        location: i.location,
         status,
+        result: i.result,
+
+        
         rate: i.rating ?? null,
         notes: i.notes ?? "",
+
         accepted:
           i.result === "passed"
             ? true
@@ -331,7 +348,7 @@ exports.getMyInterviews = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("❌ getMyInterviews error:", err);
+    console.error(" getMyInterviews error:", err);
     res.status(500).json({
       success: false,
       message: err.message
