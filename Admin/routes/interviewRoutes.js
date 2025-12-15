@@ -22,7 +22,7 @@ router.get(
 authenticate,
   getMyInterviews
 );
-ss
+
 router.get("/:applicantId", getApplicantInterviews);
 
 router.patch("/:id", validate(updateInterviewValidation), updateInterview);
