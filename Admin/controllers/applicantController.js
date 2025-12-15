@@ -96,7 +96,7 @@ exports.updateStatus = async (req, res) => {
     await applicant.save();
 
     // ⬇ إرسال إيميل في حالة القبول أو الرفض فقط
-    if (status === "accepted") {
+    if (status === "hired") {
       await sendEmail(
         applicant.email,
         "تم قبولك مبدئيًا 🎉",
