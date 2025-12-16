@@ -188,10 +188,23 @@ exports.getInterviewsOverview = async (req, res) => {
         }
       },
 
+      // ترتيب المقابلات من الأحدث للأقدم
+      {
+        $addFields: {
+          interviews: {
+            $sortArray: {
+              input: "$interviews",
+              sortBy: { date: -1 }
+            }
+          }
+        }
+      },
+
       // add calculated fields
       {
         $addFields: {
           interviewsCount: { $size: "$interviews" },
+
           hasPendingInterviews: {
             $gt: [
               {
@@ -206,26 +219,11 @@ exports.getInterviewsOverview = async (req, res) => {
               0
             ]
           },
-          // آخر مقابلة وعنوانها
-          lastInterview: { $max: "$interviews.date" },
-          lastInterviewTitle: {
-            $arrayElemAt: [
-              {
-                $map: {
-                  input: "$interviews",
-                  as: "i",
-                  in: {
-                    $cond: [
-                      { $eq: ["$$i.date", { $max: "$interviews.date" }] },
-                      "$$i.title",
-                      null
-                    ]
-                  }
-                }
-              },
-              0
-            ]
-          },
+
+          // آخر مقابلة (الأولى بعد الترتيب)
+          lastInterview: { $arrayElemAt: ["$interviews.date", 0] },
+          lastInterviewTitle: { $arrayElemAt: ["$interviews.title", 0] },
+
           // map كل المقابلات مع isDone
           interviews: {
             $map: {
@@ -241,7 +239,13 @@ exports.getInterviewsOverview = async (req, res) => {
                 result: "$$i.result",
                 rating: "$$i.rating",
                 notes: "$$i.notes",
-                isDone: { $cond: [ { $ne: ["$$i.result", "pending"] }, true, false ] }
+                isDone: {
+                  $cond: [
+                    { $ne: ["$$i.result", "pending"] },
+                    true,
+                    false
+                  ]
+                }
               }
             }
           }
@@ -259,7 +263,7 @@ exports.getInterviewsOverview = async (req, res) => {
           interviewsCount: 1,
           lastInterview: 1,
           lastInterviewTitle: 1,
-          status: 1 // تبعت زي ما هي في DB
+          status: 1 // زي ما هي في DB
         }
       },
 
