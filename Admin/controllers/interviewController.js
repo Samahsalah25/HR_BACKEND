@@ -201,23 +201,33 @@ exports.getInterviewsOverview = async (req, res) => {
             ]
           },
 
-          interviews: {
-            $map: {
-              input: "$interviews",
-              as: "i",
-              in: {
-                _id: "$$i._id",
-                title: "$$i.title",
-                date: "$$i.date",
-                time: "$$i.time",
-                type: "$$i.type",
-                location: "$$i.location",
-                result: "$$i.result",
-                rating: "$$i.rating",
-                notes: "$$i.notes"
-              }
-            }
-          }
+         interviews: {
+  $map: {
+    input: "$interviews",
+    as: "i",
+    in: {
+      _id: "$$i._id",
+      title: "$$i.title",
+      date: "$$i.date",
+      time: "$$i.time",
+      type: "$$i.type",
+      location: "$$i.location",
+      result: "$$i.result",
+      rating: "$$i.rating",
+      notes: "$$i.notes",
+
+      // ✅ ده المهم
+      isDone: {
+        $cond: [
+          { $ne: ["$$i.result", "pending"] },
+          true,
+          false
+        ]
+      }
+    }
+  }
+}
+
         }
       },
 
