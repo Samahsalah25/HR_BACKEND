@@ -118,7 +118,7 @@ exports.updateInterviewResult = async (req, res) => {
       );
     }
 
-    res.status(200).json(interview);
+    res.status(200).json({interview ,success:true});
 
   } catch (err) {
     console.error(err);
