@@ -163,7 +163,7 @@ exports.getInterviewsOverview = async (req, res) => {
       // join department
       {
         $lookup: {
-          from: "departments", // collection اسم الـ department
+          from: "departments",
           localField: "job.department",
           foreignField: "_id",
           as: "department"
@@ -181,15 +181,11 @@ exports.getInterviewsOverview = async (req, res) => {
         }
       },
 
-      // sort interviews by date
-      { $sort: { "interviews.date": 1 } },
-
       // add calculated fields
       {
         $addFields: {
           interviewsCount: { $size: "$interviews" },
-          lastInterview: { $last: "$interviews.date" },
-          lastInterviewTitle: { $last: "$interviews.title" },
+
           hasPendingInterviews: {
             $gt: [
               {
@@ -204,6 +200,7 @@ exports.getInterviewsOverview = async (req, res) => {
               0
             ]
           },
+
           interviews: {
             $map: {
               input: "$interviews",
@@ -217,37 +214,28 @@ exports.getInterviewsOverview = async (req, res) => {
                 location: "$$i.location",
                 result: "$$i.result",
                 rating: "$$i.rating",
-                notes: "$$i.notes",
-                isDone: {
-                  $cond: [
-                    {
-                      $or: [
-                        { $eq: ["$$i.result", "passed"] },
-                        { $eq: ["$$i.result", "failed"] }
-                      ]
-                    },
-                    true,
-                    false
-                  ]
-                }
+                notes: "$$i.notes"
               }
             }
           }
         }
       },
 
-      // map statusLabel
+      // status label (منطقي وصح)
       {
         $addFields: {
           statusLabel: {
-            $switch: {
-              branches: [
-                { case: { $eq: ["$status", "hired"] }, then: "تم تعينة" },
-                { case: { $eq: ["$status", "rejected"] }, then: "مرفوضة" } ,
-                   { case: { $eq: ["$status", "interview"] }, then: "قيد استكمال المقابلات"}
-              ],
-              default: " لم يتم تحديد مقابلات"
-            }
+            $cond: [
+              { $gt: ["$interviewsCount", 0] },
+              {
+                $cond: [
+                  "$hasPendingInterviews",
+                  "قيد استكمال المقابلات",
+                  "بانتظار قرار الموارد البشرية"
+                ]
+              },
+              "لم يتم تحديد مقابلات"
+            ]
           }
         }
       },
@@ -261,9 +249,6 @@ exports.getInterviewsOverview = async (req, res) => {
           department: "$department.name",
           interviews: 1,
           interviewsCount: 1,
-          lastInterview: 1,
-          interviewTitle: "$lastInterviewTitle",
-          hasPendingInterviews: 1,
           status: "$statusLabel"
         }
       },
@@ -277,14 +262,14 @@ exports.getInterviewsOverview = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("❌ REAL ERROR ===>", err);
+    console.error("REAL ERROR ===>", err);
     res.status(500).json({
       success: false,
-      message: err.message,
-      error: err
+      message: err.message
     });
   }
 };
+
 
 
 exports.getMyInterviews = async (req, res) => {
@@ -330,7 +315,7 @@ exports.getMyInterviews = async (req, res) => {
         status = "جارية الآن";
       }
 
-      if (i.result === "passed" || i.result === "failed") {
+      if (i.result === "passed" || i.result === "failed" ) {
         status = "تم إجراؤها";
       }
 
