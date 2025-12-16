@@ -102,6 +102,23 @@ exports.updateInterviewResult = async (req, res) => {
 }
 
 
+    if (result === "passed") {
+      await Applicant.findByIdAndUpdate(interview.applicant, { status: "passed" });
+
+      //  إرسال إيميل رفض 
+      await sendEmail(
+        applicant.email,
+        `نتيجة المقابلة: ${interview.title}`,
+        `
+        <h3>مرحباً ${applicant.name}</h3>
+        <p> تهانينا 🎉❤️ تم قبولك في مقابلة <b>${interview.title}</b></p>
+        <p>الوظيفة: <b>${applicant.jobOpening.title}</b></p>
+        <p>  انتظر تحديد المقابلة القادمة </p>
+        `
+      );
+    }
+
+
     if (result === "failed") {
       await Applicant.findByIdAndUpdate(interview.applicant, { status: "rejected" });
 

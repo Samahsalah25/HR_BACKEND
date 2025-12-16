@@ -53,7 +53,7 @@ exports.updateInterviewValidation = Joi.object({
 
 // UPDATE Interview Result
 exports.updateInterviewResultValidation = Joi.object({
-  result: Joi.string().valid("pending", "passed", "failed").required().messages({
+  result: Joi.string().valid("pending", "passed", "failed").optional().messages({
     "any.required": "نتيجة المقابلة مطلوبة",
     "any.only": "النتيجة يجب أن تكون passed أو failed أو pending",
   }),
