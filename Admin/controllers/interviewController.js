@@ -103,7 +103,7 @@ exports.updateInterviewResult = async (req, res) => {
 
 
     if (result === "passed") {
-      await Applicant.findByIdAndUpdate(interview.applicant, { status: "passed" });
+      
 
       //  إرسال إيميل رفض 
       await sendEmail(
@@ -120,7 +120,7 @@ exports.updateInterviewResult = async (req, res) => {
 
 
     if (result === "failed") {
-      await Applicant.findByIdAndUpdate(interview.applicant, { status: "rejected" });
+
 
       //  إرسال إيميل رفض 
       await sendEmail(
