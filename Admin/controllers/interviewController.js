@@ -181,11 +181,17 @@ exports.getInterviewsOverview = async (req, res) => {
         }
       },
 
+      // فقط الابلكيشنز اللي عندهم مقابلات
+      {
+        $match: {
+          "interviews.0": { $exists: true }
+        }
+      },
+
       // add calculated fields
       {
         $addFields: {
           interviewsCount: { $size: "$interviews" },
-
           hasPendingInterviews: {
             $gt: [
               {
@@ -200,55 +206,49 @@ exports.getInterviewsOverview = async (req, res) => {
               0
             ]
           },
-
-         interviews: {
-  $map: {
-    input: "$interviews",
-    as: "i",
-    in: {
-      _id: "$$i._id",
-      title: "$$i.title",
-      date: "$$i.date",
-      time: "$$i.time",
-      type: "$$i.type",
-      location: "$$i.location",
-      result: "$$i.result",
-      rating: "$$i.rating",
-      notes: "$$i.notes",
-
-      // ✅ ده المهم
-      isDone: {
-        $cond: [
-          { $ne: ["$$i.result", "pending"] },
-          true,
-          false
-        ]
-      }
-    }
-  }
-}
-
+          // آخر مقابلة وعنوانها
+          lastInterview: { $max: "$interviews.date" },
+          lastInterviewTitle: {
+            $arrayElemAt: [
+              {
+                $map: {
+                  input: "$interviews",
+                  as: "i",
+                  in: {
+                    $cond: [
+                      { $eq: ["$$i.date", { $max: "$interviews.date" }] },
+                      "$$i.title",
+                      null
+                    ]
+                  }
+                }
+              },
+              0
+            ]
+          },
+          // map كل المقابلات مع isDone
+          interviews: {
+            $map: {
+              input: "$interviews",
+              as: "i",
+              in: {
+                _id: "$$i._id",
+                title: "$$i.title",
+                date: "$$i.date",
+                time: "$$i.time",
+                type: "$$i.type",
+                location: "$$i.location",
+                result: "$$i.result",
+                rating: "$$i.rating",
+                notes: "$$i.notes",
+                isDone: { $cond: [ { $ne: ["$$i.result", "pending"] }, true, false ] }
+              }
+            }
+          }
         }
       },
 
-      // status label (منطقي وصح)
-      {
-        $addFields: {
-         statusLabel: {
-  $switch: {
-    branches: [
-      { case: { $eq: ["$status", "hired"] }, then: "تم تعيينه" },
-      { case: { $eq: ["$status", "rejected"] }, then: "مرفوضة" },
-      { case: { $eq: ["$status", "interview"] }, then: "قيد استكمال المقابلات" },
-    ],
-    default: "لم يتم تحديد مقابلات"
-  }
-}
-
-        }
-      },
-
-      // project final shape
+      // project النهائي
       {
         $project: {
           id: "$_id",
@@ -257,7 +257,9 @@ exports.getInterviewsOverview = async (req, res) => {
           department: "$department.name",
           interviews: 1,
           interviewsCount: 1,
-          status: "$statusLabel"
+          lastInterview: 1,
+          lastInterviewTitle: 1,
+          status: 1 // تبعت زي ما هي في DB
         }
       },
 
@@ -277,6 +279,7 @@ exports.getInterviewsOverview = async (req, res) => {
     });
   }
 };
+
 
 
 
