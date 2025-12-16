@@ -234,19 +234,17 @@ exports.getInterviewsOverview = async (req, res) => {
       // status label (منطقي وصح)
       {
         $addFields: {
-          statusLabel: {
-            $cond: [
-              { $gt: ["$interviewsCount", 0] },
-              {
-                $cond: [
-                  "$hasPendingInterviews",
-                  "قيد استكمال المقابلات",
-                  "بانتظار قرار الموارد البشرية"
-                ]
-              },
-              "لم يتم تحديد مقابلات"
-            ]
-          }
+         statusLabel: {
+  $switch: {
+    branches: [
+      { case: { $eq: ["$status", "hired"] }, then: "تم تعيينه" },
+      { case: { $eq: ["$status", "rejected"] }, then: "مرفوضة" },
+      { case: { $eq: ["$status", "interview"] }, then: "قيد استكمال المقابلات" },
+    ],
+    default: "لم يتم تحديد مقابلات"
+  }
+}
+
         }
       },
 
