@@ -1229,10 +1229,60 @@ const getYearlyAttendanceSummary = async (req, res) => {
   }
 };
 
+const dailyAttendanceReport = async (req, res) => {
+  try {
+    const now = moment().tz("Asia/Riyadh");
+    const startOfDay = now.clone().startOf("day").toDate();
+    const endOfDay = now.clone().endOf("day").toDate();
 
+    const attendances = await Attendance.find({
+      date: { $gte: startOfDay, $lte: endOfDay }
+    })
+      .populate({
+        path: "employee",
+        select: "name department",
+        populate: {
+          path: "department",
+          select: "name"
+        }
+      })
+      .populate({
+        path: "branch",
+        select: "name"
+      });
 
+    const data = attendances.map(a => ({
+      employeeName: a.employee?.name || "غير معروف",
+      department: a.employee?.department?.name || "غير محدد",
+      branch: a.branch?.name || "غير محدد",
+      checkIn: a.checkIn
+        ? moment(a.checkIn).tz("Asia/Riyadh").format("hh:mm a")
+
+        : null,
+      checkOut: a.checkOut
+        ? moment(a.checkOut).tz("Asia/Riyadh").format("hh:mm a")
+
+        : null,
+      status: a.status,
+      lateMinutes:
+        a.lateMinutes && a.lateMinutes > 0
+          ? a.lateMinutes
+          : "بدون تأخير"
+    }));
+
+    res.json({
+      date: now.locale("ar").format("DD MMMM YYYY"),
+      count: data.length,
+      data
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "حدث خطأ أثناء جلب تقرير الحضور" });
+  }
+};
 
 
 module.exports = { checkIn, checkOut ,getTodayAttendance 
    ,dailyState ,dailyStateBranch , dailyAttendanceTable ,getMonthlyAttendanceForEmployee 
-   , monthlyReport ,monthlyReportoneBranch ,dailyAttendanceTableOnebranch ,dailyEmployeeAttendance ,monthlyEmployeeAttendance ,getYearlyAttendanceSummary };
+   , monthlyReport ,monthlyReportoneBranch ,dailyAttendanceTableOnebranch ,dailyAttendanceReport ,dailyEmployeeAttendance ,monthlyEmployeeAttendance ,getYearlyAttendanceSummary };

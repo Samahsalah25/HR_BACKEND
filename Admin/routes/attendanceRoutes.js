@@ -5,7 +5,7 @@ const { checkIn ,checkOut ,getTodayAttendance ,dailyState ,dailyStateBranch
     ,dailyAttendanceTable  ,dailyAttendanceTableOnebranch
      ,getMonthlyAttendanceForEmployee 
      ,monthlyReport 
-    ,monthlyReportoneBranch ,dailyEmployeeAttendance  ,monthlyEmployeeAttendance ,getYearlyAttendanceSummary } = require('../controllers/attendanceController');
+    ,monthlyReportoneBranch ,dailyEmployeeAttendance  ,monthlyEmployeeAttendance ,getYearlyAttendanceSummary ,dailyAttendanceReport } = require('../controllers/attendanceController');
 const authenticate=require('../middlesware/authenticate');
 const getClientTime=require('../middlesware/clientTime');
 const authorizeRoles=require('../middlesware/roleMiddleware');
@@ -30,7 +30,7 @@ router.get('/dailyAttendanceTable' ,authenticate,authorizeRoles('HR',"Admin"),da
 //  هنجيب جدول الحضور لفرع معين
  router.get('/dailyAttendanceTableOnebranch' ,authenticate ,authorizeRoles('HR'),dailyAttendanceTableOnebranch)
 
-
+router.get('/dailyAttendanceReport' , dailyAttendanceReport) ;
 
 
 // تسجيل حضور اليوم جه امتي ومشي امتي
@@ -43,7 +43,7 @@ router.get('/getMonthlyAttendanceForEmployee/:id' ,getMonthlyAttendanceForEmploy
 //تقرير شهري لكل الحضور  بتاع كل الفروع
 router.get('/monthlyReport'  ,monthlyReport)
 //  تقرير شهري لفرع معين 
-router.get('/monthreportonebranch' ,authenticate ,authorizeRoles('HR') ,monthlyReportoneBranch)
+router.get('/monthreportonebranch' ,authenticate ,authorizeRoles('HR') ,monthlyReportoneBranch) ;
 
 //  بيانات تاخير موظف معين من حيث بقي الحضور والتاخير
 router.get('/dailyEmployeeAttendance/:id' ,authenticate , authorizeRoles('HR'),dailyEmployeeAttendance ); //
