@@ -30,7 +30,7 @@ router.get('/dailyAttendanceTable' ,authenticate,authorizeRoles('HR',"Admin"),da
 //  هنجيب جدول الحضور لفرع معين
  router.get('/dailyAttendanceTableOnebranch' ,authenticate ,authorizeRoles('HR'),dailyAttendanceTableOnebranch)
 
-router.get('/dailyAttendanceReport' , dailyAttendanceReport) ;
+router.get('/dailyAttendanceReport' .authenticate , dailyAttendanceReport) ;
 
 
 // تسجيل حضور اليوم جه امتي ومشي امتي

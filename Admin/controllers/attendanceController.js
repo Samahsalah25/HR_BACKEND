@@ -1231,9 +1231,19 @@ const getYearlyAttendanceSummary = async (req, res) => {
 
 const dailyAttendanceReport = async (req, res) => {
   try {
-    const now = moment().tz("Asia/Riyadh");
-    const startOfDay = now.clone().startOf("day").toDate();
-    const endOfDay = now.clone().endOf("day").toDate();
+    const { date } = req.query; // هنجمع التاريخ من query parameter
+    let targetDate;
+
+    if (date) {
+      // لو المستخدم بعت تاريخ
+      targetDate = moment(date).tz("Asia/Riyadh");
+    } else {
+      // افتراضي اليوم الحالي
+      targetDate = moment().tz("Asia/Riyadh");
+    }
+
+    const startOfDay = targetDate.clone().startOf("day").toDate();
+    const endOfDay = targetDate.clone().endOf("day").toDate();
 
     const attendances = await Attendance.find({
       date: { $gte: startOfDay, $lte: endOfDay }
@@ -1257,11 +1267,9 @@ const dailyAttendanceReport = async (req, res) => {
       branch: a.branch?.name || "غير محدد",
       checkIn: a.checkIn
         ? moment(a.checkIn).tz("Asia/Riyadh").format("hh:mm a")
-
         : null,
       checkOut: a.checkOut
         ? moment(a.checkOut).tz("Asia/Riyadh").format("hh:mm a")
-
         : null,
       status: a.status,
       lateMinutes:
@@ -1271,7 +1279,7 @@ const dailyAttendanceReport = async (req, res) => {
     }));
 
     res.json({
-      date: now.locale("ar").format("DD MMMM YYYY"),
+      date: targetDate.locale("ar").format("DD MMMM YYYY"),
       count: data.length,
       data
     });
@@ -1281,6 +1289,7 @@ const dailyAttendanceReport = async (req, res) => {
     res.status(500).json({ message: "حدث خطأ أثناء جلب تقرير الحضور" });
   }
 };
+
 
 
 module.exports = { checkIn, checkOut ,getTodayAttendance 
