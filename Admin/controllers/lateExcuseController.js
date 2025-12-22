@@ -3,16 +3,26 @@ const Attendance = require("../models/Attendance");
 const Employee = require("../models/employee");
 exports.createLateExcuse = async (req, res) => {
   try {
-    const { attendanceId, reason } = req.body;
+    const { reason } = req.body;
 
-    if (!attendanceId || !reason) {
-      return res.status(400).json({ message: "البيانات غير مكتملة" });
+    if (!reason) {
+      return res.status(400).json({ message: "السبب مطلوب" });
     }
 
-    const attendance = await Attendance.findById(attendanceId);
+    // Employee من authenticate
+    const employee = await Employee.findOne({ user: req.user._id });
+    if (!employee) return res.status(404).json({ message: "الموظف غير موجود" });
 
-    if (!attendance)
-      return res.status(404).json({ message: "سجل الحضور غير موجود" });
+    // آخر حضور لليوم
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    const attendance = await Attendance.findOne({
+      employee: employee._id,
+      date: { $gte: today }
+    });
+
+    if (!attendance) return res.status(404).json({ message: "سجل الحضور غير موجود" });
 
     if (attendance.status !== "متأخر")
       return res.status(400).json({ message: "هذا الحضور ليس متأخرًا" });
@@ -22,24 +32,21 @@ exports.createLateExcuse = async (req, res) => {
 
     const excuse = await LateExcuse.create({
       attendance: attendance._id,
-      employee: req.user._id,
+      employee: employee._id,
       reason,
-      file: req.file?.path || null, // 👈 Cloudinary URL
+      file: req.file?.path || null
     });
 
     attendance.hasExcuse = true;
     await attendance.save();
 
-    res.status(201).json({
-      message: "تم إرسال سبب التأخير بنجاح",
-      excuse,
-    });
+    res.status(201).json({ message: "تم إرسال سبب التأخير بنجاح", excuse });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "خطأ في السيرفر" });
   }
 };
-
 
 
 exports.rejectLateExcuse = async (req, res) => {
