@@ -74,7 +74,11 @@ exports.getExcuseByAttendance = async (req, res) => {
     return res.json(null); // مفيش عذر
   }
 
-  res.json(excuse);
+ res.status(201).json({
+      message: "get excuse sucessfull",
+      excuse ,
+      success:true
+    })
 };
 
 
