@@ -41,7 +41,7 @@ exports.createLateExcuse = async (req, res) => {
     attendance.hasExcuse = true;
     await attendance.save();
 
-    res.status(201).json({ message: "تم إرسال سبب التأخير بنجاح", excuse ,sucess:true });
+    res.status(201).json({ message: "تم إرسال سبب التأخير بنجاح", excuse ,success:true });
 
   } catch (err) {
    
