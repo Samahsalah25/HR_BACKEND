@@ -1262,6 +1262,7 @@ const dailyAttendanceReport = async (req, res) => {
       });
 
     const data = attendances.map(a => ({
+        attendanceId: a._id,
       employeeName: a.employee?.name || "غير معروف",
       department: a.employee?.department?.name || "غير محدد",
       branch: a.branch?.name || "غير محدد",
