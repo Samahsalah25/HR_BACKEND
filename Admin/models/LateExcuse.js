@@ -31,7 +31,7 @@ const lateExcuseSchema = new mongoose.Schema({
   hrComment: String,
 penaltyPercent: {
   type: Number, // مثال: 5 = 5%
-  required: true
+  
 },
 
   penaltyAmount: {
