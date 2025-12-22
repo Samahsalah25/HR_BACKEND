@@ -9,7 +9,12 @@ const attendanceSchema = new mongoose.Schema({
   checkOut: { type: Date },  // وقت تسجيل الخروج
   lateMinutes: { type: Number, default: 0 } // عدد الدقائق المتأخرة
 ,workedMinutes: { type: Number, default: 0 } ,
-workedtime: { type: Number, default: 0 }
+workedtime: { type: Number, default: 0 } ,
+hasExcuse: {
+  type: Boolean,
+  default: false
+}
+
  //  عدد الدقايق اللي اشتغلها
 }, { timestamps: true });
 

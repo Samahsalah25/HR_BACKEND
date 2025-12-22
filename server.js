@@ -155,6 +155,7 @@ const reportexcelReports=require("./Admin/routes/reportForexcelRoute.js");
 const jobOpeningRoutes=require("./Admin/routes/jobOpeningRoutes.js");
 const applicationRoutes=require("./Admin/routes/applicantRoutes.js");
 const interviewRoutes= require("./Admin/routes/interviewRoutes.js")
+const lateExcuseRoutes = require("./Admin/routes/lateExcuseRoutes.js");
 // DB & scripts
 const connectDB = require('./config/db.js');
 const seedAdmin = require('./scripts/seedAdmin.js');
@@ -222,6 +223,10 @@ app.use("/api/excelReports" ,reportexcelReports);
 app.use("/api/jobopening" ,jobOpeningRoutes);
 app.use("/api/applications",applicationRoutes);
 app.use("/api/interviews", interviewRoutes);
+app.use("/api/late-excuses", lateExcuseRoutes);
+
+
+
 
 // ========= Socket.io =========
 const io = new Server(server, {
