@@ -5,7 +5,7 @@ const authenticate = require("../middlesware/authenticate");
 const uploadLateExcuseFile = require("../middlesware/uploadLateExcuse");
 const { createLateExcuse  ,  getPendingExcuses,
   approveExcuse,
-  rejectExcuse } = require("../controllers/lateExcuseController");
+  rejectExcuse ,getExcuseByAttendance } = require("../controllers/lateExcuseController");
 
 router.post(
   "/",
@@ -14,7 +14,8 @@ router.post(
   createLateExcuse
 );
 router.get("/pending", authenticate, getPendingExcuses);
-
+// gg
+router.get('/by-attendance/:attendanceId' ,authenticate ,getExcuseByAttendance)
 // قبول العذر
 router.patch("/:id/approve", authenticate, approveExcuse);
 

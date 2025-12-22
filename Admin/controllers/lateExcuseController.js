@@ -63,6 +63,23 @@ exports.getPendingExcuses = async (req, res) => {
   }
 };
 
+
+exports.getExcuseByAttendance = async (req, res) => {
+  const { attendanceId } = req.params;
+
+  const excuse = await LateExcuse.findOne({ attendance: attendanceId })
+    .populate("employee", "name salary");
+
+  if (!excuse) {
+    return res.json(null); // مفيش عذر
+  }
+
+  res.json(excuse);
+};
+
+
+
+
 // 2️⃣ قبول العذر
 exports.approveExcuse = async (req, res) => {
   try {
