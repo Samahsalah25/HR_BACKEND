@@ -5,7 +5,7 @@ const LeaveBalance=require('../models/leaveBalanceModel');
 const Request=require('../models/requestModel')
 const { DateTime } = require("luxon");
 const moment = require("moment-timezone");
-import AdditionHours from '../models/AdditionHours';
+const AdditionHours = '../models/AdditionHours';
 // دالة لحساب المسافة بالمتر بين نقطتين
 function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
   const R = 6371000; 
