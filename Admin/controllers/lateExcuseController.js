@@ -73,7 +73,7 @@ exports.getExcuseByAttendance = async (req, res) => {
   if (!excuse) {
     return res.json(null); // مفيش عذر
   }
-
+  
  res.status(201).json({
       message: "get excuse sucessfull",
       excuse ,
@@ -84,7 +84,7 @@ exports.getExcuseByAttendance = async (req, res) => {
 
 
 
-// 2️⃣ قبول العذر
+//  قبول العذر
 exports.approveExcuse = async (req, res) => {
   try {
     const excuse = await LateExcuse.findById(req.params.id)

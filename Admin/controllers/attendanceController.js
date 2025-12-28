@@ -1231,14 +1231,12 @@ const getYearlyAttendanceSummary = async (req, res) => {
 
 const dailyAttendanceReport = async (req, res) => {
   try {
-    const { date } = req.query; // هنجمع التاريخ من query parameter
+    const { date } = req.query;
     let targetDate;
 
     if (date) {
-      // لو المستخدم بعت تاريخ
       targetDate = moment(date).tz("Asia/Riyadh");
     } else {
-      // افتراضي اليوم الحالي
       targetDate = moment().tz("Asia/Riyadh");
     }
 
@@ -1258,26 +1256,55 @@ const dailyAttendanceReport = async (req, res) => {
       })
       .populate({
         path: "branch",
-        select: "name"
+        select: "name workStart workEnd"
       });
 
-    const data = attendances.map(a => ({
+    const data = attendances.map(a => {
+      const workedMinutes = a.workedMinutes || 0;
+
+      // لو مفيش فرع
+      let officialWorkMinutes = 0;
+
+      if (a.branch?.workStart && a.branch?.workEnd) {
+        const [startH, startM] = a.branch.workStart.split(":").map(Number);
+        const [endH, endM] = a.branch.workEnd.split(":").map(Number);
+
+        officialWorkMinutes =
+          (endH * 60 + endM) - (startH * 60 + startM);
+      }
+
+      const overtimeMinutes =
+        workedMinutes > officialWorkMinutes
+          ? workedMinutes - officialWorkMinutes
+          : 0;
+
+      return {
         attendanceId: a._id,
-      employeeName: a.employee?.name || "غير معروف",
-      department: a.employee?.department?.name || "غير محدد",
-      branch: a.branch?.name || "غير محدد",
-      checkIn: a.checkIn
-        ? moment(a.checkIn).tz("Asia/Riyadh").format("hh:mm a")
-        : null,
-      checkOut: a.checkOut
-        ? moment(a.checkOut).tz("Asia/Riyadh").format("hh:mm a")
-        : null,
-      status: a.status,
-      lateMinutes:
-        a.lateMinutes && a.lateMinutes > 0
-          ? a.lateMinutes
-          : "بدون تأخير"
-    }));
+        employeeName: a.employee?.name || "غير معروف",
+        department: a.employee?.department?.name || "غير محدد",
+        branch: a.branch?.name || "غير محدد",
+
+        checkIn: a.checkIn
+          ? moment(a.checkIn).tz("Asia/Riyadh").format("hh:mm a")
+          : null,
+
+        checkOut: a.checkOut
+          ? moment(a.checkOut).tz("Asia/Riyadh").format("hh:mm a")
+          : null,
+
+        status: a.status,
+
+        lateMinutes:
+          a.lateMinutes && a.lateMinutes > 0
+            ? a.lateMinutes
+            : 0,
+
+        workedMinutes,
+        officialWorkMinutes,
+        overtimeMinutes,
+        overtimeHours: Number((overtimeMinutes / 60).toFixed(2))
+      };
+    });
 
     res.json({
       date: targetDate.locale("ar").format("DD MMMM YYYY"),
