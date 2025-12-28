@@ -298,10 +298,7 @@ const checkOut = async (req, res) => {
     );
     if (distance > 100) return res.status(400).json({ message: "لا يمكنك تسجيل الانصراف خارج الفرع" });
 
-    // الوقت الحالي بتوقيت السعودية
     const now = moment().tz("Asia/Riyadh");
-
-    // جلب حضور اليوم
     const todayStart = now.clone().startOf("day");
     const todayEnd = now.clone().endOf("day");
 
@@ -318,23 +315,33 @@ const checkOut = async (req, res) => {
       attendance.workedtime = attendance.workedMinutes;
     }
 
-    // حساب الساعات الإضافية
-    const branchEnd = moment(now).tz("Asia/Riyadh").set({
-      hour: branch.endHour || 17, // نهاية الدوام الافتراضية
-      minute: branch.endMinute || 0
+    // حساب التأخير
+    const workStart = moment(now).tz("Asia/Riyadh").set({
+      hour: Number(branch.workStart.split(":")[0]),
+      minute: Number(branch.workStart.split(":")[1])
     });
+    const allowedLate = branch.allowedLateMinutes || 0;
+    let lateMinutes = 0;
+    if (attendance.checkIn && moment(attendance.checkIn).isAfter(workStart.clone().add(allowedLate, "minutes"))) {
+      lateMinutes = Math.floor((moment(attendance.checkIn) - workStart) / 60000);
+    }
+    attendance.lateMinutes = lateMinutes;
 
-    const overtimeMinutes = Math.max(0, Math.floor((now - branchEnd) / 60000));
+    // حساب الوقت الإضافي بعد نهاية الدوام
+    const workEnd = moment(now).tz("Asia/Riyadh").set({
+      hour: Number(branch.workEnd.split(":")[0]),
+      minute: Number(branch.workEnd.split(":")[1])
+    });
+    const overtimeMinutes = Math.max(0, Math.floor((now - workEnd) / 60000));
 
     if (overtimeMinutes > 0) {
-      // تسجيل الساعات الإضافية في جدول AdditionHours
       await AdditionHours.create({
         attendanceId: attendance._id,
         employeeId: employee._id,
         branchId: branch._id,
         date: now.toDate(),
         overtimeMinutes,
-        amount: 0, // القيمة هتتحسب بعد كده حسب راتب الساعة
+        amount: 0,
         status: "pending"
       });
     }
@@ -347,6 +354,7 @@ const checkOut = async (req, res) => {
         ...attendance._doc,
         checkIn: moment(attendance.checkIn).tz("Asia/Riyadh").format("YYYY-MM-DD HH:mm"),
         checkOut: moment(attendance.checkOut).tz("Asia/Riyadh").format("YYYY-MM-DD HH:mm"),
+        lateMinutes,
         overtimeMinutes
       }
     });
@@ -356,6 +364,7 @@ const checkOut = async (req, res) => {
     res.status(500).json({ message: "حدث خطأ أثناء تسجيل الانصراف" });
   }
 };
+
 
 
 
