@@ -18,14 +18,16 @@ exports.getAdditionHours = async (req, res) => {
 exports.updateAdditionHours = async (req, res) => {
   try {
     const { id } = req.params;
-    const { discountPercent } = req.body;
+    const { increasePercent } = req.body; // بدل discountPercent
+
     const addition = await AdditionHours.findById(id).populate('employeeId');
     if (!addition) return res.status(404).json({ message: "غير موجود" });
 
     const salary = addition.employeeId.salary.total || 0;
-    const discountValue = (salary * discountPercent) / 100;
-    addition.discountPercent = discountPercent;
-    addition.amount = salary + discountValue;
+    const additionValue = (salary * increasePercent) / 100;
+
+    addition.amount = additionValue; // تخزين قيمة الزيادة فقط
+    addition.increasePercent = increasePercent; // لو حابب تخزن النسبة كمان
     await addition.save();
 
     res.json({ success: true, addition });
