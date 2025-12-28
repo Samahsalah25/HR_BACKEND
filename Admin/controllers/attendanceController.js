@@ -5,6 +5,7 @@ const LeaveBalance=require('../models/leaveBalanceModel');
 const Request=require('../models/requestModel')
 const { DateTime } = require("luxon");
 const moment = require("moment-timezone");
+import AdditionHours from '../models/AdditionHours';
 // دالة لحساب المسافة بالمتر بين نقطتين
 function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
   const R = 6371000; 
@@ -218,17 +219,77 @@ console.log('cookie token:', req.cookies.token);
 };
 
 // Check-Out endpoint
+// const checkOut = async (req, res) => {
+//   try {
+//     const userId = req.user._id;
+//     const { latitude, longitude } = req.body;
+
+//     const employee = await Employee.findOne({ user: userId }).populate("workplace");
+//     if (!employee) return res.status(404).json({ message: "الموظف غير موجود" });
+
+//     const branch = employee.workplace;
+//     if (!branch) return res.status(400).json({ message: "الفرع غير موجود" });
+
+//     const distance = getDistanceFromLatLonInMeters(
+//       latitude,
+//       longitude,
+//       branch.location.coordinates[1],
+//       branch.location.coordinates[0]
+//     );
+//     if (distance > 100) return res.status(400).json({ message: "لا يمكنك تسجيل الانصراف خارج الفرع" });
+
+//     // الوقت الحالي بتوقيت السعودية
+//     const now = moment().tz("Asia/Riyadh");
+
+//     const todayStart = now.clone().startOf("day");
+//     const todayEnd = now.clone().endOf("day");
+
+//     const attendance = await Attendance.findOne({
+//       employee: employee._id,
+//       date: { $gte: todayStart.toDate(), $lte: todayEnd.toDate() }
+//     });
+
+//     if (!attendance) return res.status(400).json({ message: "لم يتم تسجيل حضور لهذا اليوم" });
+
+//     attendance.checkOut = now.toDate();
+
+//     if (attendance.checkIn) {
+//       attendance.workedMinutes = Math.floor((now.toDate() - attendance.checkIn) / 60000);
+//       attendance.workedtime = attendance.workedMinutes;
+//     }
+
+//     await attendance.save();
+
+//     res.status(200).json({
+//       message: "تم تسجيل الانصراف",
+//       attendance: {
+//         ...attendance._doc,
+//         checkIn: moment(attendance.checkIn).tz("Asia/Riyadh").format("YYYY-MM-DD HH:mm"),
+//         checkOut: moment(attendance.checkOut).tz("Asia/Riyadh").format("YYYY-MM-DD HH:mm")
+//       }
+//     });
+
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: "حدث خطأ أثناء تسجيل الانصراف" });
+//   }
+// };
+
+
+
 const checkOut = async (req, res) => {
   try {
     const userId = req.user._id;
     const { latitude, longitude } = req.body;
 
+    // جلب بيانات الموظف والفرع
     const employee = await Employee.findOne({ user: userId }).populate("workplace");
     if (!employee) return res.status(404).json({ message: "الموظف غير موجود" });
 
     const branch = employee.workplace;
     if (!branch) return res.status(400).json({ message: "الفرع غير موجود" });
 
+    // التحقق من المسافة
     const distance = getDistanceFromLatLonInMeters(
       latitude,
       longitude,
@@ -240,6 +301,7 @@ const checkOut = async (req, res) => {
     // الوقت الحالي بتوقيت السعودية
     const now = moment().tz("Asia/Riyadh");
 
+    // جلب حضور اليوم
     const todayStart = now.clone().startOf("day");
     const todayEnd = now.clone().endOf("day");
 
@@ -247,7 +309,6 @@ const checkOut = async (req, res) => {
       employee: employee._id,
       date: { $gte: todayStart.toDate(), $lte: todayEnd.toDate() }
     });
-
     if (!attendance) return res.status(400).json({ message: "لم يتم تسجيل حضور لهذا اليوم" });
 
     attendance.checkOut = now.toDate();
@@ -257,6 +318,27 @@ const checkOut = async (req, res) => {
       attendance.workedtime = attendance.workedMinutes;
     }
 
+    // حساب الساعات الإضافية
+    const branchEnd = moment(now).tz("Asia/Riyadh").set({
+      hour: branch.endHour || 17, // نهاية الدوام الافتراضية
+      minute: branch.endMinute || 0
+    });
+
+    const overtimeMinutes = Math.max(0, Math.floor((now - branchEnd) / 60000));
+
+    if (overtimeMinutes > 0) {
+      // تسجيل الساعات الإضافية في جدول AdditionHours
+      await AdditionHours.create({
+        attendanceId: attendance._id,
+        employeeId: employee._id,
+        branchId: branch._id,
+        date: now.toDate(),
+        overtimeMinutes,
+        amount: 0, // القيمة هتتحسب بعد كده حسب راتب الساعة
+        status: "pending"
+      });
+    }
+
     await attendance.save();
 
     res.status(200).json({
@@ -264,7 +346,8 @@ const checkOut = async (req, res) => {
       attendance: {
         ...attendance._doc,
         checkIn: moment(attendance.checkIn).tz("Asia/Riyadh").format("YYYY-MM-DD HH:mm"),
-        checkOut: moment(attendance.checkOut).tz("Asia/Riyadh").format("YYYY-MM-DD HH:mm")
+        checkOut: moment(attendance.checkOut).tz("Asia/Riyadh").format("YYYY-MM-DD HH:mm"),
+        overtimeMinutes
       }
     });
 
@@ -273,9 +356,6 @@ const checkOut = async (req, res) => {
     res.status(500).json({ message: "حدث خطأ أثناء تسجيل الانصراف" });
   }
 };
-
-
-
 
 
 

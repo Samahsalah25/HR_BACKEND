@@ -1,33 +1,13 @@
 const mongoose = require("mongoose");
 
-const additionHoursSchema = new mongoose.Schema({
-  attendance: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Attendance",
-    required: true
-  },
-
-  employee: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Employee",
-    required: true
-  },
-
-  minutes: {
-    type: Number,
-    required: true // عدد الدقايق الإضافية
-  },
-
-  amount: {
-    type: Number,
-    default: 0 // قيمة الإضافة بالفلوس
-  },
-
-  approvedByHR: {
-    type: Boolean,
-    default: false
-  }
-
+const AdditionHours = new mongoose.Schema({
+  attendanceId: { type: mongoose.Schema.Types.ObjectId, ref: "Attendance", required: true },
+  employeeId: { type: mongoose.Schema.Types.ObjectId, ref: "Employee", required: true },
+  branchId: { type: mongoose.Schema.Types.ObjectId, ref: "Branch" },
+  date: { type: Date, required: true },
+  overtimeMinutes: { type: Number, required: true },
+  amount: { type: Number, required: true }, // قيمة الإضافة بالريال
+  status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
 }, { timestamps: true });
 
-module.exports = mongoose.model("AdditionHours", additionHoursSchema);
+module.exports = mongoose.model("AdditionHours", AdditionHours);
