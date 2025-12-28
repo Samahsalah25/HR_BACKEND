@@ -361,7 +361,12 @@ const checkOut = async (req, res) => {
 
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "حدث خطأ أثناء تسجيل الانصراف" });
+    res.status(500).json({
+  message: "حدث خطأ أثناء تسجيل الانصراف",
+  error: err.message,    // هنا هتبعت رسالة الخطأ الفعلية
+  stack: err.stack       // optional، لو حابب تبص على التفاصيل
+});
+     
   }
 };
 
