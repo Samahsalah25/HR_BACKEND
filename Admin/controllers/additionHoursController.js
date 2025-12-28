@@ -28,6 +28,7 @@ exports.updateAdditionHours = async (req, res) => {
 
     addition.amount = additionValue; // تخزين قيمة الزيادة فقط
     addition.increasePercent = increasePercent; // لو حابب تخزن النسبة كمان
+    addition.status = "approved"; // اعتماد الزيادة
     await addition.save();
 
     res.json({ success: true, addition });
