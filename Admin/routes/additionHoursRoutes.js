@@ -4,6 +4,6 @@ const router = express.Router();
 const additionHoursController = require('../controllers/additionHoursController');
 
 router.get('/:attendanceId', additionHoursController.getAdditionHours);
-router.put('/:id', additionHoursController.updateAdditionHours);
+router.patch('/:id', additionHoursController.updateAdditionHours);
 
 module.exports = router;
