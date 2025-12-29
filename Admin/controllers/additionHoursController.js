@@ -179,3 +179,125 @@ const additionDetails = additions.map(a => {
   }
 };
 
+
+
+exports.getMonthlyPayrollForHr = async (req, res) => {
+  try {
+    const { month, year, employeeId } = req.query;
+
+    // البداية والنهاية للشهر
+    const startOfMonth = moment.tz({ year, month: month - 1 }, "Asia/Riyadh").startOf("month");
+    const endOfMonth = startOfMonth.clone().endOf("month");
+
+    if (employeeId) {
+      // بيانات موظف واحد
+      const emp = await Employee.findById(employeeId);
+      if (!emp) return res.status(404).json({ message: "الموظف غير موجود" });
+
+      // الحضور
+      const attendances = await Attendance.find({
+        employee: emp._id,
+        date: { $gte: startOfMonth.toDate(), $lte: endOfMonth.toDate() },
+      });
+
+      const workDays = attendances.filter(a => a.status === "حاضر" || a.status === "متأخر").length;
+      const absentDays = attendances.filter(a => a.status === "غائب").length;
+      const totalLateMinutes = attendances.reduce((sum, a) => sum + (a.lateMinutes || 0), 0);
+
+      // الخصومات
+      const excuses = await LateExcuse.find({
+        employee: emp._id,
+        createdAt: { $gte: startOfMonth.toDate(), $lte: endOfMonth.toDate() },
+        status: "REJECTED"
+      });
+      const totalLatePenalty = excuses.reduce((sum, e) => sum + (e.penaltyAmount || 0), 0);
+
+      // الإضافات
+      const additions = await AdditionHours.find({
+        employeeId: emp._id,
+        date: { $gte: startOfMonth.toDate(), $lte: endOfMonth.toDate() },
+        status: "approved"
+      });
+      const totalOvertimeAmount = additions.reduce((sum, a) => sum + a.amount, 0);
+      const totalOvertimeMinutes = additions.reduce((sum, a) => sum + a.overtimeMinutes, 0);
+
+      const salary = emp.salary;
+      const totalSalary = salary.total + totalOvertimeAmount - totalLatePenalty;
+
+      return res.json({
+        month,
+        year,
+        employee: {
+          name: emp.name,
+          employeeNumber: emp.employeeNumber,
+          department: emp.department,
+          jobTitle: emp.jobTitle
+        },
+        additions: {
+          baseSalary: salary.base,
+          allowances: salary.housingAllowance + salary.transportAllowance + salary.otherAllowance,
+          bonuses: totalOvertimeAmount,
+          overtimeMinutes: totalOvertimeMinutes
+        },
+        deductions: {
+          insurance: 0,
+          taxes: 0,
+          absenceAndLate: totalLatePenalty
+        },
+        attendanceSummary: {
+          workDays,
+          absentDays,
+          totalLateMinutes
+        },
+        totalSalary
+      });
+    }
+
+    // بيانات كل الموظفين
+    const employees = await Employee.find().populate("department");
+    const result = await Promise.all(
+      employees.map(async emp => {
+        // إحضار الإضافات والخصومات
+        const additions = await AdditionHours.find({
+          employeeId: emp._id,
+          date: { $gte: startOfMonth.toDate(), $lte: endOfMonth.toDate() },
+          status: "approved"
+        });
+        const totalAdditions = additions.reduce((sum, a) => sum + a.amount, 0);
+
+        const attendances = await Attendance.find({
+          employee: emp._id,
+          date: { $gte: startOfMonth.toDate(), $lte: endOfMonth.toDate() },
+        });
+        const excuses = await LateExcuse.find({
+          employee: emp._id,
+          createdAt: { $gte: startOfMonth.toDate(), $lte: endOfMonth.toDate() },
+          status: "REJECTED"
+        });
+        const totalDeductions = excuses.reduce((sum, e) => sum + (e.penaltyAmount || 0), 0);
+
+        const netSalary = emp.salary.total + totalAdditions - totalDeductions;
+
+        return {
+          employeeId: emp._id,
+          name: emp.name,
+          department: emp.department?.name || "-",
+          totalAdditions,
+          totalDeductions,
+          netSalary
+        };
+      })
+    );
+
+    res.json({
+      month,
+      year,
+      employees: result
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "خطأ في جلب الرواتب", error: err.message });
+  }
+};
+
