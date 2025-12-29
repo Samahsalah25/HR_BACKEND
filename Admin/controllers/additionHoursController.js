@@ -191,7 +191,7 @@ exports.getMonthlyPayrollForHr = async (req, res) => {
 
     if (employeeId) {
       // بيانات موظف واحد
-      const emp = await Employee.findById(employeeId);
+      const emp = await Employee.findById(employeeId).populate("department");
       if (!emp) return res.status(404).json({ message: "الموظف غير موجود" });
 
       // الحضور
@@ -230,7 +230,7 @@ exports.getMonthlyPayrollForHr = async (req, res) => {
         employee: {
           name: emp.name,
           employeeNumber: emp.employeeNumber,
-          department: emp.department,
+          department:  department: emp.department?.name || "-",
           jobTitle: emp.jobTitle
         },
         additions: {
