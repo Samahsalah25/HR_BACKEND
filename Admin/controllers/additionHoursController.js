@@ -230,7 +230,7 @@ exports.getMonthlyPayrollForHr = async (req, res) => {
         employee: {
           name: emp.name,
           employeeNumber: emp.employeeNumber,
-          department:  department: emp.department?.name || "-",
+          department:   emp.department?.name || "-",
           jobTitle: emp.jobTitle
         },
         additions: {
