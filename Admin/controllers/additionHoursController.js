@@ -115,6 +115,13 @@ exports.getMyMonthlyPayroll = async (req, res) => {
     const totalOvertimeAmount = additions.reduce((sum, a) => sum + a.amount, 0);
 
     // جدول الساعات الإضافية لكل يوم فيه إضافات
+// خريطة الحضور حسب اليوم (علشان نجيب checkIn / checkOut)
+const attendanceMap = {};
+attendances.forEach(a => {
+  const dayKey = moment(a.date).format("YYYY-MM-DD");
+  attendanceMap[dayKey] = a;
+});
+
 const additionDetails = additions.map(a => {
   const dayKey = moment(a.date).format("YYYY-MM-DD");
   const attendance = attendanceMap[dayKey];
@@ -122,10 +129,10 @@ const additionDetails = additions.map(a => {
   return {
     day: moment(a.date).format("YYYY/MM/DD"),
     checkIn: attendance?.checkIn
-      ? moment(attendance.checkIn).format("hh:mm A")
+      ? moment(attendance.checkIn).format("HH:mm")
       : "-",
     checkOut: attendance?.checkOut
-      ? moment(attendance.checkOut).format("hh:mm A")
+      ? moment(attendance.checkOut).format("HH:mm")
       : "-",
     additionHours: formatMinutes(a.overtimeMinutes),
     amount: a.amount
