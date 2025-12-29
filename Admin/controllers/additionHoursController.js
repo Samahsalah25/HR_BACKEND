@@ -115,13 +115,22 @@ exports.getMyMonthlyPayroll = async (req, res) => {
     const totalOvertimeAmount = additions.reduce((sum, a) => sum + a.amount, 0);
 
     // جدول الساعات الإضافية لكل يوم فيه إضافات
-    const additionDetails = additions.map(a => ({
-      day: moment(a.date).format("YYYY/MM/DD"),
-      checkIn: "-", // ممكن تضيف بيانات الحضور إذا حابة
-      checkOut: "-",
-      additionHours: formatMinutes(a.overtimeMinutes),
-      amount: a.amount
-    }));
+const additionDetails = additions.map(a => {
+  const dayKey = moment(a.date).format("YYYY-MM-DD");
+  const attendance = attendanceMap[dayKey];
+
+  return {
+    day: moment(a.date).format("YYYY/MM/DD"),
+    checkIn: attendance?.checkIn
+      ? moment(attendance.checkIn).format("hh:mm A")
+      : "-",
+    checkOut: attendance?.checkOut
+      ? moment(attendance.checkOut).format("hh:mm A")
+      : "-",
+    additionHours: formatMinutes(a.overtimeMinutes),
+    amount: a.amount
+  };
+});
 
     // الراتب
     const salary = employee.salary;
@@ -163,10 +172,3 @@ exports.getMyMonthlyPayroll = async (req, res) => {
   }
 };
 
-// دالة مساعدة لتحويل الدقائق لساعات ودقائق
-function formatMinutes(minutes) {
-  if (!minutes) return "0 د";
-  const hrs = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return hrs > 0 ? `${hrs} س ${mins} د` : `${mins} د`;
-}
