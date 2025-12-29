@@ -1323,6 +1323,95 @@ const getYearlyAttendanceSummary = async (req, res) => {
   }
 };
 
+// const dailyAttendanceReport = async (req, res) => {
+//   try {
+//     const { date } = req.query;
+//     let targetDate;
+
+//     if (date) {
+//       targetDate = moment(date).tz("Asia/Riyadh");
+//     } else {
+//       targetDate = moment().tz("Asia/Riyadh");
+//     }
+
+//     const startOfDay = targetDate.clone().startOf("day").toDate();
+//     const endOfDay = targetDate.clone().endOf("day").toDate();
+
+//     const attendances = await Attendance.find({
+//       date: { $gte: startOfDay, $lte: endOfDay }
+//     })
+//       .populate({
+//         path: "employee",
+//         select: "name department",
+//         populate: {
+//           path: "department",
+//           select: "name"
+//         }
+//       })
+//       .populate({
+//         path: "branch",
+//         select: "name workStart workEnd"
+//       });
+
+//     const data = attendances.map(a => {
+//       const workedMinutes = a.workedMinutes || 0;
+
+//       // لو مفيش فرع
+//       let officialWorkMinutes = 0;
+
+//       if (a.branch?.workStart && a.branch?.workEnd) {
+//         const [startH, startM] = a.branch.workStart.split(":").map(Number);
+//         const [endH, endM] = a.branch.workEnd.split(":").map(Number);
+
+//         officialWorkMinutes =
+//           (endH * 60 + endM) - (startH * 60 + startM);
+//       }
+
+//       const overtimeMinutes =
+//         workedMinutes > officialWorkMinutes
+//           ? workedMinutes - officialWorkMinutes
+//           : 0;
+
+//       return {
+//         attendanceId: a._id,
+//         employeeName: a.employee?.name || "غير معروف",
+//         department: a.employee?.department?.name || "غير محدد",
+//         branch: a.branch?.name || "غير محدد",
+
+//         checkIn: a.checkIn
+//           ? moment(a.checkIn).tz("Asia/Riyadh").format("hh:mm a")
+//           : null,
+
+//         checkOut: a.checkOut
+//           ? moment(a.checkOut).tz("Asia/Riyadh").format("hh:mm a")
+//           : null,
+
+//         status: a.status,
+
+//         lateMinutes:
+//           a.lateMinutes && a.lateMinutes > 0
+//             ? a.lateMinutes
+//             : 0,
+
+//         workedMinutes,
+//         officialWorkMinutes,
+//         overtimeMinutes,
+//         overtimeHours: Number((overtimeMinutes / 60).toFixed(2))
+//       };
+//     });
+
+//     res.json({
+//       date: targetDate.locale("ar").format("DD MMMM YYYY"),
+//       count: data.length,
+//       data
+//     });
+
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: "حدث خطأ أثناء جلب تقرير الحضور" });
+//   }
+// };
+
 const dailyAttendanceReport = async (req, res) => {
   try {
     const { date } = req.query;
@@ -1350,55 +1439,45 @@ const dailyAttendanceReport = async (req, res) => {
       })
       .populate({
         path: "branch",
-        select: "name workStart workEnd"
+        select: "name"
       });
 
-    const data = attendances.map(a => {
-      const workedMinutes = a.workedMinutes || 0;
+    const data = await Promise.all(
+      attendances.map(async (a) => {
 
-      // لو مفيش فرع
-      let officialWorkMinutes = 0;
+        // ⬅️ جلب الأوفر تايم من الداتابيز
+        const overtime = await AdditionHours.findOne({
+          attendanceId: a._id,
+          status: { $in: ["approved", "pending"] }
+        });
 
-      if (a.branch?.workStart && a.branch?.workEnd) {
-        const [startH, startM] = a.branch.workStart.split(":").map(Number);
-        const [endH, endM] = a.branch.workEnd.split(":").map(Number);
+        const overtimeMinutes = overtime?.overtimeMinutes || 0;
 
-        officialWorkMinutes =
-          (endH * 60 + endM) - (startH * 60 + startM);
-      }
+        return {
+          attendanceId: a._id,
+          employeeName: a.employee?.name || "غير معروف",
+          department: a.employee?.department?.name || "غير محدد",
+          branch: a.branch?.name || "غير محدد",
 
-      const overtimeMinutes =
-        workedMinutes > officialWorkMinutes
-          ? workedMinutes - officialWorkMinutes
-          : 0;
+          checkIn: a.checkIn
+            ? moment(a.checkIn).tz("Asia/Riyadh").format("hh:mm a")
+            : null,
 
-      return {
-        attendanceId: a._id,
-        employeeName: a.employee?.name || "غير معروف",
-        department: a.employee?.department?.name || "غير محدد",
-        branch: a.branch?.name || "غير محدد",
+          checkOut: a.checkOut
+            ? moment(a.checkOut).tz("Asia/Riyadh").format("hh:mm a")
+            : null,
 
-        checkIn: a.checkIn
-          ? moment(a.checkIn).tz("Asia/Riyadh").format("hh:mm a")
-          : null,
+          status: a.status,
 
-        checkOut: a.checkOut
-          ? moment(a.checkOut).tz("Asia/Riyadh").format("hh:mm a")
-          : null,
+          lateMinutes: a.lateMinutes || 0,
 
-        status: a.status,
+          workedMinutes: a.workedMinutes || 0,
 
-        lateMinutes:
-          a.lateMinutes && a.lateMinutes > 0
-            ? a.lateMinutes
-            : 0,
-
-        workedMinutes,
-        officialWorkMinutes,
-        overtimeMinutes,
-        overtimeHours: Number((overtimeMinutes / 60).toFixed(2))
-      };
-    });
+          overtimeMinutes,
+          overtimeHours: Number((overtimeMinutes / 60).toFixed(2))
+        };
+      })
+    );
 
     res.json({
       date: targetDate.locale("ar").format("DD MMMM YYYY"),
