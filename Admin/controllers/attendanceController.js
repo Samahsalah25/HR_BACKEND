@@ -6,6 +6,7 @@ const Request=require('../models/requestModel')
 const { DateTime } = require("luxon");
 const moment = require("moment-timezone");
 const AdditionHours =require( '../models/AdditionHours');
+const AbsencePenalty=require('../models/absencePenaltySchema')
 // دالة لحساب المسافة بالمتر بين نقطتين
 function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
   const R = 6371000; 
@@ -369,9 +370,6 @@ const checkOut = async (req, res) => {
      
   }
 };
-
-
-
 
 //
 
@@ -1491,8 +1489,48 @@ const dailyAttendanceReport = async (req, res) => {
   }
 };
 
+// GET Absent Employees by Date
+const getAbsentByDate = async (req, res) => {
+  try {
+    const { date } = req.query;
+
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+
+    const absents = await Attendance.find({
+      status: "غائب",
+      date: { $gte: start, $lte: end }
+    })
+    .populate("employee", "name salary")
+    .populate("branch", "name")
+    // هنا بنجيب خصم الغياب لو موجود
+   
+    // لو ما فيش relation مباشرة، ممكن نجيب الخصم بعدين لكل attendance:
+    const result = await Promise.all(
+      absents.map(async (att) => {
+        // جلب خصم الغياب لو موجود
+        const penalty = await AbsencePenalty.findOne({ attendance: att._id })
+          .select("penaltyPercent penaltyAmount status");
+
+        return {
+          ...att.toObject(),
+          penalty: penalty || null // null لو ما فيش خصم
+        };
+      })
+    );
+
+    res.json(result);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: "Server error" });
+  }
+}
 
 
 module.exports = { checkIn, checkOut ,getTodayAttendance 
    ,dailyState ,dailyStateBranch , dailyAttendanceTable ,getMonthlyAttendanceForEmployee 
-   , monthlyReport ,monthlyReportoneBranch ,dailyAttendanceTableOnebranch ,dailyAttendanceReport ,dailyEmployeeAttendance ,monthlyEmployeeAttendance ,getYearlyAttendanceSummary };
+   , monthlyReport ,monthlyReportoneBranch ,dailyAttendanceTableOnebranch ,dailyAttendanceReport
+    ,dailyEmployeeAttendance ,monthlyEmployeeAttendance ,getYearlyAttendanceSummary ,getAbsentByDate };

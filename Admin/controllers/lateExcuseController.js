@@ -96,6 +96,7 @@ exports.approveExcuse = async (req, res) => {
 
     excuse.status = "APPROVED";
     excuse.penaltyAmount = 0;
+   excuse.appliedBy=req.user._id;
 
     await excuse.save();
 
@@ -130,7 +131,7 @@ exports.rejectExcuse = async (req, res) => {
     excuse.status = "REJECTED";
     excuse.penaltyPercent = penaltyPercent;
     excuse.penaltyAmount = penaltyAmount;
- 
+   excuse.appliedBy=req.user._id;
 
     await excuse.save();
 

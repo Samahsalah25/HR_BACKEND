@@ -12,6 +12,10 @@ const lateExcuseSchema = new mongoose.Schema({
     ref: "Employee",
     required: true
   },
+    appliedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User" // HR
+    },
 
   reason: {
     type: String,

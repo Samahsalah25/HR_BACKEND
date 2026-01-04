@@ -5,7 +5,8 @@ const { checkIn ,checkOut ,getTodayAttendance ,dailyState ,dailyStateBranch
     ,dailyAttendanceTable  ,dailyAttendanceTableOnebranch
      ,getMonthlyAttendanceForEmployee 
      ,monthlyReport 
-    ,monthlyReportoneBranch ,dailyEmployeeAttendance  ,monthlyEmployeeAttendance ,getYearlyAttendanceSummary ,dailyAttendanceReport } = require('../controllers/attendanceController');
+    ,monthlyReportoneBranch ,dailyEmployeeAttendance  ,monthlyEmployeeAttendance 
+    ,getYearlyAttendanceSummary ,dailyAttendanceReport  ,getAbsentByDate} = require('../controllers/attendanceController');
 const authenticate=require('../middlesware/authenticate');
 const getClientTime=require('../middlesware/clientTime');
 const authorizeRoles=require('../middlesware/roleMiddleware');
@@ -32,6 +33,8 @@ router.get('/dailyAttendanceTable' ,authenticate,authorizeRoles('HR',"Admin"),da
 
 router.get('/dailyAttendanceReport'  , dailyAttendanceReport) ;
 
+// getAbsentByDate الغياب باليوم للموظفين
+router.get('/getAbsentByDate' ,authenticate ,getAbsentByDate)
 
 // تسجيل حضور اليوم جه امتي ومشي امتي
 router.get("/today/:id", authenticate,authorizeRoles('HR'), getTodayAttendance);   //done
