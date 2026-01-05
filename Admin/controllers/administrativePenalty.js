@@ -243,7 +243,7 @@ const getPenaltyDetail = async (req, res) => {
             { path: "workplace", select: "name" }
           ]
         })
-        .populate("attendance", "date status")
+        .populate("attendance", "date status").populate("appliedBy", "name")
         .lean();
 
     } else if (mappedType === "absence") {
@@ -256,7 +256,7 @@ const getPenaltyDetail = async (req, res) => {
             { path: "workplace", select: "name" }
           ]
         })
-        .populate("attendance", "date status")
+        .populate("attendance", "date status").populate("appliedBy", "name")
         .lean();
 
     } else if (mappedType === "admin") {
@@ -268,7 +268,7 @@ const getPenaltyDetail = async (req, res) => {
             { path: "department", select: "name" },
             { path: "workplace", select: "name" }
           ]
-        })
+        }).populate("appliedBy", "name")
         .lean();
     }
 
@@ -286,7 +286,8 @@ const getPenaltyDetail = async (req, res) => {
       reason: type, // نرجع العربي زي ما هو
       penaltyAmount: penalty.penaltyAmount,
       appliedDate: mappedType === "admin" ? penalty.appliedDate : penalty.createdAt,
-      createdAt: penalty.createdAt
+      createdAt: penalty.createdAt ,
+      appliedBy: penalty.appliedBy?.name || "غير معروف"
     };
 
     res.json({ success: true, data: detail });
