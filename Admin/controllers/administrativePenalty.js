@@ -147,64 +147,146 @@ if (date) {
   }
 };
 
+// const getPenaltyDetail = async (req, res) => {
+//   try {
+//     const { id, type } = req.params; // type: "late" | "absence" | "admin"
+
+//     let penalty;
+
+//     if (type === "late") {
+//       penalty = await LateExcuse.findById(id)
+//  .populate({
+//   path: "employee",
+//   select: "name employeeNumber jobTitle department workplace",
+//   populate: [
+//     { path: "department", select: "name" },
+//     { path: "workplace", select: "name" }
+//   ]
+// })
+//         .populate("attendance", "date status")
+//         .lean();
+//     } else if (type === "absence") {
+//       penalty = await AbsencePenalty.findById(id)
+//        .populate({
+//   path: "employee",
+//   select: "name employeeNumber jobTitle department workplace",
+//   populate: [
+//     { path: "department", select: "name" },
+//     { path: "workplace", select: "name" }
+//   ]
+// })
+//         .populate("attendance", "date status")
+//         .lean();
+//     } else if (type === "admin") {
+//       penalty = await AdminPenalty.findById(id)
+//       .populate({
+//   path: "employee",
+//   select: "name employeeNumber jobTitle department workplace",
+//   populate: [
+//     { path: "department", select: "name" },
+//     { path: "workplace", select: "name" }
+//   ]
+// })
+//         .lean();
+//     } else {
+//       return res.status(400).json({ message: "نوع الخصم غير صحيح" });
+//     }
+
+//     if (!penalty) return res.status(404).json({ message: "الخصم غير موجود" });
+
+//     // بيانات التفاصيل
+//     const detail = {
+//       employeeName: penalty.employee.name,
+//       department: penalty.employee.department?.name,
+//       employeeNumber: penalty.employee.employeeNumber,
+//       jobTitle: penalty.employee.jobTitle,
+//       branch: penalty.employee.workplace?.name,
+//       reason: type === "late" ? "تأخير" : type === "absence" ? "غياب" : "مخالفة إدارية",
+//       penaltyAmount: penalty.penaltyAmount,
+//       appliedDate: type === "admin" ? penalty.appliedDate : penalty.createdAt ,
+//       createdAt:penalty.createdAt
+//     };
+
+//     res.json({ success: true, data: detail });
+
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ message: err.message || "خطأ في السيرفر" });
+//   }
+// };
 const getPenaltyDetail = async (req, res) => {
   try {
-    const { id, type } = req.params; // type: "late" | "absence" | "admin"
+    const { id, type } = req.params;
 
-    let penalty;
+    // 🔹 تحويل النوع العربي لنوع داخلي
+    const typeMap = {
+      "تأخير": "late",
+      "غياب": "absence",
+      "مخالفة إدارية": "admin"
+    };
 
-    if (type === "late") {
-      penalty = await LateExcuse.findById(id)
- .populate({
-  path: "employee",
-  select: "name employeeNumber jobTitle department workplace",
-  populate: [
-    { path: "department", select: "name" },
-    { path: "workplace", select: "name" }
-  ]
-})
-        .populate("attendance", "date status")
-        .lean();
-    } else if (type === "absence") {
-      penalty = await AbsencePenalty.findById(id)
-       .populate({
-  path: "employee",
-  select: "name employeeNumber jobTitle department workplace",
-  populate: [
-    { path: "department", select: "name" },
-    { path: "workplace", select: "name" }
-  ]
-})
-        .populate("attendance", "date status")
-        .lean();
-    } else if (type === "admin") {
-      penalty = await AdminPenalty.findById(id)
-      .populate({
-  path: "employee",
-  select: "name employeeNumber jobTitle department workplace",
-  populate: [
-    { path: "department", select: "name" },
-    { path: "workplace", select: "name" }
-  ]
-})
-        .lean();
-    } else {
+    const mappedType = typeMap[type];
+
+    if (!mappedType) {
       return res.status(400).json({ message: "نوع الخصم غير صحيح" });
     }
 
-    if (!penalty) return res.status(404).json({ message: "الخصم غير موجود" });
+    let penalty;
 
-    // بيانات التفاصيل
+    if (mappedType === "late") {
+      penalty = await LateExcuse.findById(id)
+        .populate({
+          path: "employee",
+          select: "name employeeNumber jobTitle department workplace",
+          populate: [
+            { path: "department", select: "name" },
+            { path: "workplace", select: "name" }
+          ]
+        })
+        .populate("attendance", "date status")
+        .lean();
+
+    } else if (mappedType === "absence") {
+      penalty = await AbsencePenalty.findById(id)
+        .populate({
+          path: "employee",
+          select: "name employeeNumber jobTitle department workplace",
+          populate: [
+            { path: "department", select: "name" },
+            { path: "workplace", select: "name" }
+          ]
+        })
+        .populate("attendance", "date status")
+        .lean();
+
+    } else if (mappedType === "admin") {
+      penalty = await AdminPenalty.findById(id)
+        .populate({
+          path: "employee",
+          select: "name employeeNumber jobTitle department workplace",
+          populate: [
+            { path: "department", select: "name" },
+            { path: "workplace", select: "name" }
+          ]
+        })
+        .lean();
+    }
+
+    if (!penalty) {
+      return res.status(404).json({ message: "الخصم غير موجود" });
+    }
+
+    // 🔹 بيانات التفاصيل
     const detail = {
       employeeName: penalty.employee.name,
       department: penalty.employee.department?.name,
       employeeNumber: penalty.employee.employeeNumber,
       jobTitle: penalty.employee.jobTitle,
       branch: penalty.employee.workplace?.name,
-      reason: type === "late" ? "تأخير" : type === "absence" ? "غياب" : "مخالفة إدارية",
+      reason: type, // نرجع العربي زي ما هو
       penaltyAmount: penalty.penaltyAmount,
-      appliedDate: type === "admin" ? penalty.appliedDate : penalty.createdAt ,
-      createdAt:penalty.createdAt
+      appliedDate: mappedType === "admin" ? penalty.appliedDate : penalty.createdAt,
+      createdAt: penalty.createdAt
     };
 
     res.json({ success: true, data: detail });
@@ -214,5 +296,6 @@ const getPenaltyDetail = async (req, res) => {
     res.status(500).json({ message: err.message || "خطأ في السيرفر" });
   }
 };
+
 
 module.exports = { createAdminPenalty  ,getAllPenalties ,getPenaltyDetail};
