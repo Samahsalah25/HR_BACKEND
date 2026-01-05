@@ -1512,8 +1512,7 @@ const getAbsentByDate = async (req, res) => {
     select: "name"
   }
 })
-
-    .populate("branch", "name")
+  .populate("branch", "name")
     // هنا بنجيب خصم الغياب لو موجود
    
     // لو ما فيش relation مباشرة، ممكن نجيب الخصم بعدين لكل attendance:
