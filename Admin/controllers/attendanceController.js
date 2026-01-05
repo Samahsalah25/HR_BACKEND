@@ -1504,7 +1504,15 @@ const getAbsentByDate = async (req, res) => {
       status: "غائب",
       date: { $gte: start, $lte: end }
     })
-    .populate("employee", "name salary")
+    .populate({
+  path: "employee",
+  select: "name salary department",
+  populate: {
+    path: "department",
+    select: "name"
+  }
+})
+
     .populate("branch", "name")
     // هنا بنجيب خصم الغياب لو موجود
    
