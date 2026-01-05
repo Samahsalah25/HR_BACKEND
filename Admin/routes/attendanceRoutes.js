@@ -34,7 +34,7 @@ router.get('/dailyAttendanceTable' ,authenticate,authorizeRoles('HR',"Admin"),da
 router.get('/dailyAttendanceReport'  , dailyAttendanceReport) ;
 
 // getAbsentByDate الغياب باليوم للموظفين
-router.get('/getAbsentByDate' ,authenticate ,getAbsentByDate)
+router.get('/getAbsentByDate'  ,getAbsentByDate)
 
 // تسجيل حضور اليوم جه امتي ومشي امتي
 router.get("/today/:id", authenticate,authorizeRoles('HR'), getTodayAttendance);   //done
