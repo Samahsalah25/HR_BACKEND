@@ -53,13 +53,21 @@ const getAllPenalties = async (req, res) => {
   try {
     const { date } = req.query;
 
+    // let start, end;
+    // if (date) {
+    //   start = new Date(date);
+    //   start.setHours(0, 0, 0, 0);
+    //   end = new Date(date);
+    //   end.setHours(23, 59, 59, 999);
+    // }
     let start, end;
-    if (date) {
-      start = new Date(date);
-      start.setHours(0, 0, 0, 0);
-      end = new Date(date);
-      end.setHours(23, 59, 59, 999);
-    }
+if (date) {
+  // نفترض إن الفرونت هيبعت "YYYY-MM" زي "2026-01"
+  const [year, month] = date.split("-");
+  start = new Date(year, month - 1, 1); // أول يوم في الشهر
+  end = new Date(year, month, 0, 23, 59, 59, 999); // آخر يوم في الشهر
+}
+
 
     // نجيب التأخيرات
     const lateExcuses = await LateExcuse.find(date ? { createdAt: { $gte: start, $lte: end } } : {})
