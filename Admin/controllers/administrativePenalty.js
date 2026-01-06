@@ -304,9 +304,15 @@ const getDepartmentsByBranch = async (req, res) => {
   try {
     const { branchId } = req.query;
 
-    const departments = await Employee.find({ workplace: branchId })
-      .populate("department", "name")
-      .distinct("department");
+    // 1️⃣ هات IDs الأقسام من الموظفين
+    const departmentIds = await Employee.distinct("department", {
+      workplace: branchId
+    });
+
+    // 2️⃣ هات بيانات الأقسام
+    const departments = await Department.find({
+      _id: { $in: departmentIds }
+    }).select("name");
 
     res.json({
       success: true,
@@ -317,6 +323,7 @@ const getDepartmentsByBranch = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
 
 const getEmployeesByBranchAndDepartment = async (req, res) => {
   try {
