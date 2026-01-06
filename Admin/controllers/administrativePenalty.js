@@ -75,7 +75,7 @@ if (date) {
     const lateExcuses = await LateExcuse.find(date ? { createdAt: { $gte: start, $lte: end } } : {})
       .populate({
   path: "employee",
-  select: "name employeeNumber jobTitle department workplace",
+  select: "name employeeNumber jobTitle department workplace salary",
   populate: [
     { path: "department", select: "name" },
     { path: "workplace", select: "name" }
@@ -88,7 +88,7 @@ if (date) {
     const absencePenalties = await AbsencePenalty.find(date ? { createdAt: { $gte: start, $lte: end } } : {})
  .populate({
   path: "employee",
-  select: "name employeeNumber jobTitle department workplace",
+  select: "name employeeNumber jobTitle department workplace salary",
   populate: [
     { path: "department", select: "name" },
     { path: "workplace", select: "name" }
@@ -101,7 +101,7 @@ if (date) {
     const adminPenalties = await AdminPenalty.find(date ? { appliedDate: { $gte: start, $lte: end } } : {})
 .populate({
   path: "employee",
-  select: "name employeeNumber jobTitle department workplace",
+  select: "name employeeNumber jobTitle department workplace salary",
   populate: [
     { path: "department", select: "name" },
     { path: "workplace", select: "name" }
@@ -115,6 +115,7 @@ if (date) {
       ...lateExcuses.map(l => ({
         id: l._id,
         employeeName: l.employee.name,
+        employeeSalary:l.employee.salary ,
          department: l.employee.department?.name,
   branch: l.employee.workplace?.name,
         type: "تأخير",
@@ -124,6 +125,7 @@ if (date) {
       ...absencePenalties.map(a => ({
         id: a._id,
         employeeName: a.employee.name,
+           employeeSalary:a.employee.salary ,
        department: a.employee.department?.name,
   branch: a.employee.workplace?.name,
         type: "غياب",
@@ -133,6 +135,7 @@ if (date) {
       ...adminPenalties.map(a => ({
         id: a._id,
         employeeName: a.employee.name,
+           employeeSalary:a.employee.salary ,
         department: a.employee.department?.name,
   branch: a.employee.workplace?.name,
         type: "مخالفة إدارية",
