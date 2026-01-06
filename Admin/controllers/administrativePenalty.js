@@ -41,6 +41,7 @@ const createAdminPenalty = async (req, res) => {
     res.status(201).json({
       message: "تم إنشاء الخصم الإداري بنجاح",
       penalty ,
+      success:true
     });
   } catch (err) {
     console.error(err);
