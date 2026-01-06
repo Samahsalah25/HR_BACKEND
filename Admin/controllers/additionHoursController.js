@@ -325,6 +325,7 @@ const additionDetails = additions.map(a => {
 //   }
 // };
 
+
 exports.getMonthlyPayrollForHr = async (req, res) => {
   try {
     const { month, year, employeeId } = req.query;
@@ -343,49 +344,39 @@ exports.getMonthlyPayrollForHr = async (req, res) => {
     // 🔻 الخصومات
     // =======================
     const calculateDeductions = async (empId) => {
-
-      // 1️⃣ التأخير (Late) → APPROVED بس
+      // 1️⃣ التأخير (Late) → APPROVED فقط
       const latePenalties = await LateExcuse.find({
         employee: empId,
         status: "APPROVED",
         penaltyAmount: { $gt: 0 },
-        createdAt: { $gte: startOfMonth, $lte: endOfMonth }
+        createdAt: { $gte: startOfMonth, $lte: endOfMonth },
       });
 
-      const totalLate = latePenalties.reduce(
-        (sum, l) => sum + l.penaltyAmount,
-        0
-      );
+      const totalLate = latePenalties.reduce((sum, l) => sum + l.penaltyAmount, 0);
 
-      // 2️⃣ الغياب → حسب month & year (وده كان سبب مشكلة حسن)
+      // 2️⃣ الغياب → حسب month & year
       const absencePenalties = await AbsencePenalty.find({
         employee: empId,
         month: Number(month),
-        year: Number(year)
+        year: Number(year),
       });
 
-      const totalAbsence = absencePenalties.reduce(
-        (sum, a) => sum + a.penaltyAmount,
-        0
-      );
+      const totalAbsence = absencePenalties.reduce((sum, a) => sum + a.penaltyAmount, 0);
 
       // 3️⃣ المخالفات الإدارية
       const adminPenalties = await AdminPenalty.find({
         employee: empId,
         status: { $in: ["APPLIED", "APPROVED"] },
-        appliedDate: { $gte: startOfMonth, $lte: endOfMonth }
+        appliedDate: { $gte: startOfMonth, $lte: endOfMonth },
       });
 
-      const totalAdmin = adminPenalties.reduce(
-        (sum, a) => sum + a.penaltyAmount,
-        0
-      );
+      const totalAdmin = adminPenalties.reduce((sum, a) => sum + a.penaltyAmount, 0);
 
       return {
         totalLate,
         totalAbsence,
         totalAdmin,
-        totalDeductions: totalLate + totalAbsence + totalAdmin
+        totalDeductions: totalLate + totalAbsence + totalAdmin,
       };
     };
 
@@ -396,18 +387,11 @@ exports.getMonthlyPayrollForHr = async (req, res) => {
       const additions = await AdditionHours.find({
         employeeId: empId,
         status: "approved",
-        date: { $gte: startOfMonth, $lte: endOfMonth }
+        date: { $gte: startOfMonth, $lte: endOfMonth },
       });
 
-      const totalAmount = additions.reduce(
-        (sum, a) => sum + (a.amount || 0),
-        0
-      );
-
-      const totalMinutes = additions.reduce(
-        (sum, a) => sum + (a.overtimeMinutes || 0),
-        0
-      );
+      const totalAmount = additions.reduce((sum, a) => sum + (a.amount || 0), 0);
+      const totalMinutes = additions.reduce((sum, a) => sum + (a.overtimeMinutes || 0), 0);
 
       return { totalAmount, totalMinutes };
     };
@@ -422,26 +406,32 @@ exports.getMonthlyPayrollForHr = async (req, res) => {
       const { totalLate, totalAbsence, totalAdmin, totalDeductions } =
         await calculateDeductions(emp._id);
 
-      const { totalAmount: totalOvertimeAmount } =
-        await calculateAdditions(emp._id);
+      const { totalAmount: totalOvertimeAmount } = await calculateAdditions(emp._id);
 
-      const totalSalary =
-        emp.salary.total + totalOvertimeAmount - totalDeductions;
+      const totalSalary = emp.salary.total + totalOvertimeAmount - totalDeductions;
 
       return res.json({
         month,
         year,
         employee: {
           name: emp.name,
-          department: emp.department?.name || "-"
+          department: emp.department?.name || "-",
+          employeeNumber: emp.employeeNumber || "-",
+          jobTitle: emp.jobTitle || "-",
+        },
+        additions: {
+          baseSalary: emp.salary?.base || 0,
+          allowances: emp.salary?.allowances || 0,
+          overtimeMinutes: totalOvertimeAmount,
         },
         deductions: {
-          totalLate,
-          totalAbsence,
+          insurance: emp.salary?.insurance || 0,
+          taxes: emp.salary?.taxes || 0,
+          absenceAndLate: totalLate + totalAbsence,
           totalAdmin,
-          totalDeductions
+          totalDeductions,
         },
-        totalSalary
+        totalSalary,
       });
     }
 
@@ -455,8 +445,7 @@ exports.getMonthlyPayrollForHr = async (req, res) => {
         const { totalLate, totalAbsence, totalAdmin, totalDeductions } =
           await calculateDeductions(emp._id);
 
-        const { totalAmount: totalAdditions } =
-          await calculateAdditions(emp._id);
+        const { totalAmount: totalAdditions } = await calculateAdditions(emp._id);
 
         return {
           employeeId: emp._id,
@@ -464,21 +453,20 @@ exports.getMonthlyPayrollForHr = async (req, res) => {
           department: emp.department?.name || "-",
           totalAdditions,
           totalDeductions,
-          netSalary:
-            emp.salary.total + totalAdditions - totalDeductions
+          netSalary: emp.salary.total + totalAdditions - totalDeductions,
         };
       })
     );
 
     res.json({ month, year, employees: result });
-
   } catch (err) {
     console.error(err);
     res.status(500).json({
       message: "خطأ في جلب الرواتب",
-      error: err.message
+      error: err.message,
     });
   }
 };
+
 
 
