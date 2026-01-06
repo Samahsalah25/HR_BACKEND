@@ -111,38 +111,39 @@ if (date) {
       .lean();
 
     // ندمج كل الخصومات
-    const allPenalties = [
-      ...lateExcuses.map(l => ({
-        id: l._id,
-        employeeName: l.employee.name,
-        employeeSalary:l.employee.salary ,
-         department: l.employee.department?.name,
-  branch: l.employee.workplace?.name,
-        type: "تأخير",
-        penaltyAmount: l.penaltyAmount,
-        appliedDate: l.createdAt
-      })),
-      ...absencePenalties.map(a => ({
-        id: a._id,
-        employeeName: a.employee.name,
-           employeeSalary:a.employee.salary ,
-       department: a.employee.department?.name,
-  branch: a.employee.workplace?.name,
-        type: "غياب",
-        penaltyAmount: a.penaltyAmount,
-        appliedDate: a.createdAt
-      })),
-      ...adminPenalties.map(a => ({
-        id: a._id,
-        employeeName: a.employee.name,
-           employeeSalary:a.employee.salary ,
-        department: a.employee.department?.name,
-  branch: a.employee.workplace?.name,
-        type: "مخالفة إدارية",
-        penaltyAmount: a.penaltyAmount,
-        appliedDate: a.appliedDate
-      }))
-    ];
+ const allPenalties = [
+  ...lateExcuses.filter(l => l.employee).map(l => ({
+    id: l._id,
+    employeeName: l.employee.name,
+    employeeSalary: l.employee.salary,
+    department: l.employee.department?.name,
+    branch: l.employee.workplace?.name,
+    type: "تأخير",
+    penaltyAmount: l.penaltyAmount,
+    appliedDate: l.createdAt
+  })),
+  ...absencePenalties.filter(a => a.employee).map(a => ({
+    id: a._id,
+    employeeName: a.employee.name,
+    employeeSalary: a.employee.salary,
+    department: a.employee.department?.name,
+    branch: a.employee.workplace?.name,
+    type: "غياب",
+    penaltyAmount: a.penaltyAmount,
+    appliedDate: a.createdAt
+  })),
+  ...adminPenalties.filter(a => a.employee).map(a => ({
+    id: a._id,
+    employeeName: a.employee.name,
+    employeeSalary: a.employee.salary,
+    department: a.employee.department?.name,
+    branch: a.employee.workplace?.name,
+    type: "مخالفة إدارية",
+    penaltyAmount: a.penaltyAmount,
+    appliedDate: a.appliedDate
+  }))
+];
+
 
     res.json({ success: true, data: allPenalties });
 
