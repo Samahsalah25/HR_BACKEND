@@ -3,6 +3,7 @@ const Employee = require("../models/employee");
 
 const AbsencePenalty = require("../models/absencePenaltySchema");
 const LateExcuse = require("../models/LateExcuse");
+const Department = require("../models/depaertment");
 
 
 
