@@ -344,7 +344,7 @@ const getEmployeesByBranchAndDepartment = async (req, res) => {
       workplace: branchId,
       department: departmentId
     })
-      .select("name jobTitle") // 👈 بس اللي نحتاجه
+      .select("name jobTitle salary") //  بس اللي نحتاجه
       .sort({ name: 1 });
 
     res.json({
