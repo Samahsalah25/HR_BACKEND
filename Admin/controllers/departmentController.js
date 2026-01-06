@@ -80,3 +80,5 @@ exports.deleteDepartment = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+//  هنجيب القسم جسب الفرع هنا

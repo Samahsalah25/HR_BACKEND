@@ -40,7 +40,6 @@ const createAdminPenalty = async (req, res) => {
     res.status(201).json({
       message: "تم إنشاء الخصم الإداري بنجاح",
       penalty ,
-      success:true
     });
   } catch (err) {
     console.error(err);
@@ -300,4 +299,63 @@ const getPenaltyDetail = async (req, res) => {
 };
 
 
-module.exports = { createAdminPenalty  ,getAllPenalties ,getPenaltyDetail};
+// GET /departments/by-branch/:branchId
+const getDepartmentsByBranch = async (req, res) => {
+  const { branchId } = req.params;
+
+  const departments = await Employee.find({
+    workplace: branchId
+  })
+    .populate("department", "name")
+    .select("department");
+
+  // إزالة التكرار
+  const uniqueDepartments = [];
+  const map = new Map();
+
+  departments.forEach((e) => {
+    if (e.department && !map.has(e.department._id.toString())) {
+      map.set(e.department._id.toString(), e.department);
+      uniqueDepartments.push(e.department);
+    }
+  });
+
+  res.json({
+    success: true,
+    data: uniqueDepartments
+  });
+};
+const getEmployeesByBranchAndDepartment = async (req, res) => {
+  try {
+    const { branchId, departmentId } = req.query;
+
+    if (!branchId || !departmentId) {
+      return res.status(400).json({
+        message: "branchId و departmentId مطلوبين"
+      });
+    }
+
+    const employees = await Employee.find({
+      workplace: branchId,
+      department: departmentId
+    })
+      .select("name jobTitle") // 👈 بس اللي نحتاجه
+      .sort({ name: 1 });
+
+    res.json({
+      success: true,
+      data: employees
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      message: "خطأ في جلب الموظفين"
+    });
+  }
+};
+
+
+
+// get departments 
+module.exports = { createAdminPenalty  ,getAllPenalties ,getPenaltyDetail ,getDepartmentsByBranch ,getEmployeesByBranchAndDepartment};
