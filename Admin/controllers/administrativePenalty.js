@@ -301,30 +301,23 @@ const getPenaltyDetail = async (req, res) => {
 
 // GET /departments/by-branch/:branchId
 const getDepartmentsByBranch = async (req, res) => {
-  const { branchId } = req.params;
+  try {
+    const { branchId } = req.query;
 
-  const departments = await Employee.find({
-    workplace: branchId
-  })
-    .populate("department", "name")
-    .select("department");
+    const departments = await Employee.find({ workplace: branchId })
+      .populate("department", "name")
+      .distinct("department");
 
-  // إزالة التكرار
-  const uniqueDepartments = [];
-  const map = new Map();
+    res.json({
+      success: true,
+      data: departments
+    });
 
-  departments.forEach((e) => {
-    if (e.department && !map.has(e.department._id.toString())) {
-      map.set(e.department._id.toString(), e.department);
-      uniqueDepartments.push(e.department);
-    }
-  });
-
-  res.json({
-    success: true,
-    data: uniqueDepartments
-  });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
+
 const getEmployeesByBranchAndDepartment = async (req, res) => {
   try {
     const { branchId, departmentId } = req.query;
