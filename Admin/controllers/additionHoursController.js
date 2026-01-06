@@ -329,132 +329,156 @@ exports.getMonthlyPayrollForHr = async (req, res) => {
   try {
     const { month, year, employeeId } = req.query;
 
-    // بداية ونهاية الشهر
-    const startOfMonth = moment.tz({ year, month: month - 1 }, "Asia/Riyadh").startOf("month");
-    const endOfMonth = startOfMonth.clone().endOf("month");
+    const startOfMonth = moment
+      .tz({ year, month: month - 1 }, "Asia/Riyadh")
+      .startOf("month")
+      .toDate();
 
-    // دالة لحساب الخصومات لموظف معين
+    const endOfMonth = moment
+      .tz({ year, month: month - 1 }, "Asia/Riyadh")
+      .endOf("month")
+      .toDate();
+
+    // =======================
+    // 🔻 الخصومات
+    // =======================
     const calculateDeductions = async (empId) => {
-      // 1️⃣ تأخيرات
+
+      // 1️⃣ التأخير (Late) → APPROVED بس
       const latePenalties = await LateExcuse.find({
         employee: empId,
-        createdAt: { $gte: startOfMonth.toDate(), $lte: endOfMonth.toDate() }
+        status: "APPROVED",
+        penaltyAmount: { $gt: 0 },
+        createdAt: { $gte: startOfMonth, $lte: endOfMonth }
       });
-      const totalLate = latePenalties.reduce((sum, l) => sum + (l.penaltyAmount || 0), 0);
 
-      // 2️⃣ غياب
+      const totalLate = latePenalties.reduce(
+        (sum, l) => sum + l.penaltyAmount,
+        0
+      );
+
+      // 2️⃣ الغياب → حسب month & year (وده كان سبب مشكلة حسن)
       const absencePenalties = await AbsencePenalty.find({
         employee: empId,
-        appliedDate: { $gte: startOfMonth.toDate(), $lte: endOfMonth.toDate() }
+        month: Number(month),
+        year: Number(year)
       });
-      const totalAbsence = absencePenalties.reduce((sum, a) => sum + (a.penaltyAmount || 0), 0);
 
-      // 3️⃣ مخالفة إدارية
+      const totalAbsence = absencePenalties.reduce(
+        (sum, a) => sum + a.penaltyAmount,
+        0
+      );
+
+      // 3️⃣ المخالفات الإدارية
       const adminPenalties = await AdminPenalty.find({
         employee: empId,
-        appliedDate: { $gte: startOfMonth.toDate(), $lte: endOfMonth.toDate() }
+        status: { $in: ["APPLIED", "APPROVED"] },
+        appliedDate: { $gte: startOfMonth, $lte: endOfMonth }
       });
-      const totalAdmin = adminPenalties.reduce((sum, a) => sum + (a.penaltyAmount || 0), 0);
 
-      return { totalLate, totalAbsence, totalAdmin, totalDeductions: totalLate + totalAbsence + totalAdmin };
+      const totalAdmin = adminPenalties.reduce(
+        (sum, a) => sum + a.penaltyAmount,
+        0
+      );
+
+      return {
+        totalLate,
+        totalAbsence,
+        totalAdmin,
+        totalDeductions: totalLate + totalAbsence + totalAdmin
+      };
     };
 
-    // دالة لحساب الإضافات
+    // =======================
+    // 🔺 الإضافات
+    // =======================
     const calculateAdditions = async (empId) => {
       const additions = await AdditionHours.find({
         employeeId: empId,
-        date: { $gte: startOfMonth.toDate(), $lte: endOfMonth.toDate() },
-        status: "approved"
+        status: "approved",
+        date: { $gte: startOfMonth, $lte: endOfMonth }
       });
-      const totalAmount = additions.reduce((sum, a) => sum + (a.amount || 0), 0);
-      const totalMinutes = additions.reduce((sum, a) => sum + (a.overtimeMinutes || 0), 0);
+
+      const totalAmount = additions.reduce(
+        (sum, a) => sum + (a.amount || 0),
+        0
+      );
+
+      const totalMinutes = additions.reduce(
+        (sum, a) => sum + (a.overtimeMinutes || 0),
+        0
+      );
+
       return { totalAmount, totalMinutes };
     };
 
-    // **حالة موظف محدد**
+    // =======================
+    // 👤 موظف واحد
+    // =======================
     if (employeeId) {
       const emp = await Employee.findById(employeeId).populate("department");
       if (!emp) return res.status(404).json({ message: "الموظف غير موجود" });
 
-      // حضور الموظف
-      const attendances = await Attendance.find({
-        employee: emp._id,
-        date: { $gte: startOfMonth.toDate(), $lte: endOfMonth.toDate() }
-      });
-      const workDays = attendances.filter(a => a.status === "حاضر" || a.status === "متأخر").length;
-      const absentDays = attendances.filter(a => a.status === "غائب").length;
-      const totalLateMinutes = attendances.reduce((sum, a) => sum + (a.lateMinutes || 0), 0);
+      const { totalLate, totalAbsence, totalAdmin, totalDeductions } =
+        await calculateDeductions(emp._id);
 
-      // الخصومات والإضافات
-      const { totalLate, totalAbsence, totalAdmin, totalDeductions } = await calculateDeductions(emp._id);
-      const { totalAmount: totalOvertimeAmount, totalMinutes: totalOvertimeMinutes } = await calculateAdditions(emp._id);
+      const { totalAmount: totalOvertimeAmount } =
+        await calculateAdditions(emp._id);
 
-      const salary = emp.salary;
-      const totalSalary = salary.total + totalOvertimeAmount - totalDeductions;
+      const totalSalary =
+        emp.salary.total + totalOvertimeAmount - totalDeductions;
 
       return res.json({
         month,
         year,
         employee: {
           name: emp.name,
-          employeeNumber: emp.employeeNumber,
-          department: emp.department?.name || "-",
-          jobTitle: emp.jobTitle
-        },
-        additions: {
-          baseSalary: salary.base,
-          allowances: salary.housingAllowance + salary.transportAllowance + salary.otherAllowance,
-          bonuses: totalOvertimeAmount,
-          overtimeMinutes: totalOvertimeMinutes
+          department: emp.department?.name || "-"
         },
         deductions: {
-          insurance: 0,
-          taxes: 0,
           totalLate,
           totalAbsence,
           totalAdmin,
           totalDeductions
         },
-        attendanceSummary: {
-          workDays,
-          absentDays,
-          totalLateMinutes
-        },
         totalSalary
       });
     }
 
-    // **حالة كل الموظفين**
+    // =======================
+    // 👥 كل الموظفين
+    // =======================
     const employees = await Employee.find().populate("department");
 
-    const result = await Promise.all(employees.map(async (emp) => {
-      const { totalLate, totalAbsence, totalAdmin, totalDeductions } = await calculateDeductions(emp._id);
-      const { totalAmount: totalAdditions } = await calculateAdditions(emp._id);
+    const result = await Promise.all(
+      employees.map(async (emp) => {
+        const { totalLate, totalAbsence, totalAdmin, totalDeductions } =
+          await calculateDeductions(emp._id);
 
-      const netSalary = emp.salary.total + totalAdditions - totalDeductions;
+        const { totalAmount: totalAdditions } =
+          await calculateAdditions(emp._id);
 
-      return {
-        employeeId: emp._id,
-        name: emp.name,
-        department: emp.department?.name || "-",
-        totalAdditions,
-        totalLate,
-        totalAbsence,
-        totalAdmin,
-        totalDeductions,
-        netSalary
-      };
-    }));
+        return {
+          employeeId: emp._id,
+          name: emp.name,
+          department: emp.department?.name || "-",
+          totalAdditions,
+          totalDeductions,
+          netSalary:
+            emp.salary.total + totalAdditions - totalDeductions
+        };
+      })
+    );
 
-    res.json({
-      month,
-      year,
-      employees: result
-    });
+    res.json({ month, year, employees: result });
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "خطأ في جلب الرواتب", error: err.message });
+    res.status(500).json({
+      message: "خطأ في جلب الرواتب",
+      error: err.message
+    });
   }
 };
+
 
