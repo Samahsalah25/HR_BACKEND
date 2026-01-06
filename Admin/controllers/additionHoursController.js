@@ -329,61 +329,65 @@ exports.getMonthlyPayrollForHr = async (req, res) => {
   try {
     const { month, year, employeeId } = req.query;
 
+    // بداية ونهاية الشهر
     const startOfMonth = moment.tz({ year, month: month - 1 }, "Asia/Riyadh").startOf("month");
     const endOfMonth = startOfMonth.clone().endOf("month");
 
+    // دالة لحساب الخصومات لموظف معين
     const calculateDeductions = async (empId) => {
-      // 1️⃣ خصومات التأخير
+      // 1️⃣ تأخيرات
       const latePenalties = await LateExcuse.find({
         employee: empId,
         createdAt: { $gte: startOfMonth.toDate(), $lte: endOfMonth.toDate() }
       });
-      const totalLatePenalty = latePenalties.reduce((sum, l) => sum + (l.penaltyAmount || 0), 0);
+      const totalLate = latePenalties.reduce((sum, l) => sum + (l.penaltyAmount || 0), 0);
 
-      // 2️⃣ خصومات الغياب
+      // 2️⃣ غياب
       const absencePenalties = await AbsencePenalty.find({
         employee: empId,
         appliedDate: { $gte: startOfMonth.toDate(), $lte: endOfMonth.toDate() }
       });
-      const totalAbsencePenalty = absencePenalties.reduce((sum, a) => sum + (a.penaltyAmount || 0), 0);
+      const totalAbsence = absencePenalties.reduce((sum, a) => sum + (a.penaltyAmount || 0), 0);
 
-      // 3️⃣ الخصومات الإدارية
+      // 3️⃣ مخالفة إدارية
       const adminPenalties = await AdminPenalty.find({
         employee: empId,
         appliedDate: { $gte: startOfMonth.toDate(), $lte: endOfMonth.toDate() }
       });
-      const totalAdminPenalty = adminPenalties.reduce((sum, a) => sum + (a.penaltyAmount || 0), 0);
+      const totalAdmin = adminPenalties.reduce((sum, a) => sum + (a.penaltyAmount || 0), 0);
 
-      const totalDeductions = totalLatePenalty + totalAbsencePenalty + totalAdminPenalty;
-
-      return { totalLatePenalty, totalAbsencePenalty, totalAdminPenalty, totalDeductions };
+      return { totalLate, totalAbsence, totalAdmin, totalDeductions: totalLate + totalAbsence + totalAdmin };
     };
 
+    // دالة لحساب الإضافات
+    const calculateAdditions = async (empId) => {
+      const additions = await AdditionHours.find({
+        employeeId: empId,
+        date: { $gte: startOfMonth.toDate(), $lte: endOfMonth.toDate() },
+        status: "approved"
+      });
+      const totalAmount = additions.reduce((sum, a) => sum + (a.amount || 0), 0);
+      const totalMinutes = additions.reduce((sum, a) => sum + (a.overtimeMinutes || 0), 0);
+      return { totalAmount, totalMinutes };
+    };
+
+    // **حالة موظف محدد**
     if (employeeId) {
-      // بيانات موظف واحد
       const emp = await Employee.findById(employeeId).populate("department");
       if (!emp) return res.status(404).json({ message: "الموظف غير موجود" });
 
-      // الحضور
+      // حضور الموظف
       const attendances = await Attendance.find({
         employee: emp._id,
-        date: { $gte: startOfMonth.toDate(), $lte: endOfMonth.toDate() },
+        date: { $gte: startOfMonth.toDate(), $lte: endOfMonth.toDate() }
       });
       const workDays = attendances.filter(a => a.status === "حاضر" || a.status === "متأخر").length;
       const absentDays = attendances.filter(a => a.status === "غائب").length;
       const totalLateMinutes = attendances.reduce((sum, a) => sum + (a.lateMinutes || 0), 0);
 
-      // الخصومات
-      const { totalLatePenalty, totalAbsencePenalty, totalAdminPenalty, totalDeductions } = await calculateDeductions(emp._id);
-
-      // الإضافات
-      const additions = await AdditionHours.find({
-        employeeId: emp._id,
-        date: { $gte: startOfMonth.toDate(), $lte: endOfMonth.toDate() },
-        status: "approved"
-      });
-      const totalOvertimeAmount = additions.reduce((sum, a) => sum + a.amount, 0);
-      const totalOvertimeMinutes = additions.reduce((sum, a) => sum + a.overtimeMinutes, 0);
+      // الخصومات والإضافات
+      const { totalLate, totalAbsence, totalAdmin, totalDeductions } = await calculateDeductions(emp._id);
+      const { totalAmount: totalOvertimeAmount, totalMinutes: totalOvertimeMinutes } = await calculateAdditions(emp._id);
 
       const salary = emp.salary;
       const totalSalary = salary.total + totalOvertimeAmount - totalDeductions;
@@ -406,9 +410,9 @@ exports.getMonthlyPayrollForHr = async (req, res) => {
         deductions: {
           insurance: 0,
           taxes: 0,
-          latePenalty: totalLatePenalty,
-          absencePenalty: totalAbsencePenalty,
-          adminPenalty: totalAdminPenalty,
+          totalLate,
+          totalAbsence,
+          totalAdmin,
           totalDeductions
         },
         attendanceSummary: {
@@ -420,34 +424,27 @@ exports.getMonthlyPayrollForHr = async (req, res) => {
       });
     }
 
-    // بيانات كل الموظفين
+    // **حالة كل الموظفين**
     const employees = await Employee.find().populate("department");
-    const result = await Promise.all(
-      employees.map(async emp => {
-        const additions = await AdditionHours.find({
-          employeeId: emp._id,
-          date: { $gte: startOfMonth.toDate(), $lte: endOfMonth.toDate() },
-          status: "approved"
-        });
-        const totalAdditions = additions.reduce((sum, a) => sum + a.amount, 0);
 
-        const { totalLatePenalty, totalAbsencePenalty, totalAdminPenalty, totalDeductions } = await calculateDeductions(emp._id);
+    const result = await Promise.all(employees.map(async (emp) => {
+      const { totalLate, totalAbsence, totalAdmin, totalDeductions } = await calculateDeductions(emp._id);
+      const { totalAmount: totalAdditions } = await calculateAdditions(emp._id);
 
-        const netSalary = emp.salary.total + totalAdditions - totalDeductions;
+      const netSalary = emp.salary.total + totalAdditions - totalDeductions;
 
-        return {
-          employeeId: emp._id,
-          name: emp.name,
-          department: emp.department?.name || "-",
-          totalAdditions,
-          totalLatePenalty,
-          totalAbsencePenalty,
-          totalAdminPenalty,
-          totalDeductions,
-          netSalary
-        };
-      })
-    );
+      return {
+        employeeId: emp._id,
+        name: emp.name,
+        department: emp.department?.name || "-",
+        totalAdditions,
+        totalLate,
+        totalAbsence,
+        totalAdmin,
+        totalDeductions,
+        netSalary
+      };
+    }));
 
     res.json({
       month,
@@ -460,3 +457,4 @@ exports.getMonthlyPayrollForHr = async (req, res) => {
     res.status(500).json({ message: "خطأ في جلب الرواتب", error: err.message });
   }
 };
+
