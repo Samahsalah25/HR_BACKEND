@@ -150,7 +150,7 @@ const setupAttendanceCron = () => {
               });
 
               if (leave) {
-                console.log(`✅ ${employee.fullName || employee._id} is on approved leave`);
+                console.log(` ${employee.fullName || employee._id} is on approved leave`);
                 continue;
               }
 
@@ -163,14 +163,14 @@ const setupAttendanceCron = () => {
                 createdAutomatically: true, // ممكن تستخدمها لتفرقي الغياب التلقائي من اليدوي
               });
 
-              console.log(`🚫 Marked absent: ${employee.fullName || employee._id} (${branch.branchName})`);
+              console.log(` Marked absent: ${employee.fullName || employee._id} (${branch.branchName})`);
             }
           } catch (err) {
-            console.error("❌ Error in attendance cron:", err);
+            console.error(" Error in attendance cron:", err);
           }
         });
 
-        console.log(`🕒 Cron job scheduled for ${branch.branchName} at ${cronHour}:${cronMinute}`);
+        console.log(` Cron job scheduled for ${branch.branchName} at ${cronHour}:${cronMinute}`);
       });
     })
     .catch(err => console.error("❌ Error fetching branches:", err));
