@@ -198,8 +198,8 @@ exports.getSalaryAdvances = async (req, res) => {
     const advances = await SalaryAdvance.find(query)
       .populate(
         'employee',
-        'name employeeNumber jobTitle department'
-      )
+        'name employeeNumber jobTitle '
+      ).populate('department' ,'name')
       .sort({ createdAt: -1 });
 
     const result = [];
