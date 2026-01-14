@@ -152,30 +152,44 @@ const formatDate = (date) => {
   return `${year}-${month}-${day}`;
 };
 
+function getArabicStatus(dbStatus, totalPaid, remainingAmount) {
+  if (dbStatus === 'rejected') return 'مرفوض';
+  if (dbStatus === 'pending') return 'قيد المراجعة';
+
+  // approved
+  if (remainingAmount === 0) return 'تم السداد';
+
+  if (totalPaid > 0 && remainingAmount > 0)
+    return 'مدفوع للموظف';
+
+  return 'معتمد';
+}
+
 
 exports.getSalaryAdvances = async (req, res) => {
   try {
     const isHR = req.user.role === 'HR';
     let query = {};
 
-    // إذا المستخدم مش HR → نجيب السلفات الخاصة به فقط
+    // لو مش HR → يجيب سلف الموظف نفسه بس
     if (!isHR) {
       const employee = await Employee.findOne({ user: req.user._id });
-      if (!employee) return res.status(404).json({ message: 'Employee not found' });
+      if (!employee)
+        return res.status(404).json({ message: 'Employee not found' });
+
       query.employee = employee._id;
     }
 
-    // فلترة حسب الشهر والسنة لو موجودة
+    // فلترة بالشهر والسنة
     const month = parseInt(req.query.month); // 1 = January
     const year = parseInt(req.query.year);
 
     if (!isNaN(month) && !isNaN(year)) {
-      const start = new Date(year, month - 1, 1); // أول يوم في الشهر
-      const end = new Date(year, month, 0, 23, 59, 59, 999); // آخر يوم في الشهر
+      const start = new Date(year, month - 1, 1);
+      const end = new Date(year, month, 0, 23, 59, 59, 999);
       query.createdAt = { $gte: start, $lte: end };
     }
 
-    // جلب السلفات من DB
     const advances = await SalaryAdvance.find(query)
       .populate('employee', 'name employeeNumber')
       .sort({ createdAt: -1 });
@@ -183,18 +197,21 @@ exports.getSalaryAdvances = async (req, res) => {
     const result = [];
 
     for (const advance of advances) {
-      const installments = await SalaryAdvanceInstallment.find({ salaryAdvance: advance._id })
-        .sort({ installmentNumber: 1 });
+      const installments = await SalaryAdvanceInstallment.find({
+        salaryAdvance: advance._id,
+      }).sort({ installmentNumber: 1 });
 
       const totalPaid = installments
-        .filter(inst => inst.status === 'paid')
-        .reduce((sum, inst) => sum + inst.amount, 0);
+        .filter(i => i.status === 'paid')
+        .reduce((sum, i) => sum + i.amount, 0);
 
       const remainingAmount = advance.amount - totalPaid;
 
-      let status = advance.status;
-      if (status === 'approved' && remainingAmount === 0) status = 'paid';
-      if (status === 'approved' && remainingAmount > 0) status = 'partially paid';
+      const arabicStatus = getArabicStatus(
+        advance.status,
+        totalPaid,
+        remainingAmount
+      );
 
       result.push({
         _id: advance._id,
@@ -204,14 +221,19 @@ exports.getSalaryAdvances = async (req, res) => {
         installmentsCount: advance.installmentsCount,
         totalPaid,
         remainingAmount,
-        createdAt: formatDate(advance.createdAt),
-        status,
+        createdAt: formatDate(advance.createdAt), // YYYY-MM-DD
+        status: arabicStatus,
         installments: installments.map(inst => ({
           installmentNumber: inst.installmentNumber,
           dueDate: formatDate(inst.dueDate),
           amount: inst.amount,
-          status: inst.status
-        }))
+          status:
+            inst.status === 'paid'
+              ? 'مدفوع'
+              : inst.status === 'postponed'
+              ? 'مؤجل'
+              : 'غير مدفوع',
+        })),
       });
     }
 
@@ -221,6 +243,7 @@ exports.getSalaryAdvances = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 // my salaryAdvanced
