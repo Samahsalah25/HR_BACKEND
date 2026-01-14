@@ -416,3 +416,82 @@ exports.getMySalaryAdvances = async (req, res) => {
   }
 };
 
+
+
+
+//  الدفع
+// POST /salary-advance/installment/:id/pay
+exports.payInstallment = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const installment = await SalaryAdvanceInstallment.findById(id);
+    if (!installment) return res.status(404).json({ message: 'Installment not found' });
+
+    if (installment.status === 'paid') return res.status(400).json({ message: 'Installment already paid' });
+
+    installment.status = 'paid';
+    installment.paidAt = new Date();
+    await installment.save();
+
+    // تحديث السلفة
+    const salaryAdvance = await SalaryAdvance.findById(installment.salaryAdvance);
+    const totalPaid = await SalaryAdvanceInstallment.aggregate([
+      { $match: { salaryAdvance: salaryAdvance._id, status: 'paid' } },
+      { $group: { _id: null, sum: { $sum: '$amount' } } }
+    ]);
+    
+    salaryAdvance.totalPaid = totalPaid[0]?.sum || 0;
+    salaryAdvance.remainingAmount = salaryAdvance.amount - salaryAdvance.totalPaid;
+
+    // لو كله اتدفع
+    if (salaryAdvance.remainingAmount <= 0) salaryAdvance.status = 'completed';
+
+    await salaryAdvance.save();
+
+    res.json({ message: 'Installment paid successfully', installment, salaryAdvance ,success:true });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+// التاجيل
+// POST /salary-advance/installment/:id/postpone
+exports.postponeInstallment = async (req, res) => {
+  try {
+    const { id } = req.params;               // ID القسط الحالي
+    const { newDueDate } = req.body;         // التاريخ الجديد اللي جاي من الـ request
+
+    const installment = await SalaryAdvanceInstallment.findById(id);
+    if (!installment) return res.status(404).json({ message: 'Installment not found' });
+
+    // تحديث القسط الأصلي ليبقى مؤجل
+    installment.status = 'postponed';
+    installment.postponedTo = new Date(newDueDate);
+    await installment.save();
+
+    // إنشاء قسط جديد للشهر الجديد
+    const newInstallment = await SalaryAdvanceInstallment.create({
+      salaryAdvance: installment.salaryAdvance,
+      employee: installment.employee,
+      installmentNumber: installment.installmentNumber, // ممكن تترك نفس الرقم
+      amount: installment.amount,
+      dueDate: new Date(newDueDate),
+      status: 'unpaid',
+    });
+
+    res.json({
+      message: 'Installment postponed successfully',
+      oldInstallment: installment,
+      newInstallment ,
+      success:true
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+};

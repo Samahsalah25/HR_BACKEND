@@ -33,5 +33,8 @@ router.patch('/reject/:id',authenticate , SalaryAdvanceController.rejectSalaryAd
  */
 router.get('/',authenticate, SalaryAdvanceController.getSalaryAdvances);
 router.get('/my',authenticate, SalaryAdvanceController.getMySalaryAdvances);
+// --- أقساط ---
+router.post('/installment/:id/pay', SalaryAdvanceController.payInstallment);
+router.post('/installment/:id/postpone', SalaryAdvanceController.postponeInstallment);
 
 module.exports = router;
