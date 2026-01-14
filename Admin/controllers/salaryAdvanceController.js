@@ -4,6 +4,7 @@ const Employee = require('../models/employee');
 const cloudinary = require('../../config/cloudinary'); 
 const mongoose = require('mongoose');
 const SalaryAdvanceInstallment = require('../models/SalaryAdvanceInstallment');
+const Department =require('../models/depaertment')
 
 /**
  * توليد الأقساط عند اعتماد السلفة
