@@ -326,7 +326,7 @@ exports.getSalaryAdvances = async (req, res) => {
       // تحديد الحالة النهائية بالعربي
       let status = 'معتمد';
       if (advance.status === 'rejected') status = 'مرفوض';
-      else if (advance.status === 'approved' && remainingAmount === 0) status = 'تم السداد';
+      else if (advance.status === 'completed' && remainingAmount === 0) status = 'تم السداد';
       else if (advance.status === 'approved' && totalPaid > 0) status = 'مدفوع للموظف';
       else if (advance.status === 'approved') status = 'معتمد';
 
