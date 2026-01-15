@@ -462,32 +462,52 @@ exports.payInstallment = async (req, res) => {
 // POST /salary-advance/installment/:id/postpone
 exports.postponeInstallment = async (req, res) => {
   try {
-    const { id } = req.params;               // ID القسط الحالي
-    const { newDueDate } = req.body;         // التاريخ الجديد اللي جاي من الـ request
+    const { id } = req.params;
+    const { newDueDate } = req.body;
 
     const installment = await SalaryAdvanceInstallment.findById(id);
-    if (!installment) return res.status(404).json({ message: 'Installment not found' });
+    if (!installment)
+      return res.status(404).json({ message: 'Installment not found' });
 
-    // تحديث القسط الأصلي ليبقى مؤجل
+    const newDate = new Date(newDueDate);
+
+    //  check لو الشهر فيه قسط بالفعل
+    const startOfMonth = new Date(newDate.getFullYear(), newDate.getMonth(), 1);
+    const endOfMonth = new Date(newDate.getFullYear(), newDate.getMonth() + 1, 0, 23, 59, 59);
+
+    const existingInstallment = await SalaryAdvanceInstallment.findOne({
+      salaryAdvance: installment.salaryAdvance,
+      dueDate: { $gte: startOfMonth, $lte: endOfMonth },
+      status: { $ne: 'postponed' }
+    });
+
+    if (existingInstallment) {
+      return res.status(400).json({
+        success: false,
+        message: 'يوجد بالفعل قسط في هذا الشهر، برجاء اختيار شهر آخر'
+      });
+    }
+
+    //  تأجيل القسط الحالي
     installment.status = 'postponed';
-    installment.postponedTo = new Date(newDueDate);
+    installment.postponedTo = newDate;
     await installment.save();
 
-    // إنشاء قسط جديد للشهر الجديد
+    //  إنشاء قسط جديد
     const newInstallment = await SalaryAdvanceInstallment.create({
       salaryAdvance: installment.salaryAdvance,
       employee: installment.employee,
-      installmentNumber: installment.installmentNumber, // ممكن تترك نفس الرقم
+      installmentNumber: installment.installmentNumber,
       amount: installment.amount,
-      dueDate: new Date(newDueDate),
+      dueDate: newDate,
       status: 'unpaid',
     });
 
     res.json({
+      success: true,
       message: 'Installment postponed successfully',
       oldInstallment: installment,
-      newInstallment ,
-      success:true
+      newInstallment
     });
 
   } catch (error) {
@@ -495,3 +515,4 @@ exports.postponeInstallment = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
