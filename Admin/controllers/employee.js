@@ -910,70 +910,70 @@ exports.getMyTasks = async (req, res) => {
 };
 
 
-exports.getMyRequests = async (req, res) => {
-  try {
-    const userId = req.user._id;
+// exports.getMyRequests = async (req, res) => {
+//   try {
+//     const userId = req.user._id;
 
-    const employee = await Employee.findOne({ user: userId });
-    if (!employee) return res.status(404).json({ error: "الموظف غير مرتبط بالحساب" });
+//     const employee = await Employee.findOne({ user: userId });
+//     if (!employee) return res.status(404).json({ error: "الموظف غير مرتبط بالحساب" });
 
-    // الفلتر الأساسي
-    let filter = { employee: employee._id };
+//     // الفلتر الأساسي
+//     let filter = { employee: employee._id };
 
-    // فلتر حسب الفترة لو موجود
-    if (req.query.period) {
-      const periodDays = parseInt(req.query.period);
-      const fromDate = new Date();
-      fromDate.setDate(fromDate.getDate() - periodDays);
-      filter.createdAt = { $gte: fromDate };
-    }
+//     // فلتر حسب الفترة لو موجود
+//     if (req.query.period) {
+//       const periodDays = parseInt(req.query.period);
+//       const fromDate = new Date();
+//       fromDate.setDate(fromDate.getDate() - periodDays);
+//       filter.createdAt = { $gte: fromDate };
+//     }
 
-    // فلتر حسب الحالة لو موجود
-    if (req.query.status) {
-      filter.status = req.query.status;
-    }
+//     // فلتر حسب الحالة لو موجود
+//     if (req.query.status) {
+//       filter.status = req.query.status;
+//     }
 
-    const requests = await Request.find(filter)
-      .populate('employee', 'name jobTitle')
-      .populate('decidedBy', 'name')
-      .sort({ createdAt: -1 });
+//     const requests = await Request.find(filter)
+//       .populate('employee', 'name jobTitle')
+//       .populate('decidedBy', 'name')
+//       .sort({ createdAt: -1 });
 
-    let pendingCount = 0, approvedCount = 0, rejectedCount = 0, forwardedCount = 0;
+//     let pendingCount = 0, approvedCount = 0, rejectedCount = 0, forwardedCount = 0;
 
-    const formattedRequests = requests.map(reqItem => {
-      if (reqItem.status === "قيد المراجعة") pendingCount++;
-      else if (reqItem.status === "مقبول") approvedCount++;
-      else if (reqItem.status === "مرفوض") rejectedCount++;
-      else if (reqItem.status === "محول") forwardedCount++;
+//     const formattedRequests = requests.map(reqItem => {
+//       if (reqItem.status === "قيد المراجعة") pendingCount++;
+//       else if (reqItem.status === "مقبول") approvedCount++;
+//       else if (reqItem.status === "مرفوض") rejectedCount++;
+//       else if (reqItem.status === "محول") forwardedCount++;
 
-      return {
-        _id: reqItem._id,
-        employeeName: reqItem.employee.name,
-        jobTitle: reqItem.employee.jobTitle,
-        type: reqItem.type,
-        status: reqItem.status,
-        submittedAt: reqItem.createdAt.toISOString(), // إرسال بصيغة ISO
-        decidedAt: reqItem.decidedAt ? reqItem.decidedAt.toISOString() : null, // تاريخ القبول/الرفض
-        notes: reqItem.notes || [],
-        attachments: reqItem.attachments || []
-      };
-    });
+//       return {
+//         _id: reqItem._id,
+//         employeeName: reqItem.employee.name,
+//         jobTitle: reqItem.employee.jobTitle,
+//         type: reqItem.type,
+//         status: reqItem.status,
+//         submittedAt: reqItem.createdAt.toISOString(), // إرسال بصيغة ISO
+//         decidedAt: reqItem.decidedAt ? reqItem.decidedAt.toISOString() : null, // تاريخ القبول/الرفض
+//         notes: reqItem.notes || [],
+//         attachments: reqItem.attachments || []
+//       };
+//     });
 
-    res.json({
-      counts: {
-        pending: pendingCount,
-        approved: approvedCount,
-        rejected: rejectedCount,
-        forwarded: forwardedCount
-      },
-      total: requests.length,
-      requests: formattedRequests
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "خطأ في السيرفر" });
-  }
-};
+//     res.json({
+//       counts: {
+//         pending: pendingCount,
+//         approved: approvedCount,
+//         rejected: rejectedCount,
+//         forwarded: forwardedCount
+//       },
+//       total: requests.length,
+//       requests: formattedRequests
+//     });
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ error: "خطأ في السيرفر" });
+//   }
+// };
 
 
 
@@ -991,6 +991,108 @@ exports.promoteToManager = async (req, res) => {
     res.status(200).json({ message: "تمت ترقية الموظف إلى مدير" });
   } catch (err) {
     res.status(500).json({ message: "فشل في الترقية", error: err.message });
+  }
+};
+
+exports.getMyRequests = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // جلب بيانات الموظف المرتبطة بالمستخدم
+    const employee = await Employee.findOne({ user: userId });
+    if (!employee) return res.status(404).json({ error: "الموظف غير مرتبط بالحساب" });
+
+    // فلتر أساسي حسب الموظف
+    let filter = { employee: employee._id };
+
+    // فلتر حسب الفترة لو موجود
+    if (req.query.period) {
+      const periodDays = parseInt(req.query.period);
+      const fromDate = new Date();
+      fromDate.setDate(fromDate.getDate() - periodDays);
+      filter.createdAt = { $gte: fromDate };
+    }
+
+    // فلتر حسب الحالة لو موجود
+    if (req.query.status) {
+      filter.status = req.query.status;
+    }
+
+    // جلب الطلبات العادية
+    const requests = await Request.find(filter)
+      .populate('employee', 'name jobTitle')
+      .populate('decidedBy', 'name')
+      .sort({ createdAt: -1 });
+
+    // جلب طلبات السلفة الخاصة بنفس الموظف
+    const salaryAdvances = await SalaryAdvance.find({ employee: employee._id })
+      .populate('employee', 'name jobTitle')
+      .sort({ createdAt: -1 });
+
+    // تهيئة الطلبات العادية
+    let pendingCount = 0, approvedCount = 0, rejectedCount = 0, forwardedCount = 0;
+
+    const formattedRequests = requests.map(reqItem => {
+      if (reqItem.status === "قيد المراجعة") pendingCount++;
+      else if (reqItem.status === "مقبول") approvedCount++;
+      else if (reqItem.status === "مرفوض") rejectedCount++;
+      else if (reqItem.status === "محول") forwardedCount++;
+
+      return {
+        _id: reqItem._id,
+        employeeName: reqItem.employee.name,
+        jobTitle: reqItem.employee.jobTitle,
+        type: reqItem.type,
+        status: reqItem.status,
+        submittedAt: reqItem.createdAt.toISOString(),
+        decidedAt: reqItem.decidedAt ? reqItem.decidedAt.toISOString() : null,
+        notes: reqItem.notes || [],
+        attachments: reqItem.attachments || []
+      };
+    });
+
+    // تهيئة طلبات السلفة بنفس شكل الطلبات العادية
+    const formattedSalaryAdvances = salaryAdvances.map(sa => {
+      // تحديث العد حسب حالة السلفة
+      if (sa.status === "pending") pendingCount++;
+      else if (sa.status === "approved") approvedCount++;
+      else if (sa.status === "rejected") rejectedCount++;
+
+      return {
+        _id: sa._id,
+        employeeName: sa.employee.name,
+        jobTitle: sa.employee.jobTitle,
+        type: sa.type,                   // "سلفة من الراتب"
+        status: sa.status,               // pending / approved / rejected
+        submittedAt: sa.createdAt.toISOString(),
+        decidedAt: sa.approvedAt ? sa.approvedAt.toISOString() : null,
+        notes: sa.notes || "",
+        attachments: sa.attachments || [],
+        amount: sa.amount,
+        installmentsCount: sa.installmentsCount,
+        installmentAmount: sa.installmentAmount,
+        remainingAmount: sa.remainingAmount,
+      };
+    });
+
+    // دمج الطلبات + السلف
+    const allRequests = [...formattedRequests, ...formattedSalaryAdvances]
+      .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+
+    res.json({
+      counts: {
+        pending: pendingCount,
+        approved: approvedCount,
+        rejected: rejectedCount,
+        forwarded: forwardedCount
+      },
+      total: allRequests.length,
+      requests: allRequests
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "خطأ في السيرفر" });
   }
 };
 
