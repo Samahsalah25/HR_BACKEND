@@ -36,6 +36,80 @@ const createInstallments = async (salaryAdvance) => {
  */
 // controllers/salaryAdvanceController.js
 
+// exports.createSalaryAdvance = async (req, res) => {
+//   try {
+//     const { employeeId, amount, installmentsCount, startDate, notes } = req.body;
+//     const isHR = req.user.role === 'HR';
+//     let employee;
+
+//     // تحويل الحقول لـ Number / Date
+//     const parsedAmount = Number(amount);
+//     const parsedInstallmentsCount = Number(installmentsCount);
+//     const parsedStartDate = new Date(startDate);
+
+//     // Validation بسيطة
+//     if (!employeeId) return res.status(400).json({ message: 'Employee ID is required' });
+//     if (isNaN(parsedAmount) || parsedAmount <= 0) return res.status(400).json({ message: 'Amount must be a positive number' });
+//     if (isNaN(parsedInstallmentsCount) || parsedInstallmentsCount <= 0) return res.status(400).json({ message: 'Installments count must be a positive number' });
+//     if (isNaN(parsedStartDate.getTime())) return res.status(400).json({ message: 'Start date is invalid' });
+
+//     // تحديد الموظف
+//     if (isHR && employeeId) {
+//       employee = await Employee.findById(employeeId);
+//       if (!employee) return res.status(404).json({ message: 'Employee not found' });
+//     } else {
+//       employee = await Employee.findOne({ user: req.user._id });
+//       if (!employee) return res.status(404).json({ message: 'Employee not found for this user' });
+//     }
+
+//     // رفع الملفات لو موجودة
+//     let attachments = [];
+//     if (req.files && req.files.length > 0) {
+//       for (const file of req.files) {
+//         const uploaded = await cloudinary.uploader.upload(file.path, {
+//           folder: 'salary_advances',
+//         });
+//         attachments.push({ filename: file.originalname, url: uploaded.secure_url });
+//       }
+//     }
+
+//     // حساب قيمة القسط
+//     const calculatedInstallmentAmount = parsedAmount / parsedInstallmentsCount;
+
+//     // إنشاء السلفة
+//     const salaryAdvance = await SalaryAdvance.create({
+//       employee: employee._id,
+//       amount: parsedAmount,
+//       installmentsCount: parsedInstallmentsCount,
+//       installmentAmount: calculatedInstallmentAmount,
+//       startDate: parsedStartDate,
+//       notes,
+//       attachments,
+//       remainingAmount: parsedAmount,
+//       status: isHR && employeeId ? 'approved' : 'pending',
+//       approvedBy: isHR && employeeId ? req.user._id : null,
+//       approvedAt: isHR && employeeId ? new Date() : null,
+//       createdBy: req.user._id,
+//       type: 'سلفة من الراتب',
+//     });
+
+//     // لو معتمدة مباشرة → نولد الأقساط
+//     if (salaryAdvance.status === 'approved') {
+//       await createInstallments(salaryAdvance);
+//     }
+
+//     res.status(201).json({
+//       message: 'Salary advance created successfully',
+//       salaryAdvance,
+//       success: true
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
+
 exports.createSalaryAdvance = async (req, res) => {
   try {
     const { employeeId, amount, installmentsCount, startDate, notes } = req.body;
@@ -62,12 +136,19 @@ exports.createSalaryAdvance = async (req, res) => {
       if (!employee) return res.status(404).json({ message: 'Employee not found for this user' });
     }
 
-    // رفع الملفات لو موجودة
+    // رفع الملفات لو موجودة (باستخدام buffer)
     let attachments = [];
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
-        const uploaded = await cloudinary.uploader.upload(file.path, {
-          folder: 'salary_advances',
+        const uploaded = await new Promise((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
+            { folder: 'salary_advances' },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+          stream.end(file.buffer);
         });
         attachments.push({ filename: file.originalname, url: uploaded.secure_url });
       }
@@ -108,7 +189,6 @@ exports.createSalaryAdvance = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 
 
 /**

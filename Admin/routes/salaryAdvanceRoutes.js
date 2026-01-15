@@ -3,7 +3,8 @@ const express = require('express');
 const router = express.Router();
 const SalaryAdvanceController = require('../controllers/salaryAdvanceController');
 const multer = require('multer');
-const upload = multer({ dest: 'uploads/' }); // مؤقت للملفات قبل رفعها للـ Cloudinary
+const storage = multer.memoryStorage();
+const upload = multer({ storage })
 const authenticate = require('../middlesware/authenticate'); // مفروض عندك middleware للتحقق من اليوزر
 
 
