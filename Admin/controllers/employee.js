@@ -998,11 +998,10 @@ exports.getMyRequests = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // جلب بيانات الموظف المرتبطة بالمستخدم
     const employee = await Employee.findOne({ user: userId });
     if (!employee) return res.status(404).json({ error: "الموظف غير مرتبط بالحساب" });
 
-    // فلتر أساسي حسب الموظف
+    // الفلتر الأساسي
     let filter = { employee: employee._id };
 
     // فلتر حسب الفترة لو موجود
@@ -1024,26 +1023,27 @@ exports.getMyRequests = async (req, res) => {
       .populate('decidedBy', 'name')
       .sort({ createdAt: -1 });
 
-    // جلب طلبات السلفة الخاصة بنفس الموظف
+    // جلب السلف الخاصة بالموظف
     const salaryAdvances = await SalaryAdvance.find({ employee: employee._id })
       .populate('employee', 'name jobTitle')
       .sort({ createdAt: -1 });
 
-    // تهيئة الطلبات العادية
     let pendingCount = 0, approvedCount = 0, rejectedCount = 0, forwardedCount = 0;
 
+    // تحويل الطلبات العادية
     const formattedRequests = requests.map(reqItem => {
-      if (reqItem.status === "قيد المراجعة") pendingCount++;
-      else if (reqItem.status === "مقبول") approvedCount++;
-      else if (reqItem.status === "مرفوض") rejectedCount++;
-      else if (reqItem.status === "محول") forwardedCount++;
+      let displayStatus = reqItem.status; // نستخدمها كما هي
+      if (displayStatus === "قيد المراجعة") pendingCount++;
+      else if (displayStatus === "مقبول") approvedCount++;
+      else if (displayStatus === "مرفوض") rejectedCount++;
+      else if (displayStatus === "محول") forwardedCount++;
 
       return {
         _id: reqItem._id,
         employeeName: reqItem.employee.name,
         jobTitle: reqItem.employee.jobTitle,
         type: reqItem.type,
-        status: reqItem.status,
+        status: displayStatus,
         submittedAt: reqItem.createdAt.toISOString(),
         decidedAt: reqItem.decidedAt ? reqItem.decidedAt.toISOString() : null,
         notes: reqItem.notes || [],
@@ -1051,22 +1051,27 @@ exports.getMyRequests = async (req, res) => {
       };
     });
 
-    // تهيئة طلبات السلفة بنفس شكل الطلبات العادية
+    // تحويل السلف
     const formattedSalaryAdvances = salaryAdvances.map(sa => {
-      // تحديث العد حسب حالة السلفة
-      if (sa.status === "pending") pendingCount++;
-      else if (sa.status === "approved") approvedCount++;
-      else if (sa.status === "rejected") rejectedCount++;
+      let displayStatus = "";
+      if (sa.status === "pending") displayStatus = "قيد المراجعة";
+      else if (sa.status === "rejected") displayStatus = "مرفوض";
+      else if (sa.status === "approved" || sa.status === "completed") displayStatus = "مقبول";
+
+      // تحديث العد
+      if (displayStatus === "قيد المراجعة") pendingCount++;
+      else if (displayStatus === "مقبول") approvedCount++;
+      else if (displayStatus === "مرفوض") rejectedCount++;
 
       return {
         _id: sa._id,
         employeeName: sa.employee.name,
         jobTitle: sa.employee.jobTitle,
-        type: sa.type,                   // "سلفة من الراتب"
-        status: sa.status,               // pending / approved / rejected
+        type: "سلفة من الراتب", // ثابت
+        status: displayStatus,
         submittedAt: sa.createdAt.toISOString(),
         decidedAt: sa.approvedAt ? sa.approvedAt.toISOString() : null,
-        notes: sa.notes || "",
+        notes: sa.notes || [],
         attachments: sa.attachments || [],
         amount: sa.amount,
         installmentsCount: sa.installmentsCount,
@@ -1076,8 +1081,10 @@ exports.getMyRequests = async (req, res) => {
     });
 
     // دمج الطلبات + السلف
-    const allRequests = [...formattedRequests, ...formattedSalaryAdvances]
-      .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+    const allRequests = [...formattedRequests, ...formattedSalaryAdvances];
+
+    // ترتيبهم حسب التاريخ
+    allRequests.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
 
     res.json({
       counts: {
@@ -1089,10 +1096,8 @@ exports.getMyRequests = async (req, res) => {
       total: allRequests.length,
       requests: allRequests
     });
-
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "خطأ في السيرفر" });
   }
 };
-
