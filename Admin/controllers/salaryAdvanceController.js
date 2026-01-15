@@ -122,16 +122,20 @@ exports.createSalaryAdvance = async (req, res) => {
     const parsedStartDate = new Date(startDate);
 
     // Validation بسيطة
-    if (!employeeId) return res.status(400).json({ message: 'Employee ID is required' });
-    if (isNaN(parsedAmount) || parsedAmount <= 0) return res.status(400).json({ message: 'Amount must be a positive number' });
-    if (isNaN(parsedInstallmentsCount) || parsedInstallmentsCount <= 0) return res.status(400).json({ message: 'Installments count must be a positive number' });
-    if (isNaN(parsedStartDate.getTime())) return res.status(400).json({ message: 'Start date is invalid' });
+    if (isNaN(parsedAmount) || parsedAmount <= 0)
+      return res.status(400).json({ message: 'Amount must be a positive number' });
+    if (isNaN(parsedInstallmentsCount) || parsedInstallmentsCount <= 0)
+      return res.status(400).json({ message: 'Installments count must be a positive number' });
+    if (isNaN(parsedStartDate.getTime()))
+      return res.status(400).json({ message: 'Start date is invalid' });
 
     // تحديد الموظف
     if (isHR && employeeId) {
+      // لو HR وداخل ID محدد
       employee = await Employee.findById(employeeId);
       if (!employee) return res.status(404).json({ message: 'Employee not found' });
     } else {
+      // لو موظف عادي أو HR بدون ID → ياخد نفسه
       employee = await Employee.findOne({ user: req.user._id });
       if (!employee) return res.status(404).json({ message: 'Employee not found for this user' });
     }
@@ -157,6 +161,9 @@ exports.createSalaryAdvance = async (req, res) => {
     // حساب قيمة القسط
     const calculatedInstallmentAmount = parsedAmount / parsedInstallmentsCount;
 
+    // تحديد حالة السلفة: HR مع ID → approved ، أي حد تاني → pending
+    const status = isHR && employeeId ? 'approved' : 'pending';
+
     // إنشاء السلفة
     const salaryAdvance = await SalaryAdvance.create({
       employee: employee._id,
@@ -167,7 +174,7 @@ exports.createSalaryAdvance = async (req, res) => {
       notes,
       attachments,
       remainingAmount: parsedAmount,
-      status: isHR && employeeId ? 'approved' : 'pending',
+      status, // هنا استخدمنا status الجديد
       approvedBy: isHR && employeeId ? req.user._id : null,
       approvedAt: isHR && employeeId ? new Date() : null,
       createdBy: req.user._id,
@@ -182,7 +189,7 @@ exports.createSalaryAdvance = async (req, res) => {
     res.status(201).json({
       message: 'Salary advance created successfully',
       salaryAdvance,
-      success: true
+      success: true,
     });
   } catch (error) {
     console.error(error);
