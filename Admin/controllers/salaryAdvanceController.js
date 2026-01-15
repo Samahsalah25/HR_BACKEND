@@ -87,6 +87,7 @@ exports.createSalaryAdvance = async (req, res) => {
     res.status(201).json({
       message: 'Salary advance created successfully',
       salaryAdvance,
+      success:true
     });
   } catch (error) {
     console.error(error);
