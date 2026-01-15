@@ -242,9 +242,6 @@ exports.getBranchRequests = async (req, res) => {
 
 
 // Backend: getRequestById
-const Request = require('../models/Request');
-const SalaryAdvance = require('../models/SalaryAdvance');
-const Employee = require('../models/Employee');
 
 exports.getRequestById = async (req, res) => {
   try {
