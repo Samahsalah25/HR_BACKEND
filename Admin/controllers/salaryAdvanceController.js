@@ -34,18 +34,30 @@ const createInstallments = async (salaryAdvance) => {
 /**
  * إنشاء طلب سلفة
  */
+// controllers/salaryAdvanceController.js
+
 exports.createSalaryAdvance = async (req, res) => {
   try {
     const { employeeId, amount, installmentsCount, startDate, notes } = req.body;
     const isHR = req.user.role === 'HR';
     let employee;
 
+    // تحويل الحقول لـ Number / Date
+    const parsedAmount = Number(amount);
+    const parsedInstallmentsCount = Number(installmentsCount);
+    const parsedStartDate = new Date(startDate);
+
+    // Validation بسيطة
+    if (!employeeId) return res.status(400).json({ message: 'Employee ID is required' });
+    if (isNaN(parsedAmount) || parsedAmount <= 0) return res.status(400).json({ message: 'Amount must be a positive number' });
+    if (isNaN(parsedInstallmentsCount) || parsedInstallmentsCount <= 0) return res.status(400).json({ message: 'Installments count must be a positive number' });
+    if (isNaN(parsedStartDate.getTime())) return res.status(400).json({ message: 'Start date is invalid' });
+
+    // تحديد الموظف
     if (isHR && employeeId) {
-      // HR بيعمل سلفة لموظف تاني → معتمدة مباشرة
       employee = await Employee.findById(employeeId);
       if (!employee) return res.status(404).json({ message: 'Employee not found' });
     } else {
-      // الموظف أو HR لنفسه → pending
       employee = await Employee.findOne({ user: req.user._id });
       if (!employee) return res.status(404).json({ message: 'Employee not found for this user' });
     }
@@ -57,43 +69,46 @@ exports.createSalaryAdvance = async (req, res) => {
         const uploaded = await cloudinary.uploader.upload(file.path, {
           folder: 'salary_advances',
         });
-        attachments.push({ name: file.originalname, url: uploaded.secure_url });
+        attachments.push({ filename: file.originalname, url: uploaded.secure_url });
       }
     }
 
-    // حساب القسط تلقائي
-    const calculatedInstallmentAmount = amount / installmentsCount;
+    // حساب قيمة القسط
+    const calculatedInstallmentAmount = parsedAmount / parsedInstallmentsCount;
 
-    // تحديد الحالة: إذا HR بيعمل سلفة لموظف تاني → معتمدة مباشرة، لو لنفسه → pending
+    // إنشاء السلفة
     const salaryAdvance = await SalaryAdvance.create({
       employee: employee._id,
-      amount,
-      installmentsCount,
+      amount: parsedAmount,
+      installmentsCount: parsedInstallmentsCount,
       installmentAmount: calculatedInstallmentAmount,
-      startDate,
+      startDate: parsedStartDate,
       notes,
       attachments,
-      remainingAmount: amount,
-      status: isHR && employeeId ? 'approved' : 'pending',  // التعديل هنا
-      approvedBy: isHR && employeeId ? req.user._id : null, // التعديل هنا
-      approvedAt: isHR && employeeId ? new Date() : null,   // التعديل هنا
+      remainingAmount: parsedAmount,
+      status: isHR && employeeId ? 'approved' : 'pending',
+      approvedBy: isHR && employeeId ? req.user._id : null,
+      approvedAt: isHR && employeeId ? new Date() : null,
       createdBy: req.user._id,
       type: 'سلفة من الراتب',
     });
 
     // لو معتمدة مباشرة → نولد الأقساط
-    if (salaryAdvance.status === 'approved') await createInstallments(salaryAdvance);
+    if (salaryAdvance.status === 'approved') {
+      await createInstallments(salaryAdvance);
+    }
 
     res.status(201).json({
       message: 'Salary advance created successfully',
       salaryAdvance,
-      success:true
+      success: true
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 /**
