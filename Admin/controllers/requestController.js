@@ -211,42 +211,9 @@ exports.getBranchRequests = async (req, res) => {
 };
 
 // =============== Get single (تفاصيل الطلب) ===============
-// exports.getRequestById = async (req, res) => {
-//   try {
-//     const r = await Request.findById(req.params.id)
-//       .populate({
-//         path: 'employee',
-//         select: 'name user department jobTitle contract.start contract.end',
-//         populate: { path: 'department', select: 'name' }
-//       })
-//       .populate('decidedBy', 'name role')
-//       .populate('notes.by', 'name role');
-
-//     if (!r) return res.status(404).json({ message: 'الطلب غير موجود' });
-
-//     // الموظف لا يرى إلا طلباته
-//     // if (!isHRorAdmin(req.user)) {
-//     //   const emp = await Employee.findOne({ user: req.user._id }).select('_id');
-//     //   if (!emp || String(r.employee._id) !== String(emp._id)) {
-//     //     return res.status(403).json({ message: 'غير مسموح' });
-//     //   }
-//     // }
-
-//     res.json(r);
-//   } catch (e) {
-//     console.error(e);
-//     res.status(500).json({ message: 'خطأ أثناء جلب تفاصيل الطلب' });
-//   }
-// };
-// Backend: getRequestById
-
-
 exports.getRequestById = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    // نجرب نجيب الطلب من جدول Requests
-    let request = await Request.findById(id)
+    const r = await Request.findById(req.params.id)
       .populate({
         path: 'employee',
         select: 'name user department jobTitle contract.start contract.end',
@@ -255,34 +222,67 @@ exports.getRequestById = async (req, res) => {
       .populate('decidedBy', 'name role')
       .populate('notes.by', 'name role');
 
-    if (request) {
-      // لو الطلب موجود في Requests، نرجعه مباشرة
-      return res.json(request);
-    }
+    if (!r) return res.status(404).json({ message: 'الطلب غير موجود' });
 
-    // لو مش موجود في Requests، نجرب جدول Borrow
-    let borrowRequest = await SalaryAdvance.findById(id)
-      .populate({
-        path: 'employee',
-        select: 'name user department jobTitle contract.start contract.end',
-        populate: { path: 'department', select: 'name' }
-      });
+    // الموظف لا يرى إلا طلباته
+    // if (!isHRorAdmin(req.user)) {
+    //   const emp = await Employee.findOne({ user: req.user._id }).select('_id');
+    //   if (!emp || String(r.employee._id) !== String(emp._id)) {
+    //     return res.status(403).json({ message: 'غير مسموح' });
+    //   }
+    // }
 
-    if (!borrowRequest) {
-      return res.status(404).json({ message: 'الطلب غير موجود' });
-    }
-
-    // نضيف type عشان frontend يعرف إنه سلفة
-    borrowRequest = borrowRequest.toObject();
-    borrowRequest.type = 'سلفة';
-
-    return res.json(borrowRequest);
-
+    res.json(r);
   } catch (e) {
     console.error(e);
     res.status(500).json({ message: 'خطأ أثناء جلب تفاصيل الطلب' });
   }
 };
+// Backend: getRequestById
+
+
+// exports.getRequestById = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+
+//     // نجرب نجيب الطلب من جدول Requests
+//     let request = await Request.findById(id)
+//       .populate({
+//         path: 'employee',
+//         select: 'name user department jobTitle contract.start contract.end',
+//         populate: { path: 'department', select: 'name' }
+//       })
+//       .populate('decidedBy', 'name role')
+//       .populate('notes.by', 'name role');
+
+//     if (request) {
+//       // لو الطلب موجود في Requests، نرجعه مباشرة
+//       return res.json(request);
+//     }
+
+//     // لو مش موجود في Requests، نجرب جدول Borrow
+//     let borrowRequest = await SalaryAdvance.findById(id)
+//       .populate({
+//         path: 'employee',
+//         select: 'name user department jobTitle contract.start contract.end',
+//         populate: { path: 'department', select: 'name' }
+//       });
+
+//     if (!borrowRequest) {
+//       return res.status(404).json({ message: 'الطلب غير موجود' });
+//     }
+
+//     // نضيف type عشان frontend يعرف إنه سلفة
+//     borrowRequest = borrowRequest.toObject();
+//     borrowRequest.type = 'سلفة';
+
+//     return res.json(borrowRequest);
+
+//   } catch (e) {
+//     console.error(e);
+//     res.status(500).json({ message: 'خطأ أثناء جلب تفاصيل الطلب' });
+//   }
+// };
 
 
 // =============== Approve (HR/Admin) ===============
