@@ -461,11 +461,9 @@ exports.getSalaryAdvances = async (req, res) => {
 
 exports.getMySalaryAdvances = async (req, res) => {
   try {
-    // نجيب الموظف المرتبط بالمستخدم الحالي
     const employee = await Employee.findOne({ user: req.user._id });
     if (!employee) return res.status(404).json({ message: 'Employee not found' });
 
-    // نجيب كل السلفات الخاصة بالموظف
     const advances = await SalaryAdvance.find({ employee: employee._id })
       .sort({ createdAt: -1 });
 
@@ -476,15 +474,17 @@ exports.getMySalaryAdvances = async (req, res) => {
         .sort({ installmentNumber: 1 });
 
       const totalPaid = installments
-        .filter(inst => inst.status === 'paid')
-        .reduce((sum, inst) => sum + inst.amount, 0);
+        .filter(i => i.status === 'paid')
+        .reduce((sum, i) => sum + i.amount, 0);
 
       const remainingAmount = advance.amount - totalPaid;
 
-      let status = advance.status;
-      if (status === 'approved' && remainingAmount === 0) status = 'تم السداد';
-      if (status === 'approved' && remainingAmount > 0) status = 'معتمد';
-      if (status === 'rejected') status = 'مرفوض';
+      // 🔥 توحيد الحالات مع getSalaryAdvances
+      let status = 'معتمد';
+      if (advance.status === 'rejected') status = 'مرفوض';
+      else if (advance.status === 'completed' && remainingAmount === 0) status = 'تم السداد';
+      else if (advance.status === 'approved' && totalPaid > 0) status = 'مدفوع للموظف';
+      else if (advance.status === 'approved') status = 'معتمد';
 
       result.push({
         _id: advance._id,
@@ -497,10 +497,14 @@ exports.getMySalaryAdvances = async (req, res) => {
         status,
         installments: installments.map(inst => ({
           installmentNumber: inst.installmentNumber,
-          title: `قسط شهر ${inst.installmentNumber}`,
+          title: `قسط ${inst.installmentNumber}`,
           dueDate: formatDate(inst.dueDate),
           amount: inst.amount,
-          status: inst.status === 'paid' ? 'مدفوع' : 'غير مدفوع'
+          status: inst.status === 'paid'
+            ? 'مدفوع'
+            : inst.status === 'postponed'
+            ? 'مؤجل'
+            : 'غير مدفوع'
         }))
       });
     }
