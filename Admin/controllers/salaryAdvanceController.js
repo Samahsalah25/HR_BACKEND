@@ -128,7 +128,7 @@ exports.createSalaryAdvance = async (req, res) => {
       return res.status(400).json({ message: 'Installments count must be a positive number' });
     if (isNaN(parsedStartDate.getTime()))
       return res.status(400).json({ message: 'Start date is invalid' });
-
+console.log('djfh')
     // تحديد الموظف
     if (isHR && employeeId) {
       // لو HR وداخل ID محدد
