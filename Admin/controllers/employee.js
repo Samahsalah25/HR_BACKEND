@@ -8,7 +8,7 @@ const Contract = require("../models/Contract");
 const Task = require('../models/Task');
 const Request=require('../models/requestModel')
 const Counter = require("../models/counterSchema");
-
+const SalaryAdvance =require('../models/salaryAdvance')
 
 exports.createEmployee = async (req, res) => {
   const session = await mongoose.startSession();
