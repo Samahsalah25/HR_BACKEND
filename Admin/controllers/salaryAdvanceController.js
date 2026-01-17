@@ -625,84 +625,21 @@ exports.postponeInstallment = async (req, res) => {
 
 //  هنا بيانات الاقساط بتاعت شهر معين ؟؟
 // GET /salary-advance/installments/monthly?month=1&year=2026
-exports.getMonthlyInstallments = async (req, res) => {
-  try {
-    const { month, year } = req.query;
+result.push({
+  employeeName: inst.employee.name,
+  employeeNumber: inst.employee.employeeNumber,
 
-    if (!month || !year) {
-      return res.status(400).json({
-        message: 'month and year are required'
-      });
-    }
+  salaryAdvanceId: inst.salaryAdvance._id,
+  installmentId: inst._id,
 
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+  totalAdvanceAmount: inst.salaryAdvance.amount,
+  totalInstallmentsCount: inst.salaryAdvance.installmentsCount, // ✅ العدد الكلي
+  installmentAmount: inst.amount,
 
-    const installments = await SalaryAdvanceInstallment.find({
-      dueDate: { $gte: startDate, $lte: endDate }
-    })
-      .populate({
-        path: 'employee',
-        select: 'name employeeNumber'
-      })
-      .populate({
-        path: 'salaryAdvance',
-        select: 'amount installmentsCount status'
-      });
+  totalPaid,
+  remainingAmount,
+  remainingInstallmentsCount,
 
-    const result = [];
-
-    for (const inst of installments) {
-      const allInstallments = await SalaryAdvanceInstallment.find({
-        salaryAdvance: inst.salaryAdvance._id
-      });
-
-      const totalPaid = allInstallments
-        .filter(i => i.status === 'paid')
-        .reduce((sum, i) => sum + i.amount, 0);
-
-      const remainingAmount = inst.salaryAdvance.amount - totalPaid;
-
-      const remainingInstallmentsCount = allInstallments.filter(
-        i => i.status !== 'paid'
-      ).length;
-
-      // ✅ تحويل الحالة للعربي من DB
-      let status = 'غير مدفوع';
-      if (inst.status === 'paid') status = 'مدفوع';
-      else if (inst.status === 'postponed') status = 'مؤجل';
-
-      result.push({
-        employeeName: inst.employee.name,
-        employeeNumber: inst.employee.employeeNumber,
-
-        salaryAdvanceId: inst.salaryAdvance._id,
-        installmentId: inst._id,
-
-        totalAdvanceAmount: inst.salaryAdvance.amount,
-        totalInstallmentsCount: inst.salaryAdvance.installmentsCount, // ✅ العدد الكلي
-        installmentAmount: inst.amount,
-
-        totalPaid,
-        remainingAmount,
-        remainingInstallmentsCount,
-
-        status, // ✅ الحالة من DB
-        dueDate: inst.dueDate
-      });
-    }
-
-    res.json({
-      month,
-      year,
-      total: result.length,
-      installments: result
-    });
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      message: 'خطأ في جلب أقساط الشهر'
-    });
-  }
-};
+  status, // ✅ الحالة من DB
+  dueDate: inst.dueDate
+});
