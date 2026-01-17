@@ -638,7 +638,6 @@ exports.getMonthlyInstallments = async (req, res) => {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59, 999);
 
-    // 1️⃣ الأقساط الخاصة بالشهر
     const installments = await SalaryAdvanceInstallment.find({
       dueDate: { $gte: startDate, $lte: endDate }
     })
@@ -654,7 +653,6 @@ exports.getMonthlyInstallments = async (req, res) => {
     const result = [];
 
     for (const inst of installments) {
-      // 2️⃣ كل أقساط السلفة
       const allInstallments = await SalaryAdvanceInstallment.find({
         salaryAdvance: inst.salaryAdvance._id
       });
@@ -669,20 +667,27 @@ exports.getMonthlyInstallments = async (req, res) => {
         i => i.status !== 'paid'
       ).length;
 
+      // ✅ تحويل الحالة للعربي من DB
+      let status = 'غير مدفوع';
+      if (inst.status === 'paid') status = 'مدفوع';
+      else if (inst.status === 'postponed') status = 'مؤجل';
+
       result.push({
         employeeName: inst.employee.name,
-         salaryAdvanceId: inst.salaryAdvance._id,
-         installmentId: inst._id,
         employeeNumber: inst.employee.employeeNumber,
+
+        salaryAdvanceId: inst.salaryAdvance._id,
+        installmentId: inst._id,
+
         totalAdvanceAmount: inst.salaryAdvance.amount,
+        totalInstallmentsCount: inst.salaryAdvance.installmentsCount, // ✅ العدد الكلي
+        installmentAmount: inst.amount,
+
         totalPaid,
         remainingAmount,
         remainingInstallmentsCount,
-        installmentAmount: inst.amount,
-        status:
-          inst.status === 'paid'
-            ? 'مدفوع'
-            : 'غير مدفوع',
+
+        status, // ✅ الحالة من DB
         dueDate: inst.dueDate
       });
     }
@@ -701,4 +706,3 @@ exports.getMonthlyInstallments = async (req, res) => {
     });
   }
 };
-
