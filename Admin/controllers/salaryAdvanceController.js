@@ -679,7 +679,7 @@ exports.getMonthlyInstallments = async (req, res) => {
         remainingAmount,
         remainingInstallmentsCount,
         installmentAmount: inst.amount,
-        installmentStatus:
+        status:
           inst.status === 'paid'
             ? 'مدفوع'
             : 'غير مدفوع',
