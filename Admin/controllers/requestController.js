@@ -157,6 +157,24 @@ exports.getRequests = async (req, res) => {
   try {
     const { status = 'الكل' } = req.query;
 
+    /** 🔁 تحويل حالات السلف */
+    const mapBorrowStatus = (status) => {
+      switch (status) {
+        case 'pending':
+          return 'قيد المراجعة';
+
+        case 'approved':
+        case 'completed':
+          return 'مقبول';
+
+        case 'rejected':
+          return 'مرفوض';
+
+        default:
+          return status;
+      }
+    };
+
     /** 1️⃣ الطلبات العادية */
     let requests = await Request.find(
       status !== 'الكل' ? { status } : {}
@@ -181,9 +199,10 @@ exports.getRequests = async (req, res) => {
         __source: 'request'
       }));
 
-    /** 2️⃣ السلف (مستقلة تمامًا) */
+    /** 2️⃣ السلف (مستقلة) */
     let borrows = await SalaryAdvance.find(
-      status !== 'الكل' ? { status } : {}
+      status !== 'الكل' ? {} : {}
+      // ❗ متفلترش بالـ status هنا لأن حالات السلف مختلفة
     )
       .sort({ createdAt: -1 })
       .populate({
@@ -200,13 +219,21 @@ exports.getRequests = async (req, res) => {
         department: b.employee.department?.name || null,
         type: 'سلفة',
         submittedAt: b.createdAt,
-        status: b.status,
+        status: mapBorrowStatus(b.status),
         decisionDate: b.approvedAt || null,
         __source: 'borrow'
       }));
 
-    /** 3️⃣ دمج الاتنين */
-    const items = [...requests, ...borrows].sort(
+    /** 3️⃣ دمج الطلبات + السلف */
+    let items = [...requests, ...borrows];
+
+    /** 4️⃣ فلترة حسب التاب (قيد المراجعة / مقبول / مرفوض) */
+    if (status !== 'الكل') {
+      items = items.filter(item => item.status === status);
+    }
+
+    /** 5️⃣ ترتيب بالوقت */
+    items.sort(
       (a, b) => new Date(b.submittedAt) - new Date(a.submittedAt)
     );
 
@@ -311,44 +338,89 @@ exports.getBranchRequests = async (req, res) => {
 
 // Backend: getRequestById
 
+// exports.getRequestById = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+
+//     // أولاً نجيب الطلب العادي من جدول Requests
+//     let request = await Request.findById(id)
+//       .populate({
+//         path: 'employee',
+//         select: 'name user department jobTitle contract.start contract.end',
+//         populate: { path: 'department', select: 'name' }
+//       })
+//       .populate('decidedBy', 'name role')
+//       .populate('notes.by', 'name role');
+
+//     if (!request) return res.status(404).json({ message: 'الطلب غير موجود' });
+
+//     // نحول request لـ object عادي عشان نقدر نضيف خصائص جديدة
+//     request = request.toObject();
+
+//     // بعدين نبحث لو فيه سلفة مرتبطة بالـ request._id
+//     const borrowData = await SalaryAdvance.findOne({ request: id })
+//       .populate({
+//         path: 'employee',
+//         select: 'name user department jobTitle contract.start contract.end',
+//         populate: { path: 'department', select: 'name' }
+//       });
+
+//     if (borrowData) {
+//       // لو لقينا السلفة، نضيفها كـ property جديدة
+//       request.borrowData = borrowData;
+//       request.type = 'سلفة'; // عشان الـ frontend يعرف يعرض الفورم الصح
+//     }
+
+//     return res.json(request);
+
+//   } catch (e) {
+//     console.error(e);
+//     res.status(500).json({ message: 'خطأ أثناء جلب تفاصيل الطلب' });
+//   }
+// };
 exports.getRequestById = async (req, res) => {
   try {
     const { id } = req.params;
+    const { source } = req.query;
 
-    // أولاً نجيب الطلب العادي من جدول Requests
-    let request = await Request.findById(id)
+    if (source === 'borrow') {
+      const borrow = await SalaryAdvance.findById(id)
+        .populate({
+          path: 'employee',
+          select: 'name department jobTitle',
+          populate: { path: 'department', select: 'name' }
+        });
+
+      if (!borrow) {
+        return res.status(404).json({ message: 'السلفة غير موجودة' });
+      }
+
+      return res.json({
+        ...borrow.toObject(),
+        type: 'سلفة'
+      });
+    }
+
+    // الطلب العادي
+    const request = await Request.findById(id)
       .populate({
         path: 'employee',
-        select: 'name user department jobTitle contract.start contract.end',
-        populate: { path: 'department', select: 'name' }
-      })
-      .populate('decidedBy', 'name role')
-      .populate('notes.by', 'name role');
-
-    if (!request) return res.status(404).json({ message: 'الطلب غير موجود' });
-
-    // نحول request لـ object عادي عشان نقدر نضيف خصائص جديدة
-    request = request.toObject();
-
-    // بعدين نبحث لو فيه سلفة مرتبطة بالـ request._id
-    const borrowData = await SalaryAdvance.findOne({ request: id })
-      .populate({
-        path: 'employee',
-        select: 'name user department jobTitle contract.start contract.end',
+        select: 'name department jobTitle',
         populate: { path: 'department', select: 'name' }
       });
 
-    if (borrowData) {
-      // لو لقينا السلفة، نضيفها كـ property جديدة
-      request.borrowData = borrowData;
-      request.type = 'سلفة'; // عشان الـ frontend يعرف يعرض الفورم الصح
+    if (!request) {
+      return res.status(404).json({ message: 'الطلب غير موجود' });
     }
 
-    return res.json(request);
+    res.json({
+      ...request.toObject(),
+      type: request.type || 'طلب'
+    });
 
   } catch (e) {
     console.error(e);
-    res.status(500).json({ message: 'خطأ أثناء جلب تفاصيل الطلب' });
+    res.status(500).json({ message: 'خطأ أثناء جلب التفاصيل' });
   }
 };
 
