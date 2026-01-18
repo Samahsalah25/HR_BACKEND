@@ -357,7 +357,7 @@ exports.getRequests = async (req, res) => {
     /** 1️⃣ الطلبات العادية */
     const requestQuery = {};
     if (status !== 'الكل') requestQuery.status = status;
-    if (type) requestQuery.type = type; // فلتر type هنا فقط للطلبات العادية
+    if (type) requestQuery.type = type;
 
     let requests = await Request.find(requestQuery)
       .sort({ createdAt: -1 })
@@ -380,27 +380,31 @@ exports.getRequests = async (req, res) => {
         __source: 'request'
       }));
 
-    /** 2️⃣ السلف (مستقلة) */
-    let borrows = await SalaryAdvance.find()
-      .sort({ createdAt: -1 })
-      .populate({
-        path: 'employee',
-        select: 'name department jobTitle',
-        populate: { path: 'department', select: 'name' }
-      });
+    /** 2️⃣ السلف - تجيب بس لو مفيش type محدد */
+    let borrows = [];
+    if (!type) { // السلف تظهر فقط عند عرض الكل
+      borrows = await SalaryAdvance.find()
+        .sort({ createdAt: -1 })
+        .populate({
+          path: 'employee',
+          select: 'name department jobTitle',
+          populate: { path: 'department', select: 'name' }
+        });
 
-    borrows = borrows
-      .filter(b => b.employee)
-      .map(b => ({
-        id: b._id,
-        employeeName: b.employee.name,
-        department: b.employee.department?.name || null,
-        type: 'سلفة',
-        submittedAt: b.createdAt,
-        status: mapBorrowStatus(b.status),
-        decisionDate: b.status === 'approved' ? b.approvedAt : (b.status === 'rejected' ? b.rejectedAt : null),
-        __source: 'borrow'
-      }));
+      borrows = borrows
+        .filter(b => b.employee)
+        .map(b => ({
+          id: b._id,
+          employeeName: b.employee.name,
+          department: b.employee.department?.name || null,
+          type: 'سلفة',
+          submittedAt: b.createdAt,
+          status: mapBorrowStatus(b.status),
+          decisionDate: b.status === 'approved' ? b.approvedAt 
+                         : (b.status === 'rejected' ? b.rejectedAt : null),
+          __source: 'borrow'
+        }));
+    }
 
     /** 3️⃣ دمج الطلبات + السلف */
     let items = [...requests, ...borrows];
@@ -410,7 +414,7 @@ exports.getRequests = async (req, res) => {
       items = items.filter(item => item.status === status);
     }
 
-    /** 5️⃣ ترتيب بالوقت */
+    /** 5️⃣ ترتيب حسب التاريخ */
     items.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
 
     res.json({
