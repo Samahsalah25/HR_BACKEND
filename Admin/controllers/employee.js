@@ -1052,33 +1052,37 @@ exports.getMyRequests = async (req, res) => {
     });
 
     // تحويل السلف
-    const formattedSalaryAdvances = salaryAdvances.map(sa => {
-      let displayStatus = "";
-      if (sa.status === "pending") displayStatus = "قيد المراجعة";
-      else if (sa.status === "rejected") displayStatus = "مرفوض";
-      else if (sa.status === "approved" || sa.status === "completed") displayStatus = "مقبول";
+   // تحويل السلف بعد التعديل
+const formattedSalaryAdvances = salaryAdvances.map(sa => {
+  let displayStatus = "";
+  let decidedAt = null;
 
-      // تحديث العد
-      if (displayStatus === "قيد المراجعة") pendingCount++;
-      else if (displayStatus === "مقبول") approvedCount++;
-      else if (displayStatus === "مرفوض") rejectedCount++;
+  if (sa.status === "pending") displayStatus = "قيد المراجعة";
+  else if (sa.status === "approved" || sa.status === "completed") {
+    displayStatus = "مقبول";
+    decidedAt = sa.approvedAt; // لو مقبولة
+  } else if (sa.status === "rejected") {
+    displayStatus = "مرفوض";
+    decidedAt = sa.rejectedAt; // لو مرفوضة
+  }
 
-      return {
-        _id: sa._id,
-        employeeName: sa.employee.name,
-        jobTitle: sa.employee.jobTitle,
-        type: "سلفة من الراتب", // ثابت
-        status: displayStatus,
-        submittedAt: sa.createdAt.toISOString(),
-        decidedAt: sa.approvedAt ? sa.approvedAt.toISOString() : null,
-        notes: sa.notes || [],
-        attachments: sa.attachments || [],
-        amount: sa.amount,
-        installmentsCount: sa.installmentsCount,
-        installmentAmount: sa.installmentAmount,
-        remainingAmount: sa.remainingAmount,
-      };
-    });
+  return {
+    _id: sa._id,
+    employeeName: sa.employee.name,
+    jobTitle: sa.employee.jobTitle,
+    type: "سلفة من الراتب",
+    status: displayStatus,
+    submittedAt: sa.createdAt.toISOString(),
+    decidedAt: decidedAt ? decidedAt.toISOString() : null, // هنبعت التاريخ الصح هنا
+    notes: sa.notes || [],
+    attachments: sa.attachments || [],
+    amount: sa.amount,
+    installmentsCount: sa.installmentsCount,
+    installmentAmount: sa.installmentAmount,
+    remainingAmount: sa.remainingAmount,
+  };
+});
+
 
     // دمج الطلبات + السلف
     const allRequests = [...formattedRequests, ...formattedSalaryAdvances];
