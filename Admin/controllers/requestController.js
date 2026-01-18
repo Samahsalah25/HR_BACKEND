@@ -251,27 +251,11 @@ exports.getRequests = async (req, res) => {
   try {
     const { status = 'الكل', type } = req.query;
 
-    /** 🔁 تحويل حالات السلف */
-    const mapBorrowStatus = (status) => {
-      switch (status) {
-        case 'pending':
-          return 'قيد المراجعة';
-        case 'approved':
-        case 'completed':
-          return 'مقبول';
-        case 'rejected':
-          return 'مرفوض';
-        default:
-          return status;
-      }
-    };
+    const query = {};
+    if (status !== 'الكل') query.status = status;
+    if (type) query.type = type; // ← ده المهم هنا
 
-    /** 1️⃣ الطلبات العادية */
-    const requestQuery = {};
-    if (status !== 'الكل') requestQuery.status = status;
-    if (type) requestQuery.type = type;
-
-    let requests = await Request.find(requestQuery)
+    let requests = await Request.find(query)
       .sort({ createdAt: -1 })
       .populate({
         path: 'employee',
@@ -279,56 +263,19 @@ exports.getRequests = async (req, res) => {
         populate: { path: 'department', select: 'name' }
       });
 
-    requests = requests
-      .filter(r => r.employee)
-      .map(r => ({
-        id: r._id,
-        employeeName: r.employee.name,
-        department: r.employee.department?.name || null,
-        type: r.type || 'طلب',
-        submittedAt: r.createdAt,
-        status: r.status,
-        decisionDate: r.decidedAt || null,
-        __source: 'request'
-      }));
+    requests = requests.filter(r => r.employee);
 
-    /** 2️⃣ السلف (مستقلة) */
-    let borrows = await SalaryAdvance.find()
-      .sort({ createdAt: -1 })
-      .populate({
-        path: 'employee',
-        select: 'name department jobTitle',
-        populate: { path: 'department', select: 'name' }
-      });
+    const items = requests.map(r => ({
+      id: r._id,
+      employeeName: r.employee.name,
+      department: r.employee.department?.name || null,
+      type: r.type || 'طلب',
+      submittedAt: r.createdAt,
+      status: r.status,
+      decisionDate: r.decidedAt || null
+    }));
 
-    borrows = borrows
-      .filter(b => b.employee)
-      .map(b => ({
-        id: b._id,
-        employeeName: b.employee.name,
-        department: b.employee.department?.name || null,
-        type: 'سلفة',
-        submittedAt: b.createdAt,
-        status: mapBorrowStatus(b.status),
-        decisionDate: b.status === 'approved' ? b.approvedAt : (b.status === 'rejected' ? b.rejectedAt : null),
-        __source: 'borrow'
-      }));
-
-    /** 3️⃣ دمج الطلبات + السلف */
-    let items = [...requests, ...borrows];
-
-    /** 4️⃣ فلترة حسب التاب (قيد المراجعة / مقبول / مرفوض) */
-    if (status !== 'الكل') {
-      items = items.filter(item => item.status === status);
-    }
-
-    /** 5️⃣ ترتيب بالوقت */
-    items.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
-
-    res.json({
-      total: items.length,
-      items
-    });
+    res.json({ total: items.length, items });
 
   } catch (e) {
     console.error(e);
