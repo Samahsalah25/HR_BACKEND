@@ -114,45 +114,113 @@ exports.createRequest = [
 
 
 // =============== Get list (HR/Admin يشوف الكل – الموظف يشوف طلباته) ===============
+// exports.getRequests = async (req, res) => {
+//   try {
+//     const { status = 'الكل', type } = req.query;
+
+//     const query = {};
+//     if (status !== 'الكل') query.status = status;
+//     if (type) query.type = type;
+
+//     let items = await Request.find(query)
+//       .sort({ createdAt: -1 })
+//       .populate({
+//         path: 'employee',
+//         select: 'name department jobTitle contract.start contract.end',
+//         populate: { path: 'department', select: 'name' }
+//       });
+
+
+//     items = items.filter(r => r.employee);
+
+//     // 
+//     const table = items.map(r => ({
+//       id: r._id,
+//       employeeName: r.employee?.name || '-',
+//       department: r.employee?.department?.name || null,
+//       type: r.type,
+//       submittedAt: r.createdAt,
+//       status: r.status,
+//       decisionDate: r.decidedAt || null
+//     }));
+
+//     res.json({
+//       total: table.length,
+//       items: table
+//     });
+//   } catch (e) {
+//     console.error(e);
+//     res.status(500).json({ message: 'خطأ أثناء جلب الطلبات' });
+//   }
+// };
 exports.getRequests = async (req, res) => {
   try {
-    const { status = 'الكل', type } = req.query;
+    const { status = 'الكل' } = req.query;
 
-    const query = {};
-    if (status !== 'الكل') query.status = status;
-    if (type) query.type = type;
-
-    let items = await Request.find(query)
+    /** 1️⃣ الطلبات العادية */
+    let requests = await Request.find(
+      status !== 'الكل' ? { status } : {}
+    )
       .sort({ createdAt: -1 })
       .populate({
         path: 'employee',
-        select: 'name department jobTitle contract.start contract.end',
+        select: 'name department jobTitle',
         populate: { path: 'department', select: 'name' }
       });
 
+    requests = requests
+      .filter(r => r.employee)
+      .map(r => ({
+        id: r._id,
+        employeeName: r.employee.name,
+        department: r.employee.department?.name || null,
+        type: r.type || 'طلب',
+        submittedAt: r.createdAt,
+        status: r.status,
+        decisionDate: r.decidedAt || null,
+        __source: 'request'
+      }));
 
-    items = items.filter(r => r.employee);
+    /** 2️⃣ السلف (مستقلة تمامًا) */
+    let borrows = await SalaryAdvance.find(
+      status !== 'الكل' ? { status } : {}
+    )
+      .sort({ createdAt: -1 })
+      .populate({
+        path: 'employee',
+        select: 'name department jobTitle',
+        populate: { path: 'department', select: 'name' }
+      });
 
-    // 
-    const table = items.map(r => ({
-      id: r._id,
-      employeeName: r.employee?.name || '-',
-      department: r.employee?.department?.name || null,
-      type: r.type,
-      submittedAt: r.createdAt,
-      status: r.status,
-      decisionDate: r.decidedAt || null
-    }));
+    borrows = borrows
+      .filter(b => b.employee)
+      .map(b => ({
+        id: b._id,
+        employeeName: b.employee.name,
+        department: b.employee.department?.name || null,
+        type: 'سلفة',
+        submittedAt: b.createdAt,
+        status: b.status,
+        decisionDate: b.approvedAt || null,
+        __source: 'borrow'
+      }));
+
+    /** 3️⃣ دمج الاتنين */
+    const items = [...requests, ...borrows].sort(
+      (a, b) => new Date(b.submittedAt) - new Date(a.submittedAt)
+    );
 
     res.json({
-      total: table.length,
-      items: table
+      total: items.length,
+      items
     });
+
   } catch (e) {
     console.error(e);
     res.status(500).json({ message: 'خطأ أثناء جلب الطلبات' });
   }
 };
+
 
 
 // =============== Get requests for my branch (HR only) ===============
