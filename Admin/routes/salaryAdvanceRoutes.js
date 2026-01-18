@@ -23,6 +23,8 @@ router.post(
 /**
  * اعتماد السلفة
  */
+router.patch('/:id',authenticate, upload.array('attachments'), SalaryAdvanceController.updateSalaryAdvance);
+
 router.patch('/approve/:id',authenticate, SalaryAdvanceController.approveSalaryAdvance);
 
 /**
