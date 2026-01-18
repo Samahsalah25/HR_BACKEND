@@ -726,33 +726,40 @@ exports.updateSalaryAdvance = [
       const { id } = req.params;
       const { amount, installmentsCount, startDate, notes } = req.body;
 
-      // جلب السلفة
+      // 1️⃣ جلب السلفة
       const salaryAdvance = await SalaryAdvance.findById(id);
-      if (!salaryAdvance)
+      if (!salaryAdvance) {
         return res.status(404).json({ message: 'السلفة غير موجودة' });
+      }
 
-      // ✅ السماح بالتعديل فقط إذا كانت Pending
+      // 2️⃣ السماح بالتعديل فقط لو Pending
       if (salaryAdvance.status !== 'pending') {
         return res.status(400).json({
-          message: 'يمكن تعديل السلفة فقط إذا كانت قيد المراجعة (Pending)',
+          message: 'يمكن تعديل السلفة فقط إذا كانت قيد المراجعة',
         });
       }
 
-      // 1️⃣ تحديث المبلغ
-      if (amount) salaryAdvance.amount = Number(amount);
+      // 3️⃣ تحديث البيانات الأساسية
+      if (amount !== undefined) {
+        salaryAdvance.amount = Number(amount);
+      }
 
-      // 2️⃣ تحديث عدد الأقساط
-      if (installmentsCount) salaryAdvance.installmentsCount = Number(installmentsCount);
+      if (installmentsCount !== undefined) {
+        salaryAdvance.installmentsCount = Number(installmentsCount);
+      }
 
-      // 3️⃣ تحديث startDate
-      if (startDate) salaryAdvance.startDate = new Date(startDate);
+      if (startDate) {
+        salaryAdvance.startDate = new Date(startDate);
+      }
 
-      // 4️⃣ تحديث notes
-      if (notes) salaryAdvance.notes = notes;
+      if (notes !== undefined) {
+        salaryAdvance.notes = notes;
+      }
 
-      // 5️⃣ رفع المرفقات لو موجودة
+      // 4️⃣ رفع المرفقات (لو موجودة)
       if (req.files && req.files.length > 0) {
         const attachments = [];
+
         for (const file of req.files) {
           const uploaded = await new Promise((resolve, reject) => {
             const stream = cloudinary.uploader.upload_stream(
@@ -764,49 +771,89 @@ exports.updateSalaryAdvance = [
             );
             stream.end(file.buffer);
           });
-          attachments.push({ filename: file.originalname, url: uploaded.secure_url });
+
+          attachments.push({
+            filename: file.originalname,
+            url: uploaded.secure_url,
+          });
         }
-        salaryAdvance.attachments = [...salaryAdvance.attachments, ...attachments];
+
+        salaryAdvance.attachments = [
+          ...salaryAdvance.attachments,
+          ...attachments,
+        ];
       }
 
-      // 6️⃣ إعادة توليد الأقساط غير المدفوعة
+      // 5️⃣ إعادة توليد الأقساط (لو حصل تعديل مؤثر)
       if (amount || installmentsCount || startDate) {
-        // حذف الأقساط غير المدفوعة فقط
+        // الأقساط المدفوعة
         const paidInstallments = await SalaryAdvanceInstallment.find({
           salaryAdvance: id,
           status: 'paid',
         }).sort({ installmentNumber: 1 });
 
+        // حذف غير المدفوع فقط
         await SalaryAdvanceInstallment.deleteMany({
           salaryAdvance: id,
           status: { $ne: 'paid' },
         });
 
-        const unpaidCount = salaryAdvance.installmentsCount - paidInstallments.length;
-        const installmentAmount =
-          (salaryAdvance.amount - paidInstallments.reduce((sum, i) => sum + i.amount, 0)) /
-          unpaidCount;
+        const unpaidCount =
+          salaryAdvance.installmentsCount - paidInstallments.length;
 
-        const start = new Date(salaryAdvance.startDate);
+        if (unpaidCount > 0) {
+          const totalPaid = paidInstallments.reduce(
+            (sum, i) => sum + i.amount,
+            0
+          );
 
-        for (let i = 0; i < unpaidCount; i++) {
-          await SalaryAdvanceInstallment.create({
-            salaryAdvance: id,
-            employee: salaryAdvance.employee,
-            installmentNumber: paidInstallments.length + i + 1,
-            amount: installmentAmount,
-            dueDate: new Date(start.getFullYear(), start.getMonth() + i, start.getDate()),
-            status: 'unpaid',
-          });
+          const installmentAmount =
+            (salaryAdvance.amount - totalPaid) / unpaidCount;
+
+          const start = new Date(salaryAdvance.startDate);
+
+          for (let i = 0; i < unpaidCount; i++) {
+            const dueDate = new Date(
+              start.getFullYear(),
+              start.getMonth() + i,
+              start.getDate()
+            );
+
+            await SalaryAdvanceInstallment.create({
+              salaryAdvance: id,
+              employee: salaryAdvance.employee,
+              installmentNumber: paidInstallments.length + i + 1,
+              amount: installmentAmount,
+              dueDate,
+              status: 'unpaid',
+            });
+          }
         }
       }
 
+      // 6️⃣ حفظ
       await salaryAdvance.save();
 
-      res.json({ message: 'تم تعديل السلفة بنجاح', salaryAdvance });
+      // 7️⃣ رجوع Populate علشان الفرونت
+      const populatedSalaryAdvance = await SalaryAdvance.findById(id).populate({
+        path: 'employee',
+        select: 'name jobTitle department',
+        populate: {
+          path: 'department',
+          select: 'name',
+        },
+      });
+
+      res.json({
+        message: 'تم تعديل السلفة بنجاح',
+        salaryAdvance: populatedSalaryAdvance,
+      });
     } catch (error) {
       console.error(error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({
+        message: 'خطأ أثناء تعديل السلفة',
+        error: error.message,
+      });
     }
   },
 ];
