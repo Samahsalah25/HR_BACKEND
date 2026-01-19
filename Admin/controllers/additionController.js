@@ -119,9 +119,19 @@ exports.getAllAdditions = async (req, res) => {
       };
     }
 
-    const additions = await Addition.find(filter)
-      .populate("employee addedBy approvedBy rejectedBy")
-      .sort({ createdAt: -1 });
+   const additions = await Addition.find(filter)
+  .populate({
+    path: "employee",
+    select: "name employeeNumber jobTitle department workplace",
+    populate: [
+      { path: "department", select: "name" },
+      { path: "workplace", select: "name" }
+    ]
+  })
+  .populate("addedBy", "name")
+  .populate("approvedBy", "name")
+  .populate("rejectedBy", "name")
+  .sort({ createdAt: -1 });
 
     res.json(additions);
   } catch (err) {
