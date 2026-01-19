@@ -86,9 +86,24 @@ exports.updateAdditionStatus = async (req, res) => {
 // جلب كل الإضافات
 exports.getAllAdditions = async (req, res) => {
   try {
-    const additions = await Addition.find()
+    const { month, year } = req.query;
+
+    let filter = {};
+
+    if (month && year) {
+      const startDate = new Date(year, month - 1, 1); // أول يوم في الشهر
+      const endDate = new Date(year, month, 1);       // أول يوم في الشهر اللي بعده
+
+      filter.createdAt = {
+        $gte: startDate,
+        $lt: endDate
+      };
+    }
+
+    const additions = await Addition.find(filter)
       .populate("employee addedBy approvedBy rejectedBy")
       .sort({ createdAt: -1 });
+
     res.json(additions);
   } catch (err) {
     res.status(500).json({ message: err.message });
