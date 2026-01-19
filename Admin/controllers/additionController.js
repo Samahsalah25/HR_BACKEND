@@ -4,8 +4,18 @@ const Employee = require("../models/employee");
 // إنشاء الإضافة (موظف واحد / قسم / كل الموظفين)
 exports.createAddition = async (req, res) => {
   try {
-    const { addTo, targetId, addType, amount, needsApproval, addtionType, reason } = req.body;
-const userId = req.user._id; 
+    const {
+      addTo,
+      targetId,
+      addType,
+      amount,
+      needsApproval,
+      addtionType,
+      reason,
+      applyDate
+    } = req.body;
+
+    const userId = req.user._id;
 
     let employees = [];
 
@@ -13,8 +23,10 @@ const userId = req.user._id;
       const emp = await Employee.findById(targetId);
       if (!emp) return res.status(404).json({ message: "Employee not found" });
       employees.push(emp);
+
     } else if (addTo === "department") {
       employees = await Employee.find({ department: targetId });
+
     } else if (addTo === "all") {
       employees = await Employee.find();
     }
@@ -23,6 +35,7 @@ const userId = req.user._id;
 
     for (const employee of employees) {
       let finalAmount = 0;
+
       if (addType === "percent") {
         finalAmount = (employee.salary.total || 0) * (amount / 100);
       } else {
@@ -35,17 +48,22 @@ const userId = req.user._id;
         employee: employee._id,
         addType,
         amount: finalAmount,
-        addedBy:userId,
+        addedBy: userId,
         needsApproval,
         status,
         addtionType,
         reason,
         addTo,
-        targetId
+        targetId,
+        applyDate
       });
 
       await newAddition.save();
-      const populated = await newAddition.populate("employee addedBy approvedBy rejectedBy");
+
+      const populated = await newAddition.populate(
+        "employee addedBy approvedBy rejectedBy"
+      );
+
       additions.push(populated);
     }
 
@@ -54,6 +72,7 @@ const userId = req.user._id;
     res.status(400).json({ message: err.message });
   }
 };
+
 
 // تحديث حالة الإضافة (موافقة / رفض / دفع)
 exports.updateAdditionStatus = async (req, res) => {

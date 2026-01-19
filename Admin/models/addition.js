@@ -17,7 +17,11 @@ const additionSchema = new mongoose.Schema(
     amount: { type: Number, required: true }, // القيمة النهائية للمكافأة
     needsApproval: { type: Boolean, default: false },
     status: { type: String, enum: ["انتظار الموافقة", "مقبول", "مرفوض", "مدفوع"], default: "مقبول" },
-    approveDate: { type: Date }, // تاريخ التطبيق
+    approveDate: { type: Date }, 
+     applyDate: {
+      type: Date,
+      required: true
+    },
     approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     rejectedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" }
   },
