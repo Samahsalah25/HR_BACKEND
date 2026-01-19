@@ -159,7 +159,8 @@ const lateExcuseRoutes = require("./Admin/routes/lateExcuseRoutes.js");
 const additionHoursRoutes = require('./Admin/routes/additionHoursRoutes.js');
 const absencePenaltyRoutes=require('./Admin/routes/absencePenaltyRoute.js');
 const adminPentaltyRoutes=require('./Admin/routes/AdminPenaltyRoute.js')
-const salaryAdvanceRoutes =require('./Admin/routes/salaryAdvanceRoutes.js')
+const salaryAdvanceRoutes =require('./Admin/routes/salaryAdvanceRoutes.js');
+const additionRoutes = require("./Admin/routes/additionRoutes.js");
 // DB & scripts
 const connectDB = require('./config/db.js');
 const seedAdmin = require('./scripts/seedAdmin.js');
@@ -232,7 +233,7 @@ app.use('/api/addition-hours', additionHoursRoutes);
 app.use('/api/absenceaplanty' ,absencePenaltyRoutes)
 app.use('/api/adminPenalty' ,adminPentaltyRoutes)
 app.use('/api/salaryAdvance' ,salaryAdvanceRoutes)
-
+app.use("/api/additions", additionRoutes);
 // ========= Socket.io =========
 const io = new Server(server, {
   cors: {
