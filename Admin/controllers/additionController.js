@@ -102,6 +102,43 @@ exports.updateAdditionStatus = async (req, res) => {
   }
 };
 
+
+// جلب كل الإضافات
+// exports.getAllAdditions = async (req, res) => {
+//   try {
+//     const { month, year } = req.query;
+
+//     let filter = {};
+
+//     if (month && year) {
+//       const startDate = new Date(year, month - 1, 1); // أول يوم في الشهر
+//       const endDate = new Date(year, month, 1);       // أول يوم في الشهر اللي بعده
+
+//       filter.createdAt = {
+//         $gte: startDate,
+//         $lt: endDate
+//       };
+//     }
+
+//    const additions = await Addition.find(filter)
+//   .populate({
+//     path: "employee",
+//     select: "name employeeNumber jobTitle department workplace",
+//     populate: [
+//       { path: "department", select: "name" },
+//       { path: "workplace", select: "name" }
+//     ]
+//   })
+//   .populate("addedBy", "name")
+//   .populate("approvedBy", "name")
+//   .populate("rejectedBy", "name")
+//   .sort({ createdAt: -1 });
+
+//     res.json(additions);
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
 // جلب كل الإضافات
 exports.getAllAdditions = async (req, res) => {
   try {
@@ -110,8 +147,8 @@ exports.getAllAdditions = async (req, res) => {
     let filter = {};
 
     if (month && year) {
-      const startDate = new Date(year, month - 1, 1); // أول يوم في الشهر
-      const endDate = new Date(year, month, 1);       // أول يوم في الشهر اللي بعده
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 1);
 
       filter.createdAt = {
         $gte: startDate,
@@ -119,19 +156,38 @@ exports.getAllAdditions = async (req, res) => {
       };
     }
 
-   const additions = await Addition.find(filter)
-  .populate({
-    path: "employee",
-    select: "name employeeNumber jobTitle department workplace",
-    populate: [
-      { path: "department", select: "name" },
-      { path: "workplace", select: "name" }
-    ]
-  })
-  .populate("addedBy", "name")
-  .populate("approvedBy", "name")
-  .populate("rejectedBy", "name")
-  .sort({ createdAt: -1 });
+    // =========================
+    // 🟢 تحويل المقبول → مدفوع تلقائي
+    // =========================
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // بداية اليوم
+
+    await Addition.updateMany(
+      {
+        status: "مقبول",
+        applyDate: { $lte: today }
+      },
+      {
+        $set: { status: "مدفوع" }
+      }
+    );
+
+    // =========================
+    // جلب البيانات
+    // =========================
+    const additions = await Addition.find(filter)
+      .populate({
+        path: "employee",
+        select: "name employeeNumber jobTitle department workplace",
+        populate: [
+          { path: "department", select: "name" },
+          { path: "workplace", select: "name" }
+        ]
+      })
+      .populate("addedBy", "name")
+      .populate("approvedBy", "name")
+      .populate("rejectedBy", "name")
+      .sort({ createdAt: -1 });
 
     res.json(additions);
   } catch (err) {
