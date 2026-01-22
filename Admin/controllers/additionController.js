@@ -140,6 +140,9 @@ exports.updateAdditionStatus = async (req, res) => {
 //   }
 // };
 // جلب كل الإضافات
+const Addition = require("../models/additionSchema");
+
+// جلب كل الإضافات
 exports.getAllAdditions = async (req, res) => {
   try {
     const { month, year } = req.query;
@@ -157,10 +160,9 @@ exports.getAllAdditions = async (req, res) => {
     }
 
     // =========================
-    // 🟢 تحويل المقبول → مدفوع تلقائي
+    // 🟢 تحديث الحالة تلقائياً (مقبول → مدفوع)
     // =========================
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // بداية اليوم
 
     await Addition.updateMany(
       {
@@ -173,7 +175,7 @@ exports.getAllAdditions = async (req, res) => {
     );
 
     // =========================
-    // جلب البيانات
+    // 🔵 جلب البيانات
     // =========================
     const additions = await Addition.find(filter)
       .populate({
@@ -189,7 +191,29 @@ exports.getAllAdditions = async (req, res) => {
       .populate("rejectedBy", "name")
       .sort({ createdAt: -1 });
 
-    res.json(additions);
+    // =========================
+    // 🟣 تحديد حالة الموافقة الإدارية
+    // =========================
+    const formattedAdditions = additions.map(addition => {
+      let approvalStatus = "-";
+
+      if (addition.needsApproval) {
+        if (addition.status === "انتظار الموافقة") {
+          approvalStatus = "قيد الانتظار";
+        } else if (addition.status === "مقبول" || addition.status === "مدفوع") {
+          approvalStatus = "مقبول";
+        } else if (addition.status === "مرفوض") {
+          approvalStatus = "مرفوض";
+        }
+      }
+
+      return {
+        ...addition.toObject(),
+        approvalStatus
+      };
+    });
+
+    res.status(200).json(formattedAdditions);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
