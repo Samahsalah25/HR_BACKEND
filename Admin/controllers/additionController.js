@@ -1,5 +1,6 @@
 const Addition = require("../models/addition");
 const Employee = require("../models/employee");
+const AdditionHours = require("../models/AdditionHours");
 
 // إنشاء الإضافة (موظف واحد / قسم / كل الموظفين)
 exports.createAddition = async (req, res) => {
@@ -218,5 +219,107 @@ exports.getAllAdditions = async (req, res) => {
     res.status(200).json(formattedAdditions);
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+
+//  هجيب هنا كل الاضافات لموظف معين 
+
+exports.getEmployeeAdditions = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+    const today = new Date();
+
+    // ======================
+    // 1️⃣ تحديث تلقائي (مقبول → مدفوع)
+    // ======================
+    await Addition.updateMany(
+      {
+        employee: employeeId,
+        status: "مقبول",
+        applyDate: { $lte: today }
+      },
+      { $set: { status: "مدفوع" } }
+    );
+
+    // ======================
+    // 2️⃣ المكافآت / الإضافات المالية
+    // ======================
+    const additions = await Addition.find({ employee: employeeId })
+      .populate("employee", "name department jobTitle employeeNumber")
+      .populate("addedBy", "name")
+      .lean();
+
+    const formattedAdditions = additions.map(a => {
+      let approvalStatus = "-";
+
+      if (a.needsApproval) {
+        if (a.status === "انتظار الموافقة") approvalStatus = "قيد الانتظار";
+        else if (a.status === "مرفوض") approvalStatus = "مرفوض";
+        else approvalStatus = "مقبول";
+      }
+
+      return {
+        type: "مكافأة",
+        reason: a.addtionType === "أخرى" ? a.reason : a.addtionType,
+        amount: a.amount,
+        applyDate: a.applyDate,
+        createdAt: a.createdAt,
+        status: a.status, // مدفوع / مقبول / انتظار الموافقة
+        approvalStatus,
+        addedBy: a.addedBy?.name || "-",
+        employee: {
+          name: a.employee?.name || "-",
+          department: a.employee?.department?.name || "-",
+          jobTitle: a.employee?.jobTitle || "-",
+          employeeNumber: a.employee?.employeeNumber || "-"
+        }
+      };
+    });
+
+    // ======================
+    // 3️⃣ الساعات الإضافية
+    // ======================
+    const additionHours = await AdditionHours.find({
+      employeeId,
+      status: "approved"
+    })
+      .populate("employeeId", "name department jobTitle employeeNumber")
+      .lean();
+
+    const formattedHours = additionHours.map(h => ({
+      type: "ساعات إضافية",
+      reason: "ساعات إضافية",
+      amount: h.amount,
+      applyDate: h.date,
+      createdAt: h.createdAt,
+      status: "مدفوع",
+      approvalStatus: "مقبول",
+      addedBy: "-", // محسوبة تلقائي
+      employee: {
+        name: h.employeeId?.name || "-",
+        department: h.employeeId?.department?.name || "-",
+        jobTitle: h.employeeId?.jobTitle || "-",
+        employeeNumber: h.employeeId?.employeeNumber || "-"
+      }
+    }));
+
+    // ======================
+    // 4️⃣ دمج الكل
+    // ======================
+    const result = [...formattedAdditions, ...formattedHours].sort(
+      (a, b) => new Date(b.applyDate) - new Date(a.applyDate)
+    );
+
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      message: "خطأ في جلب الإضافات",
+      error: err.message
+    });
   }
 };

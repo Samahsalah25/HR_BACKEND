@@ -11,5 +11,7 @@ router.patch("/:id/status", additionController.updateAdditionStatus);
 
 // جلب كل الإضافات
 router.get("/", additionController.getAllAdditions);
+router.get("/employee-additions/:employeeId",additionController.getEmployeeAdditions);
+
 
 module.exports = router;
