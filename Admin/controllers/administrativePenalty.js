@@ -361,7 +361,105 @@ const getEmployeesByBranchAndDepartment = async (req, res) => {
   }
 };
 
+// خصومات  موظف معيت
+const getEmployeePenalties = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
 
+    const STATUS_MAP = {
+      APPROVED: "معتمد",
+      APPLIED :"معتمد" ,
+      REJECTED: "مرفوض",
+      PENDING: "قيد الانتظار",
+      مقبول: "معتمد",
+      مرفوض: "مرفوض",
+      قيد_الانتظار: "قيد الانتظار"
+    };
+
+    const mapStatus = (status) =>
+      STATUS_MAP[status] || status;
+
+    // ⏱ Late Excuses
+    const lateExcuses = await LateExcuse.find({ employee: employeeId })
+      .populate({
+        path: "employee",
+        select: "name employeeNumber jobTitle department",
+        populate: { path: "department", select: "name" }
+      })
+      .populate("appliedBy", "name")
+      .lean();
+
+    // 🚫 Absence Penalties
+    const absencePenalties = await AbsencePenalty.find({ employee: employeeId })
+      .populate({
+        path: "employee",
+        select: "name employeeNumber jobTitle department",
+        populate: { path: "department", select: "name" }
+      })
+      .populate("appliedBy", "name")
+      .lean();
+
+    // ⚠ Admin Penalties
+    const adminPenalties = await AdminPenalty.find({ employee: employeeId })
+      .populate({
+        path: "employee",
+        select: "name employeeNumber jobTitle department",
+        populate: { path: "department", select: "name" }
+      })
+      .populate("appliedBy", "name")
+      .lean();
+
+    // 🔁 Unified Response
+    const penalties = [
+      ...lateExcuses.map(p => ({
+        reason: p.reason,
+        amount: p.penaltyAmount,
+        appliedDate: p.createdAt,
+        status: mapStatus(p.status),
+        employeeName: p.employee.name,
+        department: p.employee.department?.name,
+        jobTitle: p.employee.jobTitle,
+        employeeNumber: p.employee.employeeNumber,
+        addedBy: p.appliedBy?.name || "-",
+        type: "تأخير"
+      })),
+
+      ...absencePenalties.map(p => ({
+        reason: "غياب",
+        amount: p.penaltyAmount,
+        appliedDate: p.createdAt,
+        status: "معتمد", // الغياب خصم مباشر
+        employeeName: p.employee.name,
+        department: p.employee.department?.name,
+        jobTitle: p.employee.jobTitle,
+        employeeNumber: p.employee.employeeNumber,
+        addedBy: p.appliedBy?.name || "-",
+        type: "غياب"
+      })),
+
+      ...adminPenalties.map(p => ({
+        reason:
+          p.violationType === "أخرى"
+            ? p.customViolation
+            : p.violationType,
+        amount: p.penaltyAmount,
+        appliedDate: p.appliedDate,
+        status: mapStatus(p.status),
+        employeeName: p.employee.name,
+        department: p.employee.department?.name,
+        jobTitle: p.employee.jobTitle,
+        employeeNumber: p.employee.employeeNumber,
+        addedBy: p.appliedBy?.name || "-",
+        type: "مخالفة إدارية"
+      }))
+    ];
+
+    res.json({ success: true, data: penalties });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "خطأ في السيرفر" });
+  }
+};
 
 // get departments 
-module.exports = { createAdminPenalty  ,getAllPenalties ,getPenaltyDetail ,getDepartmentsByBranch ,getEmployeesByBranchAndDepartment};
+module.exports = { createAdminPenalty  ,getAllPenalties ,getPenaltyDetail ,getEmployeePenalties ,getDepartmentsByBranch ,getEmployeesByBranchAndDepartment};

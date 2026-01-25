@@ -77,7 +77,8 @@ exports.createAddition = async (req, res) => {
 // تحديث حالة الإضافة (موافقة / رفض / دفع)
 exports.updateAdditionStatus = async (req, res) => {
   try {
-    const { status, adminId } = req.body;
+    const { status } = req.body;
+    const adminId = req.user._id;
     const addition = await Addition.findById(req.params.id);
     if (!addition) return res.status(404).json({ message: "Not found" });
 
@@ -139,6 +140,7 @@ exports.updateAdditionStatus = async (req, res) => {
 //     res.status(500).json({ message: err.message });
 //   }
 // };
+// jjnnvgh
 // جلب كل الإضافات
 
 

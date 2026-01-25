@@ -46,7 +46,7 @@ department: {
   status: { 
     type: String, 
     enum: ["APPLIED", "PENDING", "APPROVED", "REJECTED"],
-    default: "APPLIED"
+    default: "PENDING"
   },
 
   appliedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // HR

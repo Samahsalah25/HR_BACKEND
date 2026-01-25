@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { createAdminPenalty ,getAllPenalties ,getPenaltyDetail ,getDepartmentsByBranch ,getEmployeesByBranchAndDepartment } = require("../controllers/administrativePenalty");
+const { createAdminPenalty ,getAllPenalties , getEmployeePenalties,getPenaltyDetail ,getDepartmentsByBranch ,getEmployeesByBranchAndDepartment } = require("../controllers/administrativePenalty");
 const authenticate = require("../middlesware/authenticate"); // لو عندك middleware لتسجيل الدخول
 
 router.post("/", authenticate, createAdminPenalty);
@@ -15,6 +15,7 @@ router.get(
   authenticate,        // لو عندك auth
   getDepartmentsByBranch
 );
+router.get('/getEmployeePenalties/:employeeId', authenticate,getEmployeePenalties)
 
 router.get('/getPenaltyDetail/:type/:id' ,authenticate ,getPenaltyDetail)
 module.exports = router;
