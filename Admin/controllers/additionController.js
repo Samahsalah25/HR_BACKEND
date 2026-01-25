@@ -243,12 +243,17 @@ exports.getEmployeeAdditions = async (req, res) => {
     );
 
     // ======================
-    // 2️⃣ المكافآت / الإضافات المالية
+    //  المكافآت / الإضافات المالية
     // ======================
-    const additions = await Addition.find({ employee: employeeId })
-      .populate("employee", "name department jobTitle employeeNumber")
-      .populate("addedBy", "name")
-      .lean();
+  const additions = await Addition.find({ employee: employeeId })
+  .populate({
+    path: "employee",
+    select: "name jobTitle employeeNumber department",
+    populate: { path: "department", select: "name" } // هنا نجيب اسم القسم
+  })
+  .populate("addedBy", "name")
+  .lean();
+
 
     const formattedAdditions = additions.map(a => {
       let approvalStatus = "-";
@@ -278,14 +283,18 @@ exports.getEmployeeAdditions = async (req, res) => {
     });
 
     // ======================
-    // 3️⃣ الساعات الإضافية
+    //  الساعات الإضافية
     // ======================
-    const additionHours = await AdditionHours.find({
-      employeeId,
-      status: "approved"
-    })
-      .populate("employeeId", "name department jobTitle employeeNumber")
-      .lean();
+   const additionHours = await AdditionHours.find({
+  employeeId,
+  status: "approved"
+})
+  .populate({
+    path: "employeeId",
+    select: "name jobTitle employeeNumber department",
+    populate: { path: "department", select: "name" }
+  })
+  .lean();
 
     const formattedHours = additionHours.map(h => ({
       type: "ساعات إضافية",
