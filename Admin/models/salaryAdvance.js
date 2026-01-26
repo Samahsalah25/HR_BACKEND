@@ -111,13 +111,15 @@ const salaryAdvanceSchema = new mongoose.Schema({
 
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 
-  // تتبع كل الأحداث
-  hrApprovedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  hrApprovedAt: { type: Date },
+ 
+  approvedBy: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: 'User'
+},
 
-  adminApprovedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  adminApprovedAt: { type: Date },
-
+approvedAt: {
+  type: Date
+},
   rejectedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   rejectedAt: { type: Date },
 
