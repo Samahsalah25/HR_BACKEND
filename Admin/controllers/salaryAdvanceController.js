@@ -200,6 +200,90 @@ const createInstallments = async (salaryAdvance) => {
 
 
 // 
+// exports.createSalaryAdvance = async (req, res) => {
+//   try {
+//     const { employeeId, amount, installmentsCount, startDate, notes, requiresAdminApproval } = req.body;
+//     const isHR = req.user.role === 'HR';
+//     let employee;
+
+//     // تحويل القيم
+//     const parsedAmount = Number(amount);
+//     const parsedInstallmentsCount = Number(installmentsCount);
+//     const parsedStartDate = new Date(startDate);
+
+//     // Validation
+//     if (!employeeId)
+//       return res.status(400).json({ message: 'Employee ID is required' });
+
+//     if (isNaN(parsedAmount) || parsedAmount <= 0)
+//       return res.status(400).json({ message: 'Invalid amount' });
+
+//     if (isNaN(parsedInstallmentsCount) || parsedInstallmentsCount <= 0)
+//       return res.status(400).json({ message: 'Invalid installments count' });
+
+//     if (isNaN(parsedStartDate.getTime()))
+//       return res.status(400).json({ message: 'Invalid start date' });
+
+//     // تحديد الموظف
+//     if (isHR && employeeId) {
+//       employee = await Employee.findById(employeeId);
+//       if (!employee)
+//         return res.status(404).json({ message: 'Employee not found' });
+//     } else {
+//       employee = await Employee.findOne({ user: req.user._id });
+//       if (!employee)
+//         return res.status(404).json({ message: 'Employee not found for this user' });
+//     }
+
+//     // حساب القسط
+//     const calculatedInstallmentAmount =
+//       parsedAmount / parsedInstallmentsCount;
+
+//     /**
+//      *  تحديد الحالة
+//      * - موظف عادي → pending
+//      * - HR + موافقة إدارية → forwarded
+//      * - HR بدون موافقة إدارية → approved
+//      */
+//     let status = 'pending';
+
+//     if (isHR && employeeId) {
+//       status = requiresAdminApproval ? 'forwarded' : 'approved';
+//     }
+
+//     // إنشاء السلفة
+//     const salaryAdvance = await SalaryAdvance.create({
+//       employee: employee._id,
+//       amount: parsedAmount,
+//       installmentsCount: parsedInstallmentsCount,
+//       installmentAmount: calculatedInstallmentAmount,
+//       startDate: parsedStartDate,
+//       notes,
+//       remainingAmount: parsedAmount,
+//       status,
+//       createdBy: req.user._id,
+//       type: 'سلفة من الراتب',
+//     });
+
+//     // لو اتعتمدت مباشرة → توليد الأقساط
+//     if (salaryAdvance.status === 'approved') {
+//       await createInstallments(salaryAdvance);
+//     }
+
+//     res.status(201).json({
+//       success: true,
+//       message: 'Salary advance created successfully',
+//       salaryAdvance,
+//     });
+
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({
+//       message: 'Error creating salary advance',
+//       error: error.message,
+//     });
+//   }
+// };
 exports.createSalaryAdvance = async (req, res) => {
   try {
     const { employeeId, amount, installmentsCount, startDate, notes, requiresAdminApproval } = req.body;
@@ -211,10 +295,7 @@ exports.createSalaryAdvance = async (req, res) => {
     const parsedInstallmentsCount = Number(installmentsCount);
     const parsedStartDate = new Date(startDate);
 
-    // Validation
-    if (!employeeId)
-      return res.status(400).json({ message: 'Employee ID is required' });
-
+    // Validation بسيطة
     if (isNaN(parsedAmount) || parsedAmount <= 0)
       return res.status(400).json({ message: 'Invalid amount' });
 
@@ -226,27 +307,22 @@ exports.createSalaryAdvance = async (req, res) => {
 
     // تحديد الموظف
     if (isHR && employeeId) {
+      // HR يدخل employeeId → يعمل السلفة لأي موظف
       employee = await Employee.findById(employeeId);
       if (!employee)
         return res.status(404).json({ message: 'Employee not found' });
     } else {
+      // الموظف العادي → ياخد نفسه
       employee = await Employee.findOne({ user: req.user._id });
       if (!employee)
-        return res.status(404).json({ message: 'Employee not found for this user' });
+        return res.status(400).json({ message: 'Employee profile not found. Contact HR.' });
     }
 
-    // حساب القسط
-    const calculatedInstallmentAmount =
-      parsedAmount / parsedInstallmentsCount;
+    // حساب قيمة القسط
+    const calculatedInstallmentAmount = parsedAmount / parsedInstallmentsCount;
 
-    /**
-     *  تحديد الحالة
-     * - موظف عادي → pending
-     * - HR + موافقة إدارية → forwarded
-     * - HR بدون موافقة إدارية → approved
-     */
-    let status = 'pending';
-
+    // تحديد الحالة
+    let status = 'pending'; // الموظف العادي يروح للـ HR
     if (isHR && employeeId) {
       status = requiresAdminApproval ? 'forwarded' : 'approved';
     }
@@ -284,6 +360,7 @@ exports.createSalaryAdvance = async (req, res) => {
     });
   }
 };
+
 
 
 /**
