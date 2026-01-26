@@ -325,7 +325,7 @@ let requiresAdminApprovalBool = requiresAdminApproval === 'true' || requiresAdmi
     // تحديد الحالة
     let status = 'pending'; // الموظف العادي يروح للـ HR
     if (isHR && employeeId) {
-      status = requiresAdminApproval ? 'forwarded' : 'approved';
+      status = requiresAdminApprovalBool ? 'forwarded' : 'approved';
     }
 
     // إنشاء السلفة
@@ -342,7 +342,7 @@ let requiresAdminApprovalBool = requiresAdminApproval === 'true' || requiresAdmi
   type: 'سلفة من الراتب',
   approvedBy: status === 'approved' ? req.user._id : null,
   approvedAt: status === 'approved' ? new Date() : null,
-  requiresAdminApproval: requiresAdminApproval || false,
+ requiresAdminApproval: requiresAdminApprovalBool,
 });
 
 
