@@ -382,31 +382,39 @@ exports.getRequests = async (req, res) => {
 
     /** 2️⃣ السلف - تجيب بس لو مفيش type محدد */
     let borrows = [];
-    if (!type) { // السلف تظهر فقط عند عرض الكل
-    borrows = await SalaryAdvance.find({
-  $nor: [
-    {
-      requiresAdminApproval: true,
-      status: 'pending'
-    }
-  ]
-})
+   if (!type) {
+  borrows = await SalaryAdvance.find({
+    $nor: [
+      {
+        requiresAdminApproval: true,
+        status: 'pending'
+      }
+    ]
+  })
+  .populate({
+    path: 'employee',
+    select: 'name department',
+    populate: { path: 'department', select: 'name' }
+  })
+  .sort({ createdAt: -1 })
 
+  borrows = borrows.map(b => ({
+    id: b._id,
+    employeeName: b.employee.name,
+    department: b.employee.department?.name || null,
+    type: 'سلفة',
+    submittedAt: b.createdAt,
+    status: mapBorrowStatus(b.status),
+    decisionDate:
+      b.status === 'approved'
+        ? b.approvedAt
+        : b.status === 'rejected'
+        ? b.rejectedAt
+        : null,
+    __source: 'borrow'
+  }));
+}
 
-      borrows = borrows
-        .filter(b => b.employee)
-        .map(b => ({
-          id: b._id,
-          employeeName: b.employee.name,
-          department: b.employee.department?.name || null,
-          type: 'سلفة',
-          submittedAt: b.createdAt,
-          status: mapBorrowStatus(b.status),
-          decisionDate: b.status === 'approved' ? b.approvedAt 
-                         : (b.status === 'rejected' ? b.rejectedAt : null),
-          __source: 'borrow'
-        }));
-    }
 
     /** 3️⃣ دمج الطلبات + السلف */
     let items = [...requests, ...borrows];
