@@ -596,12 +596,14 @@ exports.getMySalaryAdvances = async (req, res) => {
 
       const remainingAmount = advance.amount - totalPaid;
 
-      // 🔥 توحيد الحالات مع getSalaryAdvances
-      let status = 'معتمد';
-      if (advance.status === 'rejected') status = 'مرفوض';
-      else if (advance.status === 'completed' && remainingAmount === 0) status = 'تم السداد';
-      else if (advance.status === 'approved' && totalPaid > 0) status = 'مدفوع للموظف';
-      else if (advance.status === 'approved') status = 'معتمد';
+      //  توحيد الحالات مع getSalaryAdvances
+   let status = 'معتمد';
+
+if (advance.status === 'rejected') status = 'مرفوض';
+else if (advance.status === 'forwarded') status = 'في انتظار الموافقة';
+else if (advance.status === 'completed' && remainingAmount === 0) status = 'تم السداد';
+else if (advance.status === 'approved' && totalPaid > 0) status = 'مدفوع للموظف';
+else if (advance.status === 'approved') status = 'معتمد';
 
       result.push({
         _id: advance._id,
@@ -660,11 +662,13 @@ exports.getEmployeeSalaryAdvances = async (req, res) => {
       const remainingAmount = advance.amount - totalPaid;
 
       // توحيد حالات السلفة
-      let status = 'معتمد';
-      if (advance.status === 'rejected') status = 'مرفوض';
-      else if (advance.status === 'completed' && remainingAmount === 0) status = 'تم السداد';
-      else if (advance.status === 'approved' && totalPaid > 0) status = 'مدفوع للموظف';
-      else if (advance.status === 'approved') status = 'معتمد';
+         let status = 'معتمد';
+
+if (advance.status === 'rejected') status = 'مرفوض';
+else if (advance.status === 'forwarded') status = 'في انتظار الموافقة';
+else if (advance.status === 'completed' && remainingAmount === 0) status = 'تم السداد';
+else if (advance.status === 'approved' && totalPaid > 0) status = 'مدفوع للموظف';
+else if (advance.status === 'approved') status = 'معتمد';
 
       result.push({
         _id: advance._id,
