@@ -245,6 +245,26 @@ exports.rejectSalaryAdvance = async (req, res) => {
   }
 };
 
+// محول
+// تحويل السلفة للادمن
+exports.forwardSalaryAdvance = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const salaryAdvance = await SalaryAdvance.findById(id);
+    if (!salaryAdvance) return res.status(404).json({ message: 'Not found' });
+    if (req.user.role !== 'HR') return res.status(403).json({ message: 'Forbidden' });
+
+    salaryAdvance.status = 'forwarded';
+    salaryAdvance.forwardedBy = req.user._id;
+    salaryAdvance.forwardedAt = new Date();
+    await salaryAdvance.save();
+
+    res.json({ message: 'Salary advance forwarded to admin', salaryAdvance });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+};
 /**
  * جلب كل السلفات
  */
