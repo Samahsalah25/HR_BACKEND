@@ -328,18 +328,22 @@ exports.createSalaryAdvance = async (req, res) => {
     }
 
     // إنشاء السلفة
-    const salaryAdvance = await SalaryAdvance.create({
-      employee: employee._id,
-      amount: parsedAmount,
-      installmentsCount: parsedInstallmentsCount,
-      installmentAmount: calculatedInstallmentAmount,
-      startDate: parsedStartDate,
-      notes,
-      remainingAmount: parsedAmount,
-      status,
-      createdBy: req.user._id,
-      type: 'سلفة من الراتب',
-    });
+  const salaryAdvance = await SalaryAdvance.create({
+  employee: employee._id,
+  amount: parsedAmount,
+  installmentsCount: parsedInstallmentsCount,
+  installmentAmount: calculatedInstallmentAmount,
+  startDate: parsedStartDate,
+  notes,
+  remainingAmount: parsedAmount,
+  status,
+  createdBy: req.user._id,
+  type: 'سلفة من الراتب',
+  approvedBy: status === 'approved' ? req.user._id : null,
+  approvedAt: status === 'approved' ? new Date() : null,
+  requiresAdminApproval: requiresAdminApproval || false,
+});
+
 
     // لو اتعتمدت مباشرة → توليد الأقساط
     if (salaryAdvance.status === 'approved') {
