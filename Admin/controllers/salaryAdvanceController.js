@@ -198,6 +198,59 @@ console.log('djfh')
 };
 
 
+
+// 
+exports.createSalaryAdvance = async (req, res) => {
+  try {
+    const { employeeId, amount, installmentsCount, startDate, notes, requiresAdminApproval } = req.body;
+    const isHR = req.user.role === 'HR';
+    let employee;
+
+    const parsedAmount = Number(amount);
+    const parsedInstallmentsCount = Number(installmentsCount);
+    const parsedStartDate = new Date(startDate);
+
+    if (!employeeId) return res.status(400).json({ message: 'Employee ID is required' });
+
+    if (isHR && employeeId) {
+      employee = await Employee.findById(employeeId);
+      if (!employee) return res.status(404).json({ message: 'Employee not found' });
+    } else {
+      employee = await Employee.findOne({ user: req.user._id });
+      if (!employee) return res.status(404).json({ message: 'Employee not found for this user' });
+    }
+
+    const calculatedInstallmentAmount = parsedAmount / parsedInstallmentsCount;
+
+    const status = isHR && employeeId && !requiresAdminApproval ? 'approved' : 'pending';
+
+    const salaryAdvance = await SalaryAdvance.create({
+      employee: employee._id,
+      amount: parsedAmount,
+      installmentsCount: parsedInstallmentsCount,
+      installmentAmount: calculatedInstallmentAmount,
+      startDate: parsedStartDate,
+      notes,
+      remainingAmount: parsedAmount,
+      status,
+      createdBy: req.user._id,
+      type: 'سلفة من الراتب',
+      requiresAdminApproval: !!requiresAdminApproval,
+      hrApprovedBy: isHR && employeeId && !requiresAdminApproval ? req.user._id : null,
+      hrApprovedAt: isHR && employeeId && !requiresAdminApproval ? new Date() : null,
+    });
+
+    if (salaryAdvance.status === 'approved') {
+      await createInstallments(salaryAdvance);
+    }
+
+    res.status(201).json({ message: 'Salary advance created successfully', salaryAdvance });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 /**
  * اعتماد السلفة
  */
