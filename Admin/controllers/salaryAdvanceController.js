@@ -320,6 +320,7 @@ exports.createSalaryAdvance = async (req, res) => {
 
     // حساب قيمة القسط
     const calculatedInstallmentAmount = parsedAmount / parsedInstallmentsCount;
+let requiresAdminApprovalBool = requiresAdminApproval === 'true' || requiresAdminApproval === true;
 
     // تحديد الحالة
     let status = 'pending'; // الموظف العادي يروح للـ HR
