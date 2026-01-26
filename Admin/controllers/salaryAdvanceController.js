@@ -244,7 +244,7 @@ exports.createSalaryAdvance = async (req, res) => {
       await createInstallments(salaryAdvance);
     }
 
-    res.status(201).json({ message: 'Salary advance created successfully', salaryAdvance });
+    res.status(201).json({ message: 'Salary advance created successfully', salaryAdvance , success: true  });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: error.message });
