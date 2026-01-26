@@ -383,13 +383,15 @@ exports.getRequests = async (req, res) => {
     /** 2️⃣ السلف - تجيب بس لو مفيش type محدد */
     let borrows = [];
     if (!type) { // السلف تظهر فقط عند عرض الكل
-      borrows = await SalaryAdvance.find()
-        .sort({ createdAt: -1 })
-        .populate({
-          path: 'employee',
-          select: 'name department jobTitle',
-          populate: { path: 'department', select: 'name' }
-        });
+    borrows = await SalaryAdvance.find({
+  $nor: [
+    {
+      requiresAdminApproval: true,
+      status: 'pending'
+    }
+  ]
+})
+
 
       borrows = borrows
         .filter(b => b.employee)
