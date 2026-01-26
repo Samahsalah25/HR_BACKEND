@@ -1065,6 +1065,10 @@ const formattedSalaryAdvances = salaryAdvances.map(sa => {
     displayStatus = "مرفوض";
     decidedAt = sa.rejectedAt; // لو مرفوضة
   }
+   else if (sa.status === "forwareded") {
+    displayStatus = "محول";
+    
+  }
 
   return {
     _id: sa._id,
