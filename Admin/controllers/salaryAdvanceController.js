@@ -619,6 +619,7 @@ else if (advance.status === 'forwarded') status = 'في انتظار الموا�
 else if (advance.status === 'completed' && remainingAmount === 0) status = 'تم السداد';
 else if (advance.status === 'approved' && totalPaid > 0) status = 'مدفوع للموظف';
 else if (advance.status === 'approved') status = 'معتمد';
+else if (advance.status === 'pending') status = 'في انتظار الموافقة';
 
       result.push({
         id: advance._id,
@@ -681,6 +682,7 @@ else if (advance.status === 'forwarded') status = 'في انتظار الموا�
 else if (advance.status === 'completed' && remainingAmount === 0) status = 'تم السداد';
 else if (advance.status === 'approved' && totalPaid > 0) status = 'مدفوع للموظف';
 else if (advance.status === 'approved') status = 'معتمد';
+else if (advance.status === 'pending') status = 'في انتظار الموافقة';
 
       result.push({
         _id: advance._id,
@@ -746,6 +748,7 @@ else if (advance.status === 'forwarded') status = 'في انتظار الموا�
 else if (advance.status === 'completed' && remainingAmount === 0) status = 'تم السداد';
 else if (advance.status === 'approved' && totalPaid > 0) status = 'مدفوع للموظف';
 else if (advance.status === 'approved') status = 'معتمد';
+else if (advance.status === 'pending') status = 'في انتظار الموافقة';
 
       result.push({
         _id: advance._id,
