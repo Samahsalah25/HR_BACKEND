@@ -349,6 +349,8 @@ exports.getRequests = async (req, res) => {
           return 'مقبول';
         case 'rejected':
           return 'مرفوض';
+           case 'forwarded':
+          return 'محول';
         default:
           return status;
       }
