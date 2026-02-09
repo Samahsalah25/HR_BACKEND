@@ -6,7 +6,7 @@ const { createPenalty, getAllViolationPenalty, updatePenaltyByViolation } = requ
 
 
 
-router.post("/createPenalty", authenticate, validate, createPenalty)
+router.post("/createPenalty", authenticate, createPenalty)
 router.get("/getAllViolationPenalty", authenticate, getAllViolationPenalty)
 router.patch("/updatePenaltyByViolation/:id", authenticate, updatePenaltyByViolation)
 

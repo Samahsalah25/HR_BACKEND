@@ -16,7 +16,7 @@ exports.createPenalty = async (req, res) => {
 exports.getAllViolationPenalty = async (req, res) => {
   try {
     const violationPenalty = await violationPenaltySchema.find()
-      .populate("violationId", "nameAr nameEn descriptionAr descriptionEn") // جلب جميع الحقول المطلوبة
+      .populate("violationId", "nameAr nameEn descriptionAr descriptionEn") 
       .select("firstOccurrence secondOccurrence thirdOccurrence fourthOccurrence");
 
     if (violationPenalty.length === 0) {
