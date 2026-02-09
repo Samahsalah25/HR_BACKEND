@@ -6,7 +6,7 @@ exports.createViolation = async (req, res, next) => {
         const violation = await Violation.create({ nameEn, nameAr, descriptionEn, descriptionAr })
         res.status(201).json({ status: 'success', data: violation });
     } catch (error) {
-        res.status(400).json({ status: 'fail', message: err.message });
+        res.status(400).json({ status: 'fail', message: error.message });
     }
 }
 
