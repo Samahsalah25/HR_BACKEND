@@ -13,36 +13,28 @@ exports.createPenalty = async (req, res) => {
     }
 };
 
-exports.getAllViolationPenalty = async (req, res, next) => {
-    try {
-        const violations = await Violation.find().select("nameAr descriptionAr -_id");
+exports.getAllViolationPenalty = async (req, res) => {
+  try {
+    const violationPenalty = await violationPenaltySchema.find()
+      .populate("violationId", "nameAr nameEn descriptionAr descriptionEn") // جلب جميع الحقول المطلوبة
+      .select("firstOccurrence secondOccurrence thirdOccurrence fourthOccurrence");
 
-        if (violations.length === 0) {
-            return res.status(404).json({
-                status: "fail",
-                message: "no violation"
-            });
-        }
-        const violationPenalty = await violationPenaltySchema.find()
-            .select("firstOccurrence secondOccurrence thirdOccurrence fourthOccurrence -_id");
-        if (violationPenalty.length === 0) {
-            return res.status(404).json({
-                status: "fail",
-                message: "no violationPenalty"
-            });
-        }
-        res.status(200).json({
-            status: "success",
-            data: {
-                violations,
-                violationPenalty
-            }
-        });
-
-    } catch (err) {
-        res.status(400).json({ status: "fail", message: err.message });
+    if (violationPenalty.length === 0) {
+      return res.status(404).json({
+        status: "fail",
+        message: "no violationPenalty"
+      });
     }
-}
+
+    res.status(200).json({
+      status: "success",
+      data: violationPenalty
+    });
+  } catch (err) {
+    res.status(400).json({ status: "fail", message: err.message });
+  }
+};
+
 
 
 exports.updatePenaltyByViolation = async (req, res) => {

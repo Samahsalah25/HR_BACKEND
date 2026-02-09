@@ -7,7 +7,7 @@ const authenticate = require('../middlesware/authenticate');
 router.post("/createViolation", authenticate, createViolation) ;
 router.get("/getAllViolations", authenticate, getAllViolations);
 router.get("/getViolationById/:id", authenticate, getViolationById);
-router.patch("/updateViolation/:id", authenticate, updateViolation)
-router.delete("/deleteViolation/:id", authenticate, deleteViolation)
+router.patch("/updateViolation/:id", authenticate, updateViolation);
+router.delete("/deleteViolation/:id", authenticate, deleteViolation);
 
 module.exports = router;
