@@ -12,7 +12,7 @@ exports.createViolation = async (req, res, next) => {
 
 exports.getAllViolations = async (req, res, next) => {
     try {
-        const violations = await Violation.find().select("nameEn nameAr");
+        const violations = await Violation.find();
         if (violations.length === 0) {
             return res.status(404).json({
                 status: "fail",
