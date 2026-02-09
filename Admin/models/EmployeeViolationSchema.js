@@ -19,16 +19,9 @@ const employeeViolationSchema = new mongoose.Schema({
         required: [true, 'تاريخ المخالفة مطلوب'],
         default: Date.now
     },
-    appliedPenalty: {
-        penaltyType: String,
-        percentageValue: Number,
-        daysCount: Number,
-        deductFrom: String,
-        decisionText: String
-    },
     addedBy: {
         type: String,
-        default: 'Admin'
+        default: 'Admin' //
     }
 }, { timestamps: true });
 

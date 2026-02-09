@@ -13,36 +13,28 @@ exports.createPenalty = async (req, res) => {
     }
 };
 
-exports.getAllViolationPenalty = async (req, res, next) => {
+exports.getAllViolationPenalty = async (req, res) => {
     try {
-        const violations = await Violation.find().select("nameAr descriptionAr -_id");
-
-        if (violations.length === 0) {
-            return res.status(404).json({
-                status: "fail",
-                message: "no violation"
-            });
-        }
         const violationPenalty = await violationPenaltySchema.find()
-            .select("firstOccurrence secondOccurrence thirdOccurrence fourthOccurrence -_id");
+            .populate("violationId", "nameAr nameEn descriptionAr descriptionEn")
+            .select("firstOccurrence secondOccurrence thirdOccurrence fourthOccurrence");
+
         if (violationPenalty.length === 0) {
             return res.status(404).json({
                 status: "fail",
                 message: "no violationPenalty"
             });
         }
+
         res.status(200).json({
             status: "success",
-            data: {
-                violations,
-                violationPenalty
-            }
+            data: violationPenalty
         });
-
     } catch (err) {
         res.status(400).json({ status: "fail", message: err.message });
     }
-}
+};
+
 
 
 exports.updatePenaltyByViolation = async (req, res) => {
@@ -77,3 +69,35 @@ exports.updatePenaltyByViolation = async (req, res) => {
     }
 };
 
+exports.getViolationPenaltyById = async (req, res) => {
+    try {
+        const penalty = await violationPenaltySchema.findById(req.params.id)
+            .populate("violationId", "nameAr nameEn descriptionAr descriptionEn")
+            .select("firstOccurrence secondOccurrence thirdOccurrence fourthOccurrence");
+
+        if (!penalty) {
+            return res.status(404).json({ status: "fail", message: "Penalty not found" });
+        }
+
+        res.status(200).json({ status: "success", data: penalty });
+    } catch (err) {
+        res.status(400).json({ status: "fail", message: err.message });
+    }
+};
+
+// -------------------------
+// حذف عقوبة حسب ID
+// -------------------------
+exports.deletePenaltyById = async (req, res) => {
+    try {
+        const deleted = await violationPenaltySchema.findByIdAndDelete(req.params.id);
+
+        if (!deleted) {
+            return res.status(404).json({ status: "fail", message: "Penalty not found" });
+        }
+
+        res.status(200).json({ status: "success", message: "Deleted successfully" });
+    } catch (err) {
+        res.status(400).json({ status: "fail", message: err.message });
+    }
+};
