@@ -33,7 +33,7 @@ const violationPenaltySchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Violation',
         required: [true, 'يجب ربط العقوبات بنوع مخالفة'],
-        unique: true
+     
     },
     firstOccurrence: {
         type: occurrenceSchema,
