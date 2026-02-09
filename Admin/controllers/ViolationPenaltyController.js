@@ -69,3 +69,18 @@ exports.updatePenaltyByViolation = async (req, res) => {
     }
 };
 
+exports.getViolationPenaltyById = async (req, res) => {
+  try {
+    const penalty = await violationPenaltySchema.findById(req.params.id)
+      .populate("violationId", "nameAr nameEn descriptionAr descriptionEn")
+      .select("firstOccurrence secondOccurrence thirdOccurrence fourthOccurrence");
+
+    if (!penalty) {
+      return res.status(404).json({ status: "fail", message: "Penalty not found" });
+    }
+
+    res.status(200).json({ status: "success", data: penalty });
+  } catch (err) {
+    res.status(400).json({ status: "fail", message: err.message });
+  }
+};
