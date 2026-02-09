@@ -39,7 +39,7 @@
 //      origin: "*",   // يسمح لأي دومين
 //   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 //   credentials: true
-  
+
 //   }
 // });
 
@@ -149,18 +149,22 @@ const attendanceRoute = require('./Admin/routes/attendanceRoutes.js');
 const leaveRoute = require('./Admin/routes/leaveRoutes.js');
 const meetingRouts = require('./Admin/routes/meetingRoute.js');
 const systemSettingsRoutes = require("./Admin/routes/SystemSettingsRoute.js");
-const adminDashboardRoute =require("./Admin/routes/adminDashboardRoute.js");
+const adminDashboardRoute = require("./Admin/routes/adminDashboardRoute.js");
 const residencyRoutesEmployee = require("./Admin/routes/residencyEmployeeRoutes.js");
-const reportexcelReports=require("./Admin/routes/reportForexcelRoute.js");
-const jobOpeningRoutes=require("./Admin/routes/jobOpeningRoutes.js");
-const applicationRoutes=require("./Admin/routes/applicantRoutes.js");
-const interviewRoutes= require("./Admin/routes/interviewRoutes.js")
+const reportexcelReports = require("./Admin/routes/reportForexcelRoute.js");
+const jobOpeningRoutes = require("./Admin/routes/jobOpeningRoutes.js");
+const applicationRoutes = require("./Admin/routes/applicantRoutes.js");
+const interviewRoutes = require("./Admin/routes/interviewRoutes.js")
 const lateExcuseRoutes = require("./Admin/routes/lateExcuseRoutes.js");
 const additionHoursRoutes = require('./Admin/routes/additionHoursRoutes.js');
-const absencePenaltyRoutes=require('./Admin/routes/absencePenaltyRoute.js');
-const adminPentaltyRoutes=require('./Admin/routes/AdminPenaltyRoute.js')
-const salaryAdvanceRoutes =require('./Admin/routes/salaryAdvanceRoutes.js');
+const absencePenaltyRoutes = require('./Admin/routes/absencePenaltyRoute.js');
+const adminPentaltyRoutes = require('./Admin/routes/AdminPenaltyRoute.js')
+const salaryAdvanceRoutes = require('./Admin/routes/salaryAdvanceRoutes.js');
 const additionRoutes = require("./Admin/routes/additionRoutes.js");
+const violationRoutes = require("./Admin/routes/violationRoutes.js")
+const ViolationPenaltyRoutes = require("./Admin/routes/ViolationPenaltyRoutes.js")
+
+//
 // DB & scripts
 const connectDB = require('./config/db.js');
 const seedAdmin = require('./scripts/seedAdmin.js');
@@ -175,9 +179,9 @@ const server = http.createServer(app);
 
 // ========= CORS إعدادات =========
 const allowedOrigins = [
-  "http://localhost:5173", 
-  "https://blanchedalmond-spider-630297.hostingersite.com" ,
- "https://hr-ui-update.vercel.app"
+  "http://localhost:5173",
+  "https://blanchedalmond-spider-630297.hostingersite.com",
+  "https://hr-ui-update.vercel.app"
 ];
 
 const corsOptions = {
@@ -188,7 +192,7 @@ const corsOptions = {
       callback(new Error("Not allowed by CORS"));
     }
   },
-  methods: ["GET", "POST", "PUT", "DELETE" ,"PATCH", "OPTIONS"],
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   credentials: true
 };
 
@@ -222,23 +226,26 @@ app.use('/api/attendance', attendanceRoute);
 app.use('/api/meeting', meetingRouts);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/settings/system", systemSettingsRoutes);
-app.use("/api/admindahshboard" ,adminDashboardRoute) ;
+app.use("/api/admindahshboard", adminDashboardRoute);
 app.use("/api/residenciesEmployee", residencyRoutesEmployee);
-app.use("/api/excelReports" ,reportexcelReports);
-app.use("/api/jobopening" ,jobOpeningRoutes);
-app.use("/api/applications",applicationRoutes);
+app.use("/api/excelReports", reportexcelReports);
+app.use("/api/jobopening", jobOpeningRoutes);
+app.use("/api/applications", applicationRoutes);
 app.use("/api/interviews", interviewRoutes);
 app.use("/api/late-excuses", lateExcuseRoutes);
 app.use('/api/addition-hours', additionHoursRoutes);
-app.use('/api/absenceaplanty' ,absencePenaltyRoutes)
-app.use('/api/adminPenalty' ,adminPentaltyRoutes)
-app.use('/api/salaryAdvance' ,salaryAdvanceRoutes)
+app.use('/api/absenceaplanty', absencePenaltyRoutes)
+app.use('/api/adminPenalty', adminPentaltyRoutes)
+app.use('/api/salaryAdvance', salaryAdvanceRoutes)
 app.use("/api/additions", additionRoutes);
+app.use("/api/violation", violationRoutes)
+app.use("/api/ViolationPenalty", ViolationPenaltyRoutes)
+
 // ========= Socket.io =========
 const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
-    methods: ["GET", "POST" ,"PATCH" ,"DELETE"],
+    methods: ["GET", "POST", "PATCH", "DELETE"],
     credentials: true
   }
 });
@@ -277,7 +284,7 @@ const PORT = process.env.PORT || 4000;
     setupAttendanceCron();
     startTaskStatusCron();
 
-    server.listen(PORT, () => { 
+    server.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
     });
   } catch (error) {
