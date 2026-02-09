@@ -84,3 +84,20 @@ exports.getViolationPenaltyById = async (req, res) => {
     res.status(400).json({ status: "fail", message: err.message });
   }
 };
+
+// -------------------------
+// حذف عقوبة حسب ID
+// -------------------------
+exports.deletePenaltyById = async (req, res) => {
+  try {
+    const deleted = await violationPenaltySchema.findByIdAndDelete(req.params.id);
+
+    if (!deleted) {
+      return res.status(404).json({ status: "fail", message: "Penalty not found" });
+    }
+
+    res.status(200).json({ status: "success", message: "Deleted successfully" });
+  } catch (err) {
+    res.status(400).json({ status: "fail", message: err.message });
+  }
+};
