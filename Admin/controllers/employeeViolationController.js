@@ -2,6 +2,8 @@ const EmployeeViolation = require("../models/EmployeeViolationSchema.js")
 const violationPenaltySchema = require("../models/violationPenaltySchema.js")
 const Violation = require("../models/ViolationFormSchema")
 
+
+//HR
 exports.createViolationRecord = async (req, res) => {
     try {
         const { employeeId, violationId } = req.body;
@@ -28,26 +30,6 @@ exports.createViolationRecord = async (req, res) => {
     }
 };
 
-// exports.getAllRecords = async (req, res) => {
-//     try {
-//         const records = await employeeViolationSchema.find()
-//             .populate('violationId', 'empName')
-//             .sort('-violationDate');
-
-//         const formattedData = records.map(r => ({
-//             id: r._id,
-//             violationTitle: r.violationId?.nameAr,
-//             date: r.violationDate.toLocaleDateString('en-GB'),
-//             occurrence: r.occurrenceNumber === 1 ? 'أول مرة' : r.occurrenceNumber === 2 ? 'ثاني مرة' : 'تكرار إضافي',
-//             penaltyType: r.appliedPenalty.penaltyType,
-//             addedBy: r.addedBy
-//         }));
-
-//         res.status(200).json({ status: 'success', data: formattedData });
-//     } catch (err) {
-//         res.status(400).json({ status: 'fail', message: err.message });
-//     }
-// };
 
 exports.getAllRecords = async (req, res) => {
     try {
@@ -79,5 +61,24 @@ exports.deleteRecord = async (req, res) => {
         res.status(200).json({ status: 'success', data: null });
     } catch (err) {
         res.status(400).json({ status: 'fail', message: err.message });
+    }
+};
+
+
+
+//Emp
+exports.getEmployeeViolations = async (req, res) => {
+    try {
+        const { employeeId } = req.params;
+        const violations = await EmployeeViolation.find(employeeId)
+            .populate('employeeId', 'name')
+            .populate('violationId', 'nameAr',)//all vio
+            .sort('-violationDate');
+        res.status(200).json({
+            success: true,
+            data: violations
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
 };
