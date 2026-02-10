@@ -919,13 +919,17 @@ if (String(employeeDoc.user._id) !== String(req.user._id)) {
   return res.status(403).json({ message: 'غير مسموح بتعديل هذا الطلب' });
 }
       // تحديث المرفقات
-      if (req.files && req.files.length > 0) {
-        const attachments = req.files.map(file => ({
-          filename: file.originalname,
-          url: `/uploads/requests/${file.filename}`
-        }));
-        request.attachments = [...request.attachments, ...attachments];
-      }
+    if (req.files && req.files.length > 0) {
+  for (const file of req.files) {
+    const result = await uploadToCloudinary(file.buffer, 'requests');
+
+    request.attachments.push({
+      filename: file.originalname,
+      url: result.secure_url
+    });
+  }
+}
+
 
       // تحديث النوع
       if (type) request.type = type;
