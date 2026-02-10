@@ -5,21 +5,16 @@ const path = require('path');
 const LeaveBalance=require('../models/leaveBalanceModel')
 const Notification = require('../models/notification');
 const SalaryAdvance = require('../models/salaryAdvance');
+const uploadToCloudinary = require('../../utlis/uploadToCloudinary');
 
 // هل المستخدم HR/Admin؟
 const isHRorAdmin = (user) => ['HR', 'ADMIN'].includes(user.role);
 
 // إعداد مكان التخزين للملفات
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/requests'); // فولدر محلي
-  },
-  filename: (req, file, cb) => {
-    const uniqueName = Date.now() + '-' + file.originalname;
-    cb(null, uniqueName);
-  }
-});
-const upload = multer({ storage });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+})
 
 // =============== Create (الموظف ينشئ طلب) ===============
 
@@ -45,13 +40,18 @@ exports.createRequest = [
       const employeeDoc = await Employee.findOne({ user: req.user._id });
       if (!employeeDoc) return res.status(404).json({ message: 'لم يتم العثور على بيانات الموظف' });
 
-      let attachments = [];
-      if (req.files && req.files.length > 0) {
-        attachments = req.files.map(file => ({
-          filename: file.originalname,
-          url: `/uploads/requests/${file.filename}`
-        }));
-      }
+   let attachments = [];
+
+if (req.files && req.files.length > 0) {
+  for (const file of req.files) {
+    const result = await uploadToCloudinary(file.buffer, 'requests');
+
+    attachments.push({
+      filename: file.originalname,
+      url: result.secure_url
+    });
+  }
+}
 
       // Parse البيانات لو جايه كـ JSON string
       const leaveData = leave && typeof leave === 'string' ? JSON.parse(leave) : leave;
