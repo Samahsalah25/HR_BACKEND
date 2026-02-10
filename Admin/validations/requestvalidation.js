@@ -83,7 +83,8 @@ const createRequestSchema = Joi.object({
     reason: Joi.string()
       .valid('انتهاء فترة الاستخدام', 'عطل', 'استبدال بعهدة جديدة', 'أخرى')
       .required(),
-    description: Joi.string().allow('', null)
+    description: Joi.string().allow('', null),
+      clearanceDate: Joi.date().required(),
   }).optional(),
 
   // مصروف / فاتورة
