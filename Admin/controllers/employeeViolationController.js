@@ -51,7 +51,7 @@ exports.getAllRecords = async (req, res) => {
 
     const records = await EmployeeViolation.find(filter)
       .populate('employeeId', 'name employeeNumber') // اسم الموظف والرقم الوظيفي
-      .populate('violationId', 'nameAr')        // عنوان المخالفة
+      .populate('violationId', 'nameAr nameEn descriptionAr')        // عنوان المخالفة
       .sort({ violationDate: -1 });
 
     // Format البيانات مباشرة عشان الفرونت
