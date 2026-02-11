@@ -34,12 +34,25 @@ exports.createViolationRecord = async (req, res) => {
 // ---------------------------
 // Backend: getAllRecords
 // ---------------------------
+// ---------------------------
+// Backend: getAllRecords with month/year filter
+// ---------------------------
 exports.getAllRecords = async (req, res) => {
   try {
-    const records = await EmployeeViolation.find()
+    const { month, year } = req.query; // جاي من الفرونت مثلا ?month=2&year=2026
+
+    let filter = {};
+    if (month && year) {
+      // فلترة حسب الشهر والسنة
+      const start = new Date(year, month - 1, 1); // بداية الشهر
+      const end = new Date(year, month, 0, 23, 59, 59, 999); // آخر يوم في الشهر
+      filter.violationDate = { $gte: start, $lte: end };
+    }
+
+    const records = await EmployeeViolation.find(filter)
       .populate('employeeId', 'name employeeNo') // اسم الموظف والرقم الوظيفي
-      .populate('violationId', 'nameAr')       // عنوان المخالفة
-      .sort({ violationDate: -1 });             // ترتيب حسب تاريخ المخالفة (أحدث أولاً)
+      .populate('violationId', 'nameAr')        // عنوان المخالفة
+      .sort({ violationDate: -1 });
 
     // Format البيانات مباشرة عشان الفرونت
     const formattedData = records.map(r => ({
@@ -60,6 +73,7 @@ exports.getAllRecords = async (req, res) => {
     res.status(400).json({ status: 'fail', message: err.message });
   }
 };
+
 
 
 exports.deleteRecord = async (req, res) => {
