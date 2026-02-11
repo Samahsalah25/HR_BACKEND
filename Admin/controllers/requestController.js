@@ -6,7 +6,6 @@ const LeaveBalance = require('../models/leaveBalanceModel')
 const Notification = require('../models/notification');
 const SalaryAdvance = require('../models/salaryAdvance');
 const uploadToCloudinary = require('../../utlis/uploadToCloudinary');
-const uploadToCloudinary = require('../../utlis/uploadToCloudinary');
 
 // هل المستخدم HR/Admin؟
 const isHRorAdmin = (user) => ['HR', 'ADMIN'].includes(user.role);
