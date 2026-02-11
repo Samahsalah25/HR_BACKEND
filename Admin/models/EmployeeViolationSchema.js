@@ -1,28 +1,36 @@
 const mongoose = require('mongoose');
+
 const employeeViolationSchema = new mongoose.Schema({
     employeeId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Employee',
-        required: [true, 'يجب تحديد الموظف']
+        required: true
     },
-    violationId: {
+    violationPenaltyId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Violation',
-        required: [true, 'يجب تحديد نوع المخالفة']
+        ref: 'ViolationPenalty',
+        required: true
     },
-    occurrenceNumber: {
+    currentOccurrence: {
         type: Number,
-        default: 1
+        enum: [1, 2, 3, 4],
+        required: true
     },
-    violationDate: {
-        type: Date,
-        required: [true, 'تاريخ المخالفة مطلوب'],
-        default: Date.now
-    },
-    addedBy: {
-        type: String,
-        default: 'Admin' //
-    }
+    // بيانات كل تكرار
+    occurrences: [
+        {
+            occurrenceNumber: Number,
+            date: { type: Date, default: Date.now },
+            addedBy: { type: String }, // الاسم
+            addedById: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // الـ user ID
+            penaltyType: { type: String },
+            percentageValue: { type: Number, default: 0 },
+            daysCount: { type: Number, default: 0 },
+            deductFrom: { type: String, default: null },
+            decisionText: { type: String, default: '' }
+        }
+    ]
+
 }, { timestamps: true });
 
 module.exports = mongoose.model('EmployeeViolation', employeeViolationSchema);
