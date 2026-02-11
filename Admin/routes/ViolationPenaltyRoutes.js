@@ -7,10 +7,11 @@ const { createPenalty, getAllViolationPenalty, updatePenaltyByViolation ,getViol
 
 
 router.post("/createPenalty", authenticate, createPenalty)
+router.post("/createPenalty", authenticate, createPenalty)
 router.get("/getAllViolationPenalty", authenticate, getAllViolationPenalty)
 router.get("/getViolationPenaltyById/:id",authenticate ,getViolationPenaltyById)
 router.patch("/updatePenaltyByViolation/:id", authenticate, updatePenaltyByViolation)
 router.delete("/deletePenalty/:id", authenticate, deletePenaltyById);
+router.delete("/deletePenalty/:id", authenticate, deletePenaltyById);
 
 module.exports = router;
-

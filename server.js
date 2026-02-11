@@ -163,6 +163,7 @@ const salaryAdvanceRoutes = require('./Admin/routes/salaryAdvanceRoutes.js');
 const additionRoutes = require("./Admin/routes/additionRoutes.js");
 const violationRoutes = require("./Admin/routes/violationRoutes.js")
 const ViolationPenaltyRoutes = require("./Admin/routes/ViolationPenaltyRoutes.js")
+const empoyeeViolationRoutes = require("./Admin/routes/employeeViolationRoutes.js")
 
 //
 // DB & scripts
@@ -240,7 +241,7 @@ app.use('/api/salaryAdvance', salaryAdvanceRoutes)
 app.use("/api/additions", additionRoutes);
 app.use("/api/violation", violationRoutes)
 app.use("/api/ViolationPenalty", ViolationPenaltyRoutes)
-
+app.use("/api/empoyeeViolation", empoyeeViolationRoutes)
 // ========= Socket.io =========
 const io = new Server(server, {
   cors: {
