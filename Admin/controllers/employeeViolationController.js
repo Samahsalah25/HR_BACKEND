@@ -1,8 +1,8 @@
 const EmployeeViolation = require("../models/EmployeeViolationSchema.js")
-const violationPenaltySchema = require("../models/violationPenaltySchema.js")
+const ViolationPenalty = require("../models/violationPenaltySchema.js")
 const Violation = require("../models/ViolationFormSchema")
 const Employee = require('../models/employee');
-
+const mongoose = require('mongoose');
 
 //HR
 // exports.createViolationRecord = async (req, res) => {
@@ -56,12 +56,93 @@ const Employee = require('../models/employee');
 //     }
 // };
 
+// exports.createViolationRecord = async (req, res) => {
+//     try {
+//         const { employeeId, violationPenaltyId, } = req.body;
+
+//         if (!mongoose.Types.ObjectId.isValid(employeeId) || !mongoose.Types.ObjectId.isValid(violationPenaltyId)) {
+//             return res.status(400).json({ message: 'Invalid IDs' });
+//         }
+
+//         // جلب العقوبة المرتبطة بالمخالفة
+//         const violationPenalty = await ViolationPenalty.findById(violationPenaltyId);
+//         if (!violationPenalty) {
+//             return res.status(404).json({ message: 'ViolationPenalty not found' });
+//         }
+
+//         // هل الموظف أخذ هذه المخالفة قبل كدا؟
+//         let employeeViolation = await EmployeeViolation.findOne({ employeeId, violationPenaltyId });
+
+//         let currentOccurrence = 1;
+
+//         if (employeeViolation) {
+//             currentOccurrence = employeeViolation.occurrences.length + 1;
+
+//             if (currentOccurrence > 4) {
+//                 return res.status(400).json({ message: 'تم تجاوز العدد الأقصى للتكرارات لهذه المخالفة' });
+//             }
+//         }
+
+//         // اختيار بيانات التكرار المناسب
+//         const occurrenceMap = {
+//             1: violationPenalty.firstOccurrence,
+//             2: violationPenalty.secondOccurrence,
+//             3: violationPenalty.thirdOccurrence,
+//             4: violationPenalty.fourthOccurrence
+//         };
+
+//         const currentPenalty = occurrenceMap[currentOccurrence];
+
+//         const occurrenceEntry = {
+//             occurrenceNumber: currentOccurrence,
+//             date: new Date(),
+//             addedBy: req.user?.name || 'Admin',
+//             addedById: req.user?.id || null, // ID المستخدم
+//             penaltyType: currentPenalty.penaltyType,
+//             percentageValue: currentPenalty.percentageValue || 0,
+//             daysCount: currentPenalty.daysCount || 0,
+//             deductFrom: currentPenalty.deductFrom || null,
+//             decisionText: currentPenalty.decisionText || ''
+//         };
+
+
+//         if (employeeViolation) {
+//             employeeViolation.occurrences.push(occurrenceEntry);
+//             employeeViolation.currentOccurrence = currentOccurrence;
+//             await employeeViolation.save();
+//         } else {
+//             employeeViolation = await EmployeeViolation.create({
+//                 employeeId,
+//                 violationPenaltyId,
+//                 currentOccurrence,
+//                 occurrences: [occurrenceEntry]
+//             });
+//         }
+
+//         res.status(200).json({
+//             message: `تم تسجيل المخالفة للتكرار رقم ${currentOccurrence}`,
+//             data: employeeViolation
+//         });
+
+//     } catch (error) {
+//         console.error(error);
+//         res.status(500).json({ message: 'حدث خطأ داخلي' });
+//     }
+// };
+
+
 exports.createViolationRecord = async (req, res) => {
     try {
-        const { employeeId, violationPenaltyId, } = req.body;
+        const { employeeId, violationPenaltyId } = req.body;
 
         if (!mongoose.Types.ObjectId.isValid(employeeId) || !mongoose.Types.ObjectId.isValid(violationPenaltyId)) {
             return res.status(400).json({ message: 'Invalid IDs' });
+        }
+
+        // جلب بيانات الموظف عشان نحسب من الراتب
+        const employee = await Employee.findOne({ user: employeeId });
+        if (!employee) {
+            return res.status(404).json({ message: 'Employee not found' });
         }
 
         // جلب العقوبة المرتبطة بالمخالفة
@@ -93,18 +174,31 @@ exports.createViolationRecord = async (req, res) => {
 
         const currentPenalty = occurrenceMap[currentOccurrence];
 
+        // --- الحسبة الجديدة بناءً على طلبك ---
+        const baseSalary = employee.salary?.base || 0;
+        let calculatedDeduction = 0;
+
+        // بنشوف نوع العقوبة المكتوب في الـ Penalty
+        if (currentPenalty.penaltyType === 'خصم أيام') {
+            const dayValue = baseSalary / 30;
+            calculatedDeduction = (currentPenalty.daysCount || 0) * dayValue;
+        }
+        else if (currentPenalty.penaltyType === 'خصم نسبة') {
+            calculatedDeduction = ((currentPenalty.percentageValue || 0) / 100) * baseSalary;
+        }
+
         const occurrenceEntry = {
             occurrenceNumber: currentOccurrence,
             date: new Date(),
             addedBy: req.user?.name || 'Admin',
-            addedById: req.user?.id || null, // ID المستخدم
+            addedById: req.user?.id || null,
             penaltyType: currentPenalty.penaltyType,
             percentageValue: currentPenalty.percentageValue || 0,
             daysCount: currentPenalty.daysCount || 0,
+            calculatedDeduction: Number(calculatedDeduction.toFixed(2)), // بنخزن الرقم هنا
             deductFrom: currentPenalty.deductFrom || null,
             decisionText: currentPenalty.decisionText || ''
         };
-
 
         if (employeeViolation) {
             employeeViolation.occurrences.push(occurrenceEntry);
@@ -120,7 +214,7 @@ exports.createViolationRecord = async (req, res) => {
         }
 
         res.status(200).json({
-            message: `تم تسجيل المخالفة للتكرار رقم ${currentOccurrence}`,
+            message: `تم تسجيل المخالفة بنجاح، قيمة الخصم: ${calculatedDeduction.toFixed(2)}`,
             data: employeeViolation
         });
 
