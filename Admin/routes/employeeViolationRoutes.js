@@ -7,7 +7,7 @@ const { createViolationRecord, getAllRecords, deleteRecord, getEmployeeViolation
 router.post("/createViolationRecord", authenticate, createViolationRecord)
 router.get("/getAllRecords", authenticate, getAllRecords)
 router.delete("/deleteRecord/:id", authenticate, deleteRecord)
-router.get("/getEmployeeViolations/:id", authenticate, getEmployeeViolations)
+router.get("/getEmployeeViolations", authenticate, getEmployeeViolations)
 
 
 

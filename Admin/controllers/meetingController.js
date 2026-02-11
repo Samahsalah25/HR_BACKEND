@@ -5,6 +5,7 @@ const { cleanupUploadedFile } = require("../../utlis/cleanupUploadedFile");
 const { io, onlineUsers } = require("../../server");
 const Notification = require("../models/notification");
 const mongoose = require("mongoose");
+const uploadToCloudinary = require('../../utlis/uploadToCloudinary');
 
 const createMeeting = async (req, res) => {
   try {
@@ -12,27 +13,29 @@ const createMeeting = async (req, res) => {
       title, subTitle, description, day, startTime, endTime,
       type, meetingLink, participants, repeat, status
     } = req.body;
-if (typeof participants === "string") {
-  try {
-    participants = JSON.parse(participants);
-  } catch {
-    participants = [];
-  }
-}
 
-if (typeof repeat === "string") {
-  try {
-    repeat = JSON.parse(repeat);
-  } catch {
-    repeat = { isRepeated: false };
-  }
-}
+    // تحويل البيانات النصية إلى JSON
+    if (typeof participants === "string") {
+      try { participants = JSON.parse(participants); } catch { participants = []; }
+    }
+    if (typeof repeat === "string") {
+      try { repeat = JSON.parse(repeat); } catch { repeat = { isRepeated: false }; }
+    }
+
     const creatorEmp = await Employee.findOne({ user: req.user._id });
     if (!creatorEmp) return res.status(404).json({ success: false, message: "المستخدم غير مرتبط بموظف" });
 
-    const attachments = req.file
-      ? [{ filename: req.file.filename, originalname: req.file.originalname, path: `/uploads/meetings/${req.file.filename}` }]
-      : [];
+    let attachments = [];
+    if (req.file) {
+      const result = await uploadToCloudinary(req.file.buffer, 'meetings');
+
+      attachments.push({
+        filename: req.file.filename,      // الاسم الذي ولده multer
+        originalname: req.file.originalname, // الاسم الأصلي للملف
+        url: result.secure_url
+      });
+    }
+    // ------------------------------------
 
     const io = req.app.get("io");
     const onlineUsers = req.app.get("onlineUsers");
@@ -48,6 +51,7 @@ if (typeof repeat === "string") {
     await originMeeting.save();
     const meetingsCreated = [originMeeting];
 
+    // منطق تكرار الاجتماعات
     if (repeat?.isRepeated) {
       const getNextDate = (currentDate, frequency) => {
         const next = new Date(currentDate);
@@ -67,8 +71,8 @@ if (typeof repeat === "string") {
         const newMeeting = new Meeting({
           title, subTitle, description,
           day: currentDate, startTime, endTime, type, meetingLink,
-          participants, attachments,
-          repeat: { ...repeat, repeatOriginId: originMeeting._id }, // مهم: جوه repeat
+          participants, attachments, // نفس المرفق لكل الاجتماعات المتكررة
+          repeat: { ...repeat, repeatOriginId: originMeeting._id },
           status, createdBy: creatorEmp._id
         });
 
@@ -77,33 +81,33 @@ if (typeof repeat === "string") {
       }
     }
 
-    // إشعارات لكل مشارك
+    // إرسال الإشعارات
     for (let participantId of participants) {
       const baseMsg = repeat?.isRepeated
-        ? `تمت إضافتك إلى اجتماع متكرر بعنوان "${title}" يبدأ من ${new Date(day).toLocaleDateString()} ويتكرر ${repeat.frequency} حتى ${new Date(repeat.repeatEndDate).toLocaleDateString()}`
-        : `تمت إضافتك إلى اجتماع بعنوان "${title}" يوم ${new Date(day).toLocaleDateString()}`;
+        ? `تمت إضافتك إلى اجتماع متكرر بعنوان "${title}"`
+        : `تمت إضافتك إلى اجتماع بعنوان "${title}"`;
 
       const notification = await Notification.create({
         employee: participantId,
         type: "meeting",
         message: baseMsg,
-      link: `/employee/meetings`,
+        link: `/employee/meetings`,
       });
 
       const socketId = onlineUsers.get(participantId.toString());
       if (socketId) io.to(socketId).emit("notification", notification);
     }
-console.log("📌 Meeting Saved:", meetingsCreated);
 
     res.status(201).json({
       success: true,
       message: repeat?.isRepeated
-        ? `تم إنشاء ${meetingsCreated.length} ميتنجات متكررة مع إشعار واحد`
-        : "تم إنشاء الميتنج بنجاح مع إشعار",
+        ? `تم إنشاء ${meetingsCreated.length} اجتماعات متكررة`
+        : "تم إنشاء الاجتماع بنجاح",
       data: meetingsCreated,
     });
 
   } catch (error) {
+    console.error("Error in createMeeting:", error);
     res.status(500).json({ success: false, message: "خطأ في إنشاء الميتنج", error: error.message });
   }
 };
@@ -152,7 +156,7 @@ const getMyMeetings = async (req, res) => {
     };
 
     const formatted = meetings.map(meeting => ({
-       _id: meeting._id ,
+      _id: meeting._id,
       time: `${formatTime(meeting.startTime)} - ${formatTime(meeting.endTime)}`,
       status: meeting.status === "confirmed" ? "مؤكدة" : "ملغية",
       title: meeting.title,
@@ -219,48 +223,49 @@ const getMeetingById = async (req, res) => {
   }
 };
 
-
 const updateMeeting = async (req, res) => {
   try {
     const { id } = req.params;
- let { title, subTitle, description, day, startTime, endTime,
+    let { title, subTitle, description, day, startTime, endTime,
       type, meetingLink, participants, repeat, status } = req.body;
 
-
-if (typeof participants === "string") {
-  try {
-    participants = JSON.parse(participants);
-  } catch {
-    participants = [];
-  }
-}
-
-if (typeof repeat === "string") {
-  try {
-    repeat = JSON.parse(repeat);
-  } catch {
-    repeat = { isRepeated: false };
-  }
-}
-
-
+    // تحويل البيانات النصية إلى JSON إذا لزم الأمر
+    if (typeof participants === "string") {
+      try { participants = JSON.parse(participants); } catch { participants = []; }
+    }
+    if (typeof repeat === "string") {
+      try { repeat = JSON.parse(repeat); } catch { repeat = { isRepeated: false }; }
+    }
 
     const meeting = await Meeting.findById(id);
     if (!meeting) return res.status(404).json({ success: false, message: "الاجتماع غير موجود" });
 
     const emp = await Employee.findOne({ user: req.user._id });
     if (!emp) return res.status(404).json({ success: false, message: "المستخدم غير مرتبط بموظف" });
-    if (!meeting.createdBy.equals(emp._id)) return res.status(403).json({ success: false, message: "غير مسموح لك بتعديل هذا الاجتماع" });
+
+    // التحقق من الصلاحية
+    if (!meeting.createdBy.equals(emp._id)) {
+      return res.status(403).json({ success: false, message: "غير مسموح لك بتعديل هذا الاجتماع" });
+    }
+
+    // --- منطق رفع الملف الجديد إلى Cloudinary ---
+    let attachments = meeting.attachments; // القيمة الافتراضية هي المرفقات القديمة
+
+    if (req.file) {
+      // إذا تم رفع ملف جديد، نقوم برفعه لكلوديناري
+      const result = await uploadToCloudinary(req.file.buffer, 'meetings');
+
+      attachments = [{
+        filename: req.file.originalname,
+        url: result.secure_url // الرابط الجديد من كلوديناري
+      }];
+    }
+    // -------------------------------------------
 
     const io = req.app.get("io");
     const onlineUsers = req.app.get("onlineUsers");
-//attachments 
-const attachments = req.file
-  ? [{ filename: req.file.filename, originalname: req.file.originalname, path: `/uploads/meetings/${req.file.filename}` }]
-  : meeting.attachments; // لو مفيش ملف جديد نخلي القديم
 
-
-
+    // تحديث البيانات الأساسية
     meeting.title = title ?? meeting.title;
     meeting.subTitle = subTitle ?? meeting.subTitle;
     meeting.description = description ?? meeting.description;
@@ -271,7 +276,7 @@ const attachments = req.file
     meeting.meetingLink = meetingLink ?? meeting.meetingLink;
     meeting.participants = participants ?? meeting.participants;
     meeting.status = status ?? meeting.status;
-meeting.attachments = attachments;
+    meeting.attachments = attachments; // المرفقات (سواء الجديدة أو القديمة)
 
     let regenerateOccurrences = false;
     if (repeat) {
@@ -286,9 +291,8 @@ meeting.attachments = attachments;
 
     await meeting.save();
 
-    // إعادة توليد الـ occurrences لو محتاج
+    // إعادة توليد الاجتماعات المتكررة إذا تغير منطق التكرار
     if (regenerateOccurrences && repeat.isRepeated) {
-      // حذف الـ occurrences القديمة المرتبطة بالـ origin
       await Meeting.deleteMany({ "repeat.repeatOriginId": meeting._id });
 
       const getNextDate = (currentDate, frequency) => {
@@ -310,8 +314,8 @@ meeting.attachments = attachments;
           title: meeting.title, subTitle: meeting.subTitle, description: meeting.description,
           day: currentDate, startTime: meeting.startTime, endTime: meeting.endTime,
           type: meeting.type, meetingLink: meeting.meetingLink, participants: meeting.participants,
-          attachments: meeting.attachments,
-          repeat: { ...meeting.repeat, repeatOriginId: meeting._id }, // مهم: جوه repeat
+          attachments: meeting.attachments, // نستخدم المرفقات المحدثة هنا أيضاً
+          repeat: { ...meeting.repeat, repeatOriginId: meeting._id },
           status: meeting.status,
           createdBy: meeting.createdBy
         });
@@ -320,34 +324,32 @@ meeting.attachments = attachments;
       }
     }
 
-    // إشعارات
+    // إرسال الإشعارات للمشاركين
     for (let participantId of meeting.participants) {
-      const baseMsg = meeting.repeat.isRepeated
-        ? `تم تعديل اجتماع متكرر بعنوان "${meeting.title}" يبدأ من ${meeting.day.toLocaleDateString()} ويتكرر ${meeting.repeat.frequency} حتى ${new Date(meeting.repeat.repeatEndDate).toLocaleDateString()}`
-        : `تم تعديل الاجتماع بعنوان "${meeting.title}" يوم ${meeting.day.toLocaleDateString()}`;
+      const baseMsg = `تم تحديث بيانات الاجتماع: "${meeting.title}"`;
 
       const notification = await Notification.create({
         employee: participantId,
         type: "meeting",
         message: baseMsg,
-       link: `/employee/meetings`,
-
+        link: `/employee/meetings`,
       });
 
       const socketId = onlineUsers.get(participantId.toString());
       if (socketId) io.to(socketId).emit("notification", notification);
     }
-console.log('u[dated metting' ,meeting)
+
     res.json({ success: true, message: "تم تحديث الاجتماع بنجاح", data: meeting });
 
   } catch (error) {
+    console.error("Update Error:", error);
     res.status(500).json({ success: false, message: "خطأ في تحديث الاجتماع", error: error.message });
   }
 };
 
 const getallMyMeetings = async (req, res) => {
   try {
-   
+
     const emp = await Employee.findOne({ user: req.user._id });
     if (!emp) {
       return res.status(404).json({ success: false, message: "الموظف غير موجود" });
@@ -376,7 +378,7 @@ const getallMyMeetings = async (req, res) => {
       return `${hour}:${minute} ${ampm}`;
     };
 
-  
+
     const formatted = meetings.map(meeting => ({
       _id: meeting._id,
       date: meeting.day.toISOString().split("T")[0], // yyyy-mm-dd
@@ -390,7 +392,7 @@ const getallMyMeetings = async (req, res) => {
       participants: meeting.participants.map(p => p.name),
     }));
 
- 
+
     res.status(200).json({
       success: true,
       count: formatted.length,
@@ -423,7 +425,7 @@ const deleteMeeting = async (req, res) => {
       return res.status(404).json({ success: false, message: "الاجتماع غير موجود" });
     }
 
- 
+
     const emp = await Employee.findOne({ user: req.user._id });
     if (!emp) {
       return res.status(404).json({ success: false, message: "المستخدم غير مرتبط بموظف" });
@@ -448,4 +450,4 @@ const deleteMeeting = async (req, res) => {
 };
 
 
-module.exports = { createMeeting, getMyMeetings  ,getallMyMeetings,getMeetingById ,updateMeeting ,deleteMeeting};
+module.exports = { createMeeting, getMyMeetings, getallMyMeetings, getMeetingById, updateMeeting, deleteMeeting };
