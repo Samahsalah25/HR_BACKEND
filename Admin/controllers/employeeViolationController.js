@@ -129,7 +129,7 @@ exports.getAllRecords = async (req, res) => {
       // فلترة حسب الشهر والسنة
       const start = new Date(year, month - 1, 1); // بداية الشهر
       const end = new Date(year, month, 0, 23, 59, 59, 999); // آخر يوم في الشهر
-      filter.createtAt = { $gte: start, $lte: end };
+      filter.createdAt = { $gte: start, $lte: end };
     }
 
     
