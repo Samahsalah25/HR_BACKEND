@@ -50,7 +50,7 @@ exports.getAllRecords = async (req, res) => {
     }
 
     const records = await EmployeeViolation.find(filter)
-      .populate('employeeId', 'name employeeNo') // اسم الموظف والرقم الوظيفي
+      .populate('employeeId', 'name employeeNumber') // اسم الموظف والرقم الوظيفي
       .populate('violationId', 'nameAr')        // عنوان المخالفة
       .sort({ violationDate: -1 });
 
