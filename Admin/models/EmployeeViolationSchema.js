@@ -27,7 +27,7 @@ const employeeViolationSchema = new mongoose.Schema({
     percentageValue: { type: Number, default: 0 },
     daysCount: { type: Number, default: 0 },
     deductFrom: { type: String, default: null },
-    decisionText: { type: String, default: '' }
+    decisionText: { type: String, default: '' } ,
   }
 ]
 

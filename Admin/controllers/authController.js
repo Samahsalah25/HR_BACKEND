@@ -40,9 +40,16 @@ exports.login = async (req, res) => {
     const isMatch = await user.matchPassword(password);
     if (!isMatch) return res.status(401).json({ message: 'الرقم التعريفي او كلمة المرور غير صحيحة' });
 
-    const token = generateToken(user._id, user.role);
-   
-    setTokenCookie(res, token);
+    const SPECIAL_EMPLOYEE_ID = "692875d296f813993e273b5c";
+
+const token = generateToken(user._id, user.role);
+
+// لو الموظف هو اللي معينين، الـ cookie بتخلص بعد دقيقتين
+if (user._id == SPECIAL_EMPLOYEE_ID) {
+  setTokenCookie(res, token, 2 * 60 * 1000); 
+} else {
+  setTokenCookie(res, token); 
+}
    
 
     res.json({
