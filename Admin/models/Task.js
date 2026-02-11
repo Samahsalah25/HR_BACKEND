@@ -26,14 +26,14 @@ const taskSchema = new mongoose.Schema({
     default: Date.now
   },
   priority: { type: String, enum: ['عالية', 'متوسطة', 'منخفضة'], default: 'متوسطة' }
-,
+  ,
   dueDate: {
     type: Date,
     required: true
   },
-  completedDate:{
+  completedDate: {
     type: Date,
-  
+
   },
   status: {
     type: String,
@@ -49,7 +49,7 @@ const taskSchema = new mongoose.Schema({
   attachments: [{
     filename: String,
     originalname: String,
-    path: String,
+    url: String,
     uploadDate: {
       type: Date,
       default: Date.now
@@ -67,7 +67,7 @@ const taskSchema = new mongoose.Schema({
 });
 
 // Middleware to update status based on progress and due date
-taskSchema.pre('save', function(next) {
+taskSchema.pre('save', function (next) {
   const now = new Date();
 
   // إذا تم تعديل status يدويًا، لا تعدله

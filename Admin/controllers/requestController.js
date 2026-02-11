@@ -2,24 +2,19 @@ const Request = require('../models/requestModel');
 const Employee = require('../models/employee');
 const multer = require('multer');
 const path = require('path');
-const LeaveBalance=require('../models/leaveBalanceModel')
+const LeaveBalance = require('../models/leaveBalanceModel')
 const Notification = require('../models/notification');
 const SalaryAdvance = require('../models/salaryAdvance');
+const uploadToCloudinary = require('../../utlis/uploadToCloudinary');
 
 // هل المستخدم HR/Admin؟
 const isHRorAdmin = (user) => ['HR', 'ADMIN'].includes(user.role);
 
 // إعداد مكان التخزين للملفات
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/requests'); // فولدر محلي
-  },
-  filename: (req, file, cb) => {
-    const uniqueName = Date.now() + '-' + file.originalname;
-    cb(null, uniqueName);
-  }
-});
-const upload = multer({ storage });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+})
 
 // =============== Create (الموظف ينشئ طلب) ===============
 
@@ -27,15 +22,15 @@ exports.createRequest = [
   upload.array('attachments'),
   async (req, res) => {
     try {
-      const { 
-        type, 
-        leave, 
-        complaint, 
-        appeal, 
-        allowance, 
-        insurance, 
-        custody, 
-        custodyClearance, 
+      const {
+        type,
+        leave,
+        complaint,
+        appeal,
+        allowance,
+        insurance,
+        custody,
+        custodyClearance,
         expense,
         invoice
       } = req.body;
@@ -46,11 +41,16 @@ exports.createRequest = [
       if (!employeeDoc) return res.status(404).json({ message: 'لم يتم العثور على بيانات الموظف' });
 
       let attachments = [];
+
       if (req.files && req.files.length > 0) {
-        attachments = req.files.map(file => ({
-          filename: file.originalname,
-          url: `/uploads/requests/${file.filename}`
-        }));
+        for (const file of req.files) {
+          const result = await uploadToCloudinary(file.buffer, 'requests');
+
+          attachments.push({
+            filename: file.originalname,
+            url: result.secure_url
+          });
+        }
       }
 
       // Parse البيانات لو جايه كـ JSON string
@@ -64,7 +64,7 @@ exports.createRequest = [
       const expenseData = expense && typeof expense === 'string' ? JSON.parse(expense) : expense;
       const invoiceData = invoice && typeof invoice === 'string' ? JSON.parse(invoice) : invoice;
 
-  
+
       let requestData = {
         employee: employeeDoc._id,
         type,
@@ -349,7 +349,7 @@ exports.getRequests = async (req, res) => {
           return 'مقبول';
         case 'rejected':
           return 'مرفوض';
-           case 'forwarded':
+        case 'forwarded':
           return 'محول';
         default:
           return status;
@@ -402,8 +402,8 @@ exports.getRequests = async (req, res) => {
           type: 'سلفة',
           submittedAt: b.createdAt,
           status: mapBorrowStatus(b.status),
-          decisionDate: b.status === 'approved' ? b.approvedAt 
-                         : (b.status === 'rejected' ? b.rejectedAt : null),
+          decisionDate: b.status === 'approved' ? b.approvedAt
+            : (b.status === 'rejected' ? b.rejectedAt : null),
           __source: 'borrow'
         }));
     }
@@ -613,7 +613,7 @@ exports.getRequestById = async (req, res) => {
 exports.approveRequest = async (req, res) => {
   try {
     // تحقق من الصلاحيات
-    if (!['HR', 'ADMIN'].includes(req.user.role)) 
+    if (!['HR', 'ADMIN'].includes(req.user.role))
       return res.status(403).json({ message: 'غير مسموح' });
 
     const { note } = req.body;
@@ -627,44 +627,44 @@ exports.approveRequest = async (req, res) => {
 
     // ======== التعامل مع الإجازة ========
 
-if (r.type === 'إجازة' && r.leave?.startDate && r.leave?.endDate) {
-  const leaveDays = Math.ceil(
-    (new Date(r.leave.endDate) - new Date(r.leave.startDate)) / (1000 * 60 * 60 * 24)
-  ) + 1;
+    if (r.type === 'إجازة' && r.leave?.startDate && r.leave?.endDate) {
+      const leaveDays = Math.ceil(
+        (new Date(r.leave.endDate) - new Date(r.leave.startDate)) / (1000 * 60 * 60 * 24)
+      ) + 1;
 
-  const leaveBalance = await LeaveBalance.findOne({ employee: r.employee._id });
-  if (!leaveBalance) return res.status(404).json({ message: 'رصيد الإجازات غير موجود' });
+      const leaveBalance = await LeaveBalance.findOne({ employee: r.employee._id });
+      if (!leaveBalance) return res.status(404).json({ message: 'رصيد الإجازات غير موجود' });
 
-  const leaveMap = {
-    'اعتيادية': 'annual',
-    'مرضية': 'sick',
-    'زواج': 'marriage',
-    'طارئة': 'emergency',
-    'ولادة': 'maternity',
-    'بدون مرتب': 'unpaid'
-  };
+      const leaveMap = {
+        'اعتيادية': 'annual',
+        'مرضية': 'sick',
+        'زواج': 'marriage',
+        'طارئة': 'emergency',
+        'ولادة': 'maternity',
+        'بدون مرتب': 'unpaid'
+      };
 
-  const balanceField = leaveMap[r.leave.leaveType];
+      const balanceField = leaveMap[r.leave.leaveType];
 
-  if (!balanceField) {
-    return res.status(400).json({ message: `نوع الإجازة غير معروف: ${r.leave.leaveType}` });
-  }
+      if (!balanceField) {
+        return res.status(400).json({ message: `نوع الإجازة غير معروف: ${r.leave.leaveType}` });
+      }
 
-  if (leaveBalance[balanceField] < leaveDays) {
-    return res.status(400).json({ message: 'الرصيد غير كافي' });
-  }
+      if (leaveBalance[balanceField] < leaveDays) {
+        return res.status(400).json({ message: 'الرصيد غير كافي' });
+      }
 
-  // خصم من النوع
-  leaveBalance[balanceField] -= leaveDays;
+      // خصم من النوع
+      leaveBalance[balanceField] -= leaveDays;
 
-  //  خصم كمان من الرصيد الكلي المتبقي
-  if (leaveBalance.remaining < leaveDays) {
-    return res.status(400).json({ message: 'الرصيد الكلي غير كافي' });
-  }
-  leaveBalance.remaining -= leaveDays;
+      //  خصم كمان من الرصيد الكلي المتبقي
+      if (leaveBalance.remaining < leaveDays) {
+        return res.status(400).json({ message: 'الرصيد الكلي غير كافي' });
+      }
+      leaveBalance.remaining -= leaveDays;
 
-  await leaveBalance.save();
-}
+      await leaveBalance.save();
+    }
 
 
     // ======== التعامل مع البدل ========
@@ -680,10 +680,10 @@ if (r.type === 'إجازة' && r.leave?.startDate && r.leave?.endDate) {
       emp.salary.otherAllowance += r.allowance.amount;
 
       // تحديث total
-      emp.salary.total = emp.salary.base 
-                        + emp.salary.housingAllowance 
-                        + emp.salary.transportAllowance 
-                        + emp.salary.otherAllowance;
+      emp.salary.total = emp.salary.base
+        + emp.salary.housingAllowance
+        + emp.salary.transportAllowance
+        + emp.salary.otherAllowance;
 
       await emp.save();
     }
@@ -694,7 +694,7 @@ if (r.type === 'إجازة' && r.leave?.startDate && r.leave?.endDate) {
       employee: r.employee._id,
       type: 'request',
       message: `تمت الموافقة على طلبك (${r.type})`,
-   link: `/employee/services`,
+      link: `/employee/services`,
       read: false
     });
 
@@ -712,9 +712,9 @@ if (r.type === 'إجازة' && r.leave?.startDate && r.leave?.endDate) {
 exports.rejectRequest = async (req, res) => {
   try {
     // if (!isHRorAdmin(req.user)) return res.status(403).json({ message: 'غير مسموح' });
-if (!req.user || !req.user._id) {
-  return res.status(401).json({ message: 'غير مصرح' });
-}
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ message: 'غير مصرح' });
+    }
     // const { reason } = req.body;
     const r = await Request.findById(req.params.id);
     if (!r) return res.status(404).json({ message: 'الطلب غير موجود' });
@@ -724,11 +724,11 @@ if (!req.user || !req.user._id) {
     r.decidedBy = req.user._id;
     // r.rejectionReason = reason || null;
     await r.save();
-  await Notification.create({
+    await Notification.create({
       employee: r.employee, // أو r.employee._id لو populate موجود
       type: 'request',
       message: `تم رفض طلبك (${r.type})`,
-       link: `/employee/services`,
+      link: `/employee/services`,
       read: false
     });
     res.json({ message: 'تم رفض الطلب', request: r });
@@ -741,7 +741,7 @@ if (!req.user || !req.user._id) {
 // =============== Forward (HR/Admin) ===============
 exports.forwardRequest = async (req, res) => {
   try {
-    if (!isHRorAdmin(req.user)) 
+    if (!isHRorAdmin(req.user))
       return res.status(403).json({ message: 'غير مسموح' });
 
     const { managerId, note } = req.body; // هنا هنستقبل ID المدير
@@ -835,13 +835,13 @@ exports.getRequestsByWorkplace = async (req, res) => {
   try {
     const { status, type } = req.query;
 
-  
+
     const currentEmployee = await Employee.findOne({ user: req.user._id }).select('workplace');
     if (!currentEmployee) return res.status(404).json({ message: 'الموظف غير موجود' });
 
 
-    const employeesInWorkplace = await Employee.find({ 
-      workplace: currentEmployee.workplace 
+    const employeesInWorkplace = await Employee.find({
+      workplace: currentEmployee.workplace
     }).select('_id');
 
     const employeeIds = employeesInWorkplace.map(emp => emp._id);
@@ -856,7 +856,7 @@ exports.getRequestsByWorkplace = async (req, res) => {
       .populate({
         path: 'employee',
         select: 'name workplace',
-        populate: { path: 'workplace', select: 'name' } 
+        populate: { path: 'workplace', select: 'name' }
       })
       .sort({ createdAt: -1 });
 
@@ -911,21 +911,25 @@ exports.updateRequest = [
       const request = await Request.findById(id);
       if (!request) return res.status(404).json({ message: 'الطلب غير موجود' });
 
- // جلب الموظف اللي في الطلب
-const employeeDoc = await Employee.findById(request.employee._id).populate('user');
+      // جلب الموظف اللي في الطلب
+      const employeeDoc = await Employee.findById(request.employee._id).populate('user');
 
-// التأكد إن اليوزر الحالي هو نفس اليوزر المرتبط بالموظف
-if (String(employeeDoc.user._id) !== String(req.user._id)) {
-  return res.status(403).json({ message: 'غير مسموح بتعديل هذا الطلب' });
-}
+      // التأكد إن اليوزر الحالي هو نفس اليوزر المرتبط بالموظف
+      if (String(employeeDoc.user._id) !== String(req.user._id)) {
+        return res.status(403).json({ message: 'غير مسموح بتعديل هذا الطلب' });
+      }
       // تحديث المرفقات
       if (req.files && req.files.length > 0) {
-        const attachments = req.files.map(file => ({
-          filename: file.originalname,
-          url: `/uploads/requests/${file.filename}`
-        }));
-        request.attachments = [...request.attachments, ...attachments];
+        for (const file of req.files) {
+          const result = await uploadToCloudinary(file.buffer, 'requests');
+
+          request.attachments.push({
+            filename: file.originalname,
+            url: result.secure_url
+          });
+        }
       }
+
 
       // تحديث النوع
       if (type) request.type = type;
@@ -1010,38 +1014,3 @@ exports.deleteRequest = async (req, res) => {
     res.status(500).json({ message: "خطأ أثناء حذف الطلب", error: e.message });
   }
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
