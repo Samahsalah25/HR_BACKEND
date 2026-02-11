@@ -31,29 +31,36 @@ exports.createViolationRecord = async (req, res) => {
 };
 
 
+// ---------------------------
+// Backend: getAllRecords
+// ---------------------------
 exports.getAllRecords = async (req, res) => {
-    try {
-        const records = await EmployeeViolation.find()
-            .populate('employeeId', 'name')
-            .populate('violationId', 'nameAr',)//all vio
-            .sort('-violationDate');
+  try {
+    const records = await EmployeeViolation.find()
+      .populate('employeeId', 'name employeeNo') // اسم الموظف والرقم الوظيفي
+      .populate('violationId', 'nameAr')       // عنوان المخالفة
+      .sort({ violationDate: -1 });             // ترتيب حسب تاريخ المخالفة (أحدث أولاً)
 
-        const formattedData = records.map(r => ({
-            id: r._id,
-            employeeName: r.empName || r.employeeId?.name || 'غير معروف',
-            violationTitle: r.violationId?.nameAr || 'مخالفة غير مسجلة',
-            date: r.violationDate.toLocaleDateString('en-GB'),
-            occurrence: r.occurrenceNumber === 1 ? 'أول مرة' :
-                r.occurrenceNumber === 2 ? 'ثاني مرة' :
-                    r.occurrenceNumber === 3 ? 'ثالث مرة' : 'رابع مرة فأكثر',
-            addedBy: r.addedBy
-        }));
+    // Format البيانات مباشرة عشان الفرونت
+    const formattedData = records.map(r => ({
+      id: r._id,
+      employeeName: r.employeeId?.name || 'غير معروف',
+      employeeNo: r.employeeId?.employeeNo || '-',
+      violationTitle: r.violationId?.nameAr || 'مخالفة غير مسجلة',
+      date: r.violationDate.toLocaleDateString('en-GB'), // DD/MM/YYYY
+      occurrence: r.occurrenceNumber === 1 ? 'أول مرة' :
+                  r.occurrenceNumber === 2 ? 'ثاني مرة' :
+                  r.occurrenceNumber === 3 ? 'ثالث مرة' : 'رابع مرة فأكثر',
+      penalty: r.penalty || { type: '-' }, // لو عايزين نضيف العقوبة كمان
+      addedBy: r.addedBy
+    }));
 
-        res.status(200).json({ status: 'success', data: formattedData });
-    } catch (err) {
-        res.status(400).json({ status: 'fail', message: err.message });
-    }
+    res.status(200).json({ status: 'success', data: formattedData });
+  } catch (err) {
+    res.status(400).json({ status: 'fail', message: err.message });
+  }
 };
+
 
 exports.deleteRecord = async (req, res) => {
     try {
