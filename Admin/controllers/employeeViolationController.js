@@ -247,7 +247,14 @@ exports.repeatWarningRecord = async (req, res) => {
 
         const violationPenalty = await ViolationPenalty.findById(violationPenaltyId);
 
-        const currentOccurrence = employeeViolation.currentOccurrence;
+        // --- التعديل هنا: بنزود رقم التكرار الحالي بمقدار 1 ---
+        const updatedOccurrence = employeeViolation.currentOccurrence + 1;
+
+        // شرط حماية عشان لو السكيما عندك آخرها 4 تكرارات
+        if (updatedOccurrence > 4) {
+            return res.status(400).json({ message: 'تم تجاوز الحد الأقصى للتكرارات المسموح بها' });
+        }
+
         const occurrenceMap = {
             1: violationPenalty.firstOccurrence,
             2: violationPenalty.secondOccurrence,
@@ -255,7 +262,8 @@ exports.repeatWarningRecord = async (req, res) => {
             4: violationPenalty.fourthOccurrence
         };
 
-        const currentPenalty = occurrenceMap[currentOccurrence];
+        // بنجيب بيانات العقوبة بناءً على الرقم الجديد بعد الزيادة
+        const currentPenalty = occurrenceMap[updatedOccurrence];
 
         const baseSalary = employee.salary?.base || 0;
         let calculatedDeduction = 0;
@@ -267,7 +275,7 @@ exports.repeatWarningRecord = async (req, res) => {
         }
 
         const newOccurrenceEntry = {
-            occurrenceNumber: currentOccurrence, // نفس الرقم القديم
+            occurrenceNumber: updatedOccurrence, // بنخزن الرقم الجديد في السجل
             date: new Date(),
             addedBy: req.user?.name || 'Admin',
             addedById: req.user?.id || null,
@@ -280,11 +288,14 @@ exports.repeatWarningRecord = async (req, res) => {
         };
 
         employeeViolation.occurrences.push(newOccurrenceEntry);
+
+        employeeViolation.currentOccurrence = updatedOccurrence;
+
         await employeeViolation.save();
 
         res.status(200).json({
             success: true,
-            message: `تم إضافة تكرار إضافي للتحذير بنجاح (المستوى الحالي: ${currentOccurrence})`,
+            message: `تم إضافة تكرار إضافي للتحذير بنجاح (المستوى الجديد: ${updatedOccurrence})`,
             data: employeeViolation
         });
 
