@@ -404,6 +404,7 @@ exports.repeatWarningRecord = async (req, res) => {
 // ---------------------------
 // Backend: getAllRecords with month/year filter
 // ---------------------------
+
 exports.getAllRecords = async (req, res) => {
     try {
         const { month, year } = req.query; // جاي من الفرونت مثلا ?month=2&year=2026
@@ -430,6 +431,7 @@ exports.getAllRecords = async (req, res) => {
 
         const formattedData = records.map(r => ({
             id: r._id,
+            employeeId: r.employeeId?._id || null,
             employeeName: r.employeeId?.name || 'غير معروف',
             employeeNo: r.employeeId?.employeeNumber || '-',
             violationTitleAr: r.violationPenaltyId?.violationId?.nameAr || 'مخالفة غير مسجلة',
