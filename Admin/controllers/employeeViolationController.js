@@ -446,6 +446,9 @@ exports.getAllRecords = async (req, res) => {
             employeeId: r.employeeId?._id || null,
             employeeName: r.employeeId?.name || 'غير معروف',
             employeeNo: r.employeeId?.employeeNumber || '-',
+            
+   
+    violationPenaltyId: r.violationPenaltyId?._id || null,  
             violationTitleAr: r.violationPenaltyId?.violationId?.nameAr || 'مخالفة غير مسجلة',
             violationTitleEn: r.violationPenaltyId?.violationId?.nameEn || 'Unregistered violation',
             violationDescriptionAr: r.violationPenaltyId?.violationId?.descriptionAr || '-',
