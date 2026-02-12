@@ -57,7 +57,10 @@ exports.createViolationRecord = async (req, res) => {
     if (!violationPenalty) {
       return res.status(404).json({ message: 'ViolationPenalty not found' });
     }
-
+   const employee = await Employee.findOne({ user: employeeId });
+        if (!employee) {
+            return res.status(404).json({ message: 'Employee not found' });
+        }
     // هل الموظف أخذ هذه المخالفة قبل كدا؟
     let employeeViolation = await EmployeeViolation.findOne({ employeeId, violationPenaltyId });
 
