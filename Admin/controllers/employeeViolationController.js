@@ -231,21 +231,16 @@ exports.repeatWarningRecord = async (req, res) => {
     try {
         const { employeeId, violationPenaltyId } = req.body;
 
-        console.log("1. البيانات المستلمة من بوستمان:", { employeeId, violationPenaltyId });
 
-        // التأكد من صحة الـ IDs
         if (!mongoose.Types.ObjectId.isValid(employeeId) || !mongoose.Types.ObjectId.isValid(violationPenaltyId)) {
-            console.log("خطأ: الـ IDs غير صالحة");
             return res.status(400).json({ message: 'Invalid IDs format' });
         }
 
         // البحث عن الموظف
         const employee = await Employee.findOne({ user: employeeId });
         if (!employee) {
-            console.log("خطأ: لم يتم العثور على موظف مرتبط بالـ User ID:", employeeId);
             return res.status(404).json({ message: 'Employee not found' });
         }
-        console.log("2. تم العثور على الموظف، الـ _id بتاعه هو:", employee._id);
 
         // المحاولة الأولى: البحث باستخدام الـ User ID (اللي مبعوت في الـ Body)
         let employeeViolation = await EmployeeViolation.findOne({
@@ -253,9 +248,8 @@ exports.repeatWarningRecord = async (req, res) => {
             violationPenaltyId: violationPenaltyId
         });
 
-        // المحاولة الثانية: لو منفعش، نبحث بالـ Employee _id (الخاص بجدول الموظفين)
+
         if (!employeeViolation) {
-            console.log("3. لم يجد سجل بالـ User ID، جاري البحث بالـ Employee _id...");
             employeeViolation = await EmployeeViolation.findOne({
                 employeeId: employee._id,
                 violationPenaltyId: violationPenaltyId
@@ -263,11 +257,10 @@ exports.repeatWarningRecord = async (req, res) => {
         }
 
         if (!employeeViolation) {
-            // هنجيب كل سجلات الموظف ده عشان نشوف هي متخزنة بإنهي ID مخالفة
             const allEmpViolations = await EmployeeViolation.find({
                 $or: [{ employeeId: employeeId }, { employeeId: employee._id }]
             });
-            console.log("سجلات الموظف الفعلية في الداتابيز هي:", allEmpViolations);
+
 
             return res.status(404).json({
                 message: 'لا يوجد سجل سابق لهذه المخالفة - راجع الـ Terminal للتفاصيل',
@@ -278,10 +271,6 @@ exports.repeatWarningRecord = async (req, res) => {
                 }
             });
         }
-
-        console.log("4. تم العثور على السجل بنجاح! التكرار الحالي:", employeeViolation.currentOccurrence);
-
-        // بقية الكود لإضافة التكرار...
         const violationPenalty = await ViolationPenalty.findById(violationPenaltyId);
         const updatedOccurrence = employeeViolation.currentOccurrence + 1;
 
