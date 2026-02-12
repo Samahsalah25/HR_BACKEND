@@ -5,42 +5,8 @@ const Violation = require("../models/ViolationFormSchema")
 
 const mongoose = require('mongoose');
 
-//HR
-// exports.createViolationRecord = async (req, res) => {
-//     try {
-//         const { employeeId, violationId } = req.body;
-//         console.log("البيانات اللي جاية من الفورم:", { employeeId, violationId });
-//         const count = await EmployeeViolation.countDocuments({ employeeId, violationId });
-//         const occurrence = count + 1;
-//         const penaltySchema = await violationPenaltySchema.findOne({ violationId });
-//         if (!penaltySchema) return res.status(404).json({ message: "لم يتم ضبط سلم عقوبات لهذه المخالفة" });
-//         let penaltyToApply;
-//         if (occurrence === 1) penaltyToApply = penaltySchema.firstOccurrence;
-//         else if (occurrence === 2) penaltyToApply = penaltySchema.secondOccurrence;
-//         else if (occurrence === 3) penaltyToApply = penaltySchema.thirdOccurrence;
-//         else penaltyToApply = penaltySchema.fourthOccurrence;
-
-//         const newRecord = await EmployeeViolation.create({
-//             employeeId,
-//             violationId,
-//             occurrenceNumber: occurrence,
-//         });
-
-//         res.status(201).json({ status: 'success', data: newRecord });
-//     } catch (err) {
-//         res.status(400).json({ status: 'fail', message: err.message });
-//     }
-// };
 
 
-/**
- * إضافة مخالفة لموظف
- * body: {
- *   employeeId: ObjectId,
- *   violationPenaltyId: ObjectId,
- *   addedBy: "Admin Name"
- * }
- */
 const Employee = require('../models/employee');
 
 
@@ -303,96 +269,6 @@ if (!employee) {
     }
 };
 
-// exports.repeatWarningRecord = async (req, res) => {
-//     try {
-//         const { employeeId, violationPenaltyId } = req.body;
-
-//         if (!mongoose.Types.ObjectId.isValid(employeeId) || !mongoose.Types.ObjectId.isValid(violationPenaltyId)) {
-//             return res.status(400).json({ message: 'Invalid IDs' });
-//         }
-
-//         const employee = await Employee.findOne({ user: employeeId });
-//         if (!employee) {
-//             return res.status(404).json({ message: 'Employee not found' });
-//         }
-
-//         let employeeViolation = await EmployeeViolation.findOne({
-//             employeeId: employee._id,
-//             violationPenaltyId: violationPenaltyId
-//         });
-
-//         if (!employeeViolation) {
-//             // لو لسه مبيظهرش، يبقى فيه مشكلة في الـ violationPenaltyId المبعوث من الفرونت
-//             return res.status(404).json({ message: 'لا يوجد سجل سابق لهذه المخالفة' });
-//         }
-
-
-//         const violationPenalty = await ViolationPenalty.findById(violationPenaltyId);
-
-//         // --- التعديل هنا: بنزود رقم التكرار الحالي بمقدار 1 ---
-//         const updatedOccurrence = employeeViolation.currentOccurrence + 1;
-
-//         // شرط حماية عشان لو السكيما عندك آخرها 4 تكرارات
-//         if (updatedOccurrence > 4) {
-//             return res.status(400).json({ message: 'تم تجاوز الحد الأقصى للتكرارات المسموح بها' });
-//         }
-
-//         const occurrenceMap = {
-//             1: violationPenalty.firstOccurrence,
-//             2: violationPenalty.secondOccurrence,
-//             3: violationPenalty.thirdOccurrence,
-//             4: violationPenalty.fourthOccurrence
-//         };
-
-//         // بنجيب بيانات العقوبة بناءً على الرقم الجديد بعد الزيادة
-//         const currentPenalty = occurrenceMap[updatedOccurrence];
-
-//         const baseSalary = employee.salary?.base || 0;
-//         let calculatedDeduction = 0;
-
-//         if (currentPenalty.penaltyType === 'خصم أيام') {
-//             calculatedDeduction = (currentPenalty.daysCount || 0) * (baseSalary / 30);
-//         } else if (currentPenalty.penaltyType === 'خصم نسبة') {
-//             calculatedDeduction = ((currentPenalty.percentageValue || 0) / 100) * baseSalary;
-//         }
-
-//         const newOccurrenceEntry = {
-//             occurrenceNumber: updatedOccurrence, // بنخزن الرقم الجديد في السجل
-//             date: new Date(),
-//             addedBy: req.user?.name || 'Admin',
-//             addedById: req.user?.id || null,
-//             penaltyType: currentPenalty.penaltyType,
-//             percentageValue: currentPenalty.percentageValue || 0,
-//             daysCount: currentPenalty.daysCount || 0,
-//             calculatedDeduction: Number(calculatedDeduction.toFixed(2)),
-//             deductFrom: currentPenalty.deductFrom || null,
-//             decisionText: `(تحذير مكرر) - ${currentPenalty.decisionText || ''}`
-//         };
-
-//         employeeViolation.occurrences.push(newOccurrenceEntry);
-
-//         employeeViolation.currentOccurrence = updatedOccurrence;
-
-//         await employeeViolation.save();
-
-//         res.status(200).json({
-//             success: true,
-//             message: `تم إضافة تكرار إضافي للتحذير بنجاح (المستوى الجديد: ${updatedOccurrence})`,
-//             data: employeeViolation
-//         });
-
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).json({ message: 'حدث خطأ أثناء تسجيل تكرار التحذير' });
-//     }
-// };
-
-// ---------------------------
-// Backend: getAllRecords
-// ---------------------------
-// ---------------------------
-// Backend: getAllRecords with month/year filter
-// ---------------------------
 
 exports.getAllRecords = async (req, res) => {
   try {

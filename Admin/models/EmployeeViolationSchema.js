@@ -29,6 +29,7 @@ const employeeViolationSchema = new mongoose.Schema({
     daysCount: { type: Number, default: 0 },
     deductFrom: { type: String, default: null },
     decisionText: { type: String, default: '' } ,
+    calculatedDeduction:{ type: Number, default: 0 }
   }
 ]
 
