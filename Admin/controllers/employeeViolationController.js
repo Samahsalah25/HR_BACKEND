@@ -315,7 +315,7 @@ exports.getAllRecords = async (req, res) => {
 
     
     const records = await EmployeeViolation.find(filter)
-  .populate('employeeId', 'name employeeNumber') // اسم الموظف والرقم الوظيفي
+  .populate('employeeId', 'name employeeNumber _id') // اسم الموظف والرقم الوظيفي
   .populate({
     path: 'violationPenaltyId',
     populate: {
