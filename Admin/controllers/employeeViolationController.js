@@ -220,9 +220,9 @@ exports.repeatWarningRecord = async (req, res) => {
         const { employeeId, violationPenaltyId } = req.body;
 
 
-        // if (!mongoose.Types.ObjectId.isValid(employeeId) || !mongoose.Types.ObjectId.isValid(violationPenaltyId)) {
-        //     return res.status(400).json({ message: 'Invalid IDs format' });
-        // }
+        if (!mongoose.Types.ObjectId.isValid(employeeId) || !mongoose.Types.ObjectId.isValid(violationPenaltyId)) {
+            return res.status(400).json({ message: 'Invalid IDs format' });
+        }
 
         // البحث عن الموظف
    const employee = await Employee.findById(employeeId);
