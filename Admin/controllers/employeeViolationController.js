@@ -57,10 +57,11 @@ exports.createViolationRecord = async (req, res) => {
     if (!violationPenalty) {
       return res.status(404).json({ message: 'ViolationPenalty not found' });
     }
-   const employee = await Employee.findOne({ user: employeeId });
-        if (!employee) {
-            return res.status(404).json({ message: 'Employee not found' });
-        }
+const employee = await Employee.findById(employeeId);
+if (!employee) {
+    return res.status(404).json({ message: 'Employee not found' });
+}
+
     // هل الموظف أخذ هذه المخالفة قبل كدا؟
     let employeeViolation = await EmployeeViolation.findOne({ employeeId, violationPenaltyId });
 
@@ -219,15 +220,16 @@ exports.repeatWarningRecord = async (req, res) => {
         const { employeeId, violationPenaltyId } = req.body;
 
 
-        if (!mongoose.Types.ObjectId.isValid(employeeId) || !mongoose.Types.ObjectId.isValid(violationPenaltyId)) {
-            return res.status(400).json({ message: 'Invalid IDs format' });
-        }
+        // if (!mongoose.Types.ObjectId.isValid(employeeId) || !mongoose.Types.ObjectId.isValid(violationPenaltyId)) {
+        //     return res.status(400).json({ message: 'Invalid IDs format' });
+        // }
 
         // البحث عن الموظف
-        const employee = await Employee.findOne({ user: employeeId });
-        if (!employee) {
-            return res.status(404).json({ message: 'Employee not found' });
-        }
+   const employee = await Employee.findById(employeeId);
+if (!employee) {
+    return res.status(404).json({ message: 'Employee not found' });
+}
+
 
         // المحاولة الأولى: البحث باستخدام الـ User ID (اللي مبعوت في الـ Body)
         let employeeViolation = await EmployeeViolation.findOne({
