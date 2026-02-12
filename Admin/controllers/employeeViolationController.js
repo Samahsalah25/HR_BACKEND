@@ -341,9 +341,9 @@ exports.getEmployeeViolations = async (req, res) => {
                     select: 'nameAr nameEn descriptionAr descriptionEn'
                 }
             })
-            .sort({ createdAt: -1 }); // الترتيب بالأحدث
+            .sort({ createdAt: -1 }); 
 
-        // 3. تنسيق الداتا بنفس شكل الـ HR عشان الفرونت إند ميتلخبطش
+     
         const formattedData = records.map(r => ({
             id: r._id,
             violationTitleAr: r.violationPenaltyId?.violationId?.nameAr || 'مخالفة غير مسجلة',
@@ -357,7 +357,8 @@ exports.getEmployeeViolations = async (req, res) => {
                 percentageValue: o.percentageValue,
                 daysCount: o.daysCount,
                 deductFrom: o.deductFrom,
-                decisionText: o.decisionText
+                decisionText: o.decisionText ,
+                 addedby:o.addedBy
             })),
             currentOccurrence: r.currentOccurrence
         }));
