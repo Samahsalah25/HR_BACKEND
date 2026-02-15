@@ -111,7 +111,7 @@ exports.repeatWarningRecord = async (req, res) => {
   try {
     const { employeeId, violationPenaltyId } = req.body;
 
-    // التحقق من صحة الـ IDs
+    // التحقق من صحة الـ IDs 
     if (
       !mongoose.Types.ObjectId.isValid(employeeId) ||
       !mongoose.Types.ObjectId.isValid(violationPenaltyId)
@@ -119,13 +119,13 @@ exports.repeatWarningRecord = async (req, res) => {
       return res.status(400).json({ message: 'Invalid IDs format' });
     }
 
-    // 1️⃣ نجيب الموظف
+    //  نجيب الموظف
     const employee = await Employee.findById(employeeId);
     if (!employee) {
       return res.status(404).json({ message: 'Employee not found' });
     }
 
-    // 2️⃣ نجيب سجل المخالفة
+    //  نجيب سجل المخالفة
     const employeeViolation = await EmployeeViolation.findOne({
       employeeId,
       violationPenaltyId
@@ -137,14 +137,14 @@ exports.repeatWarningRecord = async (req, res) => {
       });
     }
 
-    // 3️⃣ تحديد رقم التكرار الجديد
+    //  تحديد رقم التكرار الجديد
     const updatedOccurrence = employeeViolation.currentOccurrence + 1;
 
     if (updatedOccurrence > 4) {
       return res.status(400).json({ message: 'تجاوزت 4 تكرارات' });
     }
 
-    // 4️⃣ نجيب بيانات العقوبة
+    //  نجيب بيانات العقوبة
     const violationPenalty = await ViolationPenalty.findById(violationPenaltyId);
     if (!violationPenalty) {
       return res.status(404).json({ message: 'ViolationPenalty not found' });
@@ -160,7 +160,7 @@ exports.repeatWarningRecord = async (req, res) => {
     const currentPenalty = occurrenceMap[updatedOccurrence];
 
     // ==========================
-    // 🔥 حساب الخصم حسب النوع
+    //  حساب الخصم حسب النوع
     // ==========================
 
     let calculatedDeduction = 0;
@@ -197,7 +197,7 @@ exports.repeatWarningRecord = async (req, res) => {
     }
 
     // ==========================
-    // 📝 تجهيز الداتا
+    //  تجهيز الداتا
     // ==========================
 
     const newOccurrenceEntry = {
