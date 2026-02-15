@@ -30,7 +30,7 @@ router.get('/tasksOverview', authenticate, authorizeRoles('HR'), tasksOverview);
 //  هنا الخاص بالفرع بتاعي بس 
 router.get('/tasksOverviewForMyBranch', authenticate, authorizeRoles('HR'), tasksOverviewForMyBranch);
 
-router.get('/taskbyemployee/:id', taskByemployee);
+router.get('/taskbyemployee/:id',authenticate, taskByemployee);
 
 
 
