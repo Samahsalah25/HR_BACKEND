@@ -1,10 +1,15 @@
 const EmployeeViolation = require("../models/EmployeeViolationSchema.js")
 const ViolationPenalty = require("../models/violationPenaltySchema.js")
 
+
 const Violation = require("../models/ViolationFormSchema")
+
 
 const mongoose = require('mongoose');
 
+
+
+const Employee = require('../models/employee');
 
 
 const Employee = require('../models/employee');
@@ -235,12 +240,15 @@ exports.repeatWarningRecord = async (req, res) => {
 };
 
 
+
 // exports.repeatWarningRecord = async (req, res) => {
 //     try {
 //         const { employeeId, violationPenaltyId } = req.body;
 
 
+
 //         if (!mongoose.Types.ObjectId.isValid(employeeId) || !mongoose.Types.ObjectId.isValid(violationPenaltyId)) {
+//             return res.status(400).json({ message: 'Invalid IDs format' });
 //             return res.status(400).json({ message: 'Invalid IDs format' });
 //         }
 
@@ -252,13 +260,43 @@ exports.repeatWarningRecord = async (req, res) => {
 
 
 //         // المحاولة الأولى: البحث باستخدام الـ User ID (اللي مبعوت في الـ Body)
+//         // البحث عن الموظف
+//    const employee = await Employee.findById(employeeId);
+// if (!employee) {
+//     return res.status(404).json({ message: 'Employee not found' });
+// }
+
+
+//         // المحاولة الأولى: البحث باستخدام الـ User ID (اللي مبعوت في الـ Body)
 //         let employeeViolation = await EmployeeViolation.findOne({
+//             employeeId: employeeId,
 //             employeeId: employeeId,
 //             violationPenaltyId: violationPenaltyId
 //         });
 
 
+
 //         if (!employeeViolation) {
+//             employeeViolation = await EmployeeViolation.findOne({
+//                 employeeId: employee._id,
+//                 violationPenaltyId: violationPenaltyId
+//             });
+//         }
+
+//         if (!employeeViolation) {
+//             const allEmpViolations = await EmployeeViolation.find({
+//                 $or: [{ employeeId: employeeId }, { employeeId: employee._id }]
+//             });
+
+
+//             return res.status(404).json({
+//                 message: 'لا يوجد سجل سابق لهذه المخالفة - راجع الـ Terminal للتفاصيل',
+//                 debug: {
+//                     sentEmployeeId: employeeId,
+//                     foundEmployeeRecord: employee._id,
+//                     sentViolationId: violationPenaltyId
+//                 }
+//             });
 //             employeeViolation = await EmployeeViolation.findOne({
 //                 employeeId: employee._id,
 //                 violationPenaltyId: violationPenaltyId
@@ -284,6 +322,7 @@ exports.repeatWarningRecord = async (req, res) => {
 //         const updatedOccurrence = employeeViolation.currentOccurrence + 1;
 
 //         if (updatedOccurrence > 4) return res.status(400).json({ message: 'تجاوزت 4 تكرارات' });
+//         if (updatedOccurrence > 4) return res.status(400).json({ message: 'تجاوزت 4 تكرارات' });
 
 //         const occurrenceMap = {
 //             1: violationPenalty.firstOccurrence,
@@ -304,6 +343,7 @@ exports.repeatWarningRecord = async (req, res) => {
 
 //         const newOccurrenceEntry = {
 //             occurrenceNumber: updatedOccurrence,
+//             occurrenceNumber: updatedOccurrence,
 //             date: new Date(),
 //             addedBy: req.user?.name || 'Admin',
 //             penaltyType: currentPenalty.penaltyType,
@@ -316,8 +356,11 @@ exports.repeatWarningRecord = async (req, res) => {
 //         await employeeViolation.save();
 
 //         res.status(200).json({ success: true, data: employeeViolation });
+//         res.status(200).json({ success: true, data: employeeViolation });
 
 //     } catch (error) {
+//         console.error("Internal Error:", error);
+//         res.status(500).json({ message: 'حدث خطأ داخلي' });
 //         console.error("Internal Error:", error);
 //         res.status(500).json({ message: 'حدث خطأ داخلي' });
 //     }
@@ -360,7 +403,7 @@ exports.getAllRecords = async (req, res) => {
 
 
         const records = await EmployeeViolation.find(filter)
-            .populate('employeeId', 'name employeeNumber') // اسم الموظف والرقم الوظيفي
+            .populate('employeeId', 'name employeeNumber ') // اسم الموظف والرقم الوظيفي
             .populate({
                 path: 'violationPenaltyId',
                 populate: {
@@ -369,6 +412,29 @@ exports.getAllRecords = async (req, res) => {
                 }
             })
             .sort({ violationDate: -1 });
+        try {
+            const { month, year } = req.query; // جاي من الفرونت مثلا ?month=2&year=2026
+
+            let filter = {};
+            if (month && year) {
+                // فلترة حسب الشهر والسنة
+                const start = new Date(year, month - 1, 1); // بداية الشهر
+                const end = new Date(year, month, 0, 23, 59, 59, 999); // آخر يوم في الشهر
+                filter.createdAt = { $gte: start, $lte: end };
+            }
+
+
+            const records = await EmployeeViolation.find(filter)
+                .populate('employeeId', 'name employeeNumber') // اسم الموظف والرقم الوظيفي
+                .populate({
+                    path: 'violationPenaltyId',
+                    populate: {
+                        path: 'violationId',
+                        select: 'nameAr nameEn descriptionAr descriptionEn'
+                    }
+                })
+                .sort({ violationDate: -1 });
+
 
 
         const formattedData = records.map(r => ({
@@ -439,6 +505,8 @@ exports.getEmployeeViolations = async (req, res) => {
                 message: "لم يتم العثور على بيانات موظف مرتبطة بهذا الحساب"
             });
         }
+        console.log(req.user._id);
+
 
         // 2. البحث عن المخالفات باستخدام الـ ID بتاع الموظف اللي لقيناه
         const records = await EmployeeViolation.find({ employeeId: employee._id })
@@ -486,3 +554,4 @@ exports.getEmployeeViolations = async (req, res) => {
         });
     }
 };
+
