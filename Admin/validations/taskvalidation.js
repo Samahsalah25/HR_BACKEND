@@ -27,18 +27,8 @@ const createTaskSchema = Joi.object({
     completedDate:Joi.date().iso().optional().messages({
     'date.format': 'تاريخ الإسناد يجب أن يكون بصيغة ISO (YYYY-MM-DD)'
   }),
-  attachments: Joi.object({
-    originalname: Joi.string().required().messages({
-      'any.required': 'اسم الملف الأصلي مطلوب'
-    }),
-    filename: Joi.string().required().messages({
-      'any.required': 'اسم الملف محفوظ مطلوب'
-    }),
-    path: Joi.string().required().messages({
-      'any.required': 'مسار الملف مطلوب'
-    }),
-    
-  }).optional()
+attachments: Joi.any().optional()
+
 });
 
 // Schema للفانكشن updateTask مع مسجات
