@@ -1,22 +1,22 @@
 const Attendance = require('../models/Attendance');
 const Employee = require('../models/employee');
 const Branch = require('../models/branchSchema');
-const LeaveBalance=require('../models/leaveBalanceModel');
-const Request=require('../models/requestModel')
+const LeaveBalance = require('../models/leaveBalanceModel');
+const Request = require('../models/requestModel')
 const { DateTime } = require("luxon");
 const moment = require("moment-timezone");
-const AdditionHours =require( '../models/AdditionHours');
-const AbsencePenalty=require('../models/absencePenaltySchema')
+const AdditionHours = require('../models/AdditionHours');
+const AbsencePenalty = require('../models/absencePenaltySchema')
 // دالة لحساب المسافة بالمتر بين نقطتين
 function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
-  const R = 6371000; 
+  const R = 6371000;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a =
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
 
@@ -164,41 +164,41 @@ const checkIn = async (req, res) => {
       status = "حاضر";
     }
 
-  if (attendance) {
-  
-  if (attendance.status === "غائب") {
-    if (now.isAfter(lateLimit)) {
-      return res.status(400).json({ message: "لقد تجاوزت وقت تسجيل الحضور المسموح" });
+    if (attendance) {
+
+      if (attendance.status === "غائب") {
+        if (now.isAfter(lateLimit)) {
+          return res.status(400).json({ message: "لقد تجاوزت وقت تسجيل الحضور المسموح" });
+        }
+
+        attendance.status = status;
+        attendance.checkIn = now.toDate();
+        attendance.lateMinutes = lateMinutes;
+        await attendance.save();
+      } else {
+        return res.status(400).json({ message: "لقد قمت بتسجيل الحضور بالفعل اليوم" });
+      }
+    } else {
+
+      if (now.isAfter(lateLimit)) {
+
+        return res.status(400).json({ message: "لقد تجاوزت وقت تسجيل الحضور المسموح" });
+      }
+
+      // غير كده حضوره طبيعي أو متأخر
+      attendance = await Attendance.create({
+        employee: employee._id,
+        branch: branch._id,
+        date: now.toDate(),
+        status,
+        checkIn: now.toDate(),
+        lateMinutes,
+        workedMinutes: 0,
+        workedtime: 0,
+      });
     }
 
-    attendance.status = status;
-    attendance.checkIn = now.toDate();
-    attendance.lateMinutes = lateMinutes;
-    await attendance.save();
-  } else {
-    return res.status(400).json({ message: "لقد قمت بتسجيل الحضور بالفعل اليوم" });
-  }
-} else {
-
-  if (now.isAfter(lateLimit)) {
-  
-    return res.status(400).json({ message: "لقد تجاوزت وقت تسجيل الحضور المسموح" });
-  }
-
-  // غير كده حضوره طبيعي أو متأخر
-  attendance = await Attendance.create({
-    employee: employee._id,
-    branch: branch._id,
-    date: now.toDate(),
-    status,
-    checkIn: now.toDate(),
-    lateMinutes,
-    workedMinutes: 0,
-    workedtime: 0,
-  });
-}
-
-console.log('cookie token:', req.cookies.token);
+    console.log('cookie token:', req.cookies.token);
 
     res.status(201).json({
       message: (attendance.status === "حاضر" || attendance.status === "متأخر")
@@ -363,11 +363,11 @@ const checkOut = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({
-  message: "حدث خطأ أثناء تسجيل الانصراف",
-  error: error.message,    // هنا هتبعت رسالة الخطأ الفعلية
-  stack: error.stack       // optional، لو حابب تبص على التفاصيل
-});
-     
+      message: "حدث خطأ أثناء تسجيل الانصراف",
+      error: error.message,    // هنا هتبعت رسالة الخطأ الفعلية
+      stack: error.stack       // optional، لو حابب تبص على التفاصيل
+    });
+
   }
 };
 
@@ -377,60 +377,60 @@ const checkOut = async (req, res) => {
 
 
 const getTodayAttendance = async (req, res) => {
- try {
-   const employeeId = req.params.id;
+  try {
+    const employeeId = req.params.id;
     const clientTimezone = req.headers['timezone'] || 'Africa/Cairo';
 
-// 1️⃣ نحسب بداية اليوم ونهايته باستخدام Luxon
-const now = DateTime.now().setZone(clientTimezone);
-const todayStart = now.startOf('day').toJSDate();
- const todayEnd = now.endOf('day').toJSDate();
+    // 1️⃣ نحسب بداية اليوم ونهايته باستخدام Luxon
+    const now = DateTime.now().setZone(clientTimezone);
+    const todayStart = now.startOf('day').toJSDate();
+    const todayEnd = now.endOf('day').toJSDate();
 
- // 2️⃣ نجيب حضور اليوم
- const todayAttendance = await Attendance.findOne({
- employee: employeeId,
- date: { $gte: todayStart, $lte: todayEnd }
- })
- .populate("employee", "name jobTitle")
- .populate("branch", "name");
+    // 2️⃣ نجيب حضور اليوم
+    const todayAttendance = await Attendance.findOne({
+      employee: employeeId,
+      date: { $gte: todayStart, $lte: todayEnd }
+    })
+      .populate("employee", "name jobTitle")
+      .populate("branch", "name");
 
- // 3️⃣ نجيب كل الحضور السابق (لحساب غياب وتأخير)
- const allAttendance = await Attendance.find({ employee: employeeId });
+    // 3️⃣ نجيب كل الحضور السابق (لحساب غياب وتأخير)
+    const allAttendance = await Attendance.find({ employee: employeeId });
 
- const absences = allAttendance.filter(a => a.status === "غائب").length;
- const lates = allAttendance.filter(a => a.status === "متأخر").length;
+    const absences = allAttendance.filter(a => a.status === "غائب").length;
+    const lates = allAttendance.filter(a => a.status === "متأخر").length;
 
-if (!todayAttendance) {
- return res.json({
- message: "لا يوجد حضور لهذا الموظف اليوم",
- absences,
- lates
- });
- }
+    if (!todayAttendance) {
+      return res.json({
+        message: "لا يوجد حضور لهذا الموظف اليوم",
+        absences,
+        lates
+      });
+    }
 
     // 4️⃣ تنسيق وقت الدخول والخروج للعرض (باستخدام Luxon)
-    const checkInTime = todayAttendance.checkIn 
-      ? DateTime.fromJSDate(todayAttendance.checkIn, { zone: clientTimezone }).toFormat('HH:mm')
-      : null;
-    
-    const checkOutTime = todayAttendance.checkOut
-      ? DateTime.fromJSDate(todayAttendance.checkOut, { zone: clientTimezone }).toFormat('HH:mm')
-      : null;
+    const checkInTime = todayAttendance.checkIn
+      ? DateTime.fromJSDate(todayAttendance.checkIn, { zone: clientTimezone }).toFormat('HH:mm')
+      : null;
 
-    res.json({
-      employee: todayAttendance.employee.name,
-      branch: todayAttendance.branch.name,
-      status: todayAttendance.status,
-      checkIn: checkInTime,
-      checkOut: checkOutTime,
-      absences,
-      lates
+    const checkOutTime = todayAttendance.checkOut
+      ? DateTime.fromJSDate(todayAttendance.checkOut, { zone: clientTimezone }).toFormat('HH:mm')
+      : null;
 
-});
- } catch (error) {
- console.error(error);
- res.status(500).json({ message: "حدث خطأ أثناء جلب بيانات الحضور" });
- }
+    res.json({
+      employee: todayAttendance.employee.name,
+      branch: todayAttendance.branch.name,
+      status: todayAttendance.status,
+      checkIn: checkInTime,
+      checkOut: checkOutTime,
+      absences,
+      lates
+
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "حدث خطأ أثناء جلب بيانات الحضور" });
+  }
 };
 
 
@@ -446,26 +446,112 @@ const dailyState = async (req, res) => {
     endOfDay.setHours(23, 59, 59, 999);
 
     // كل الموظفين
-    const employees = await Employee.find();
+    // const employees = await Employee.find();
+    const employees = await Employee.aggregate([
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'user',
+          foreignField: '_id',
+          as: 'userDetails'
+        }
+      },
+      {
+        $unwind: '$userDetails'
+      },
+      {
+        $match: {
+          'userDetails.role': { $in: ['HR', 'EMPLOYEE'] }
+        }
+      }
+    ])
+
     const totalEmployees = employees.length;
 
     // حضور النهاردة
-    const attendances = await Attendance.find({
-      date: { $gte: startOfDay, $lte: endOfDay }
-    });
+    // const attendances = await Attendance.find({
+    //   date: { $gte: startOfDay, $lte: endOfDay }
+    // });
+
+    const attendances = await Attendance.aggregate([
+      {
+        $match: {
+          date: { $gte: startOfDay, $lte: endOfDay },
+
+        }
+      },
+      {
+        $lookup: {
+          from: 'employees',
+          localField: 'employee',
+          foreignField: '_id',
+          as: 'employeeInfo'
+        }
+      },
+      { $unwind: '$employeeInfo' },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'employeeInfo.user',
+          foreignField: '_id',
+          as: 'userInfo'
+        }
+      },
+      { $unwind: '$userInfo' },
+      {
+        $match: {
+          'userInfo.role': { $in: ['HR', 'EMPLOYEE'] }
+        }
+      }
+    ]);
 
     // اجازات النهاردة (مقبولة بس)
- 
-const leaves = await Request.find({
-  type: "إجازة",
-  status: "مقبول",
-  "leave.startDate": { $lte: endOfDay },
-  "leave.endDate": { $gte: startOfDay }
-}).populate("employee");
 
-const leaveEmployeeIds = leaves
-  .filter(l => l.employee) // تجاهل الطلبات اللي الموظف بتاعها اتحذف
-  .map(l => l.employee._id.toString());
+    // const leaves = await Request.find({
+    //   type: "إجازة",
+    //   status: "مقبول",
+    //   "leave.startDate": { $lte: endOfDay },
+    //   "leave.endDate": { $gte: startOfDay }
+    // }).populate("employee");
+
+    const leaves = await Request.aggregate([
+      {
+        $match: {
+          type: "إجازة",
+          status: "مقبول",
+          "leave.startDate": { $lte: endOfDay },
+          "leave.endDate": { $gte: startOfDay }
+        }
+      },
+      {
+        $lookup: {
+          from: 'employees',
+          localField: 'employee',
+          foreignField: '_id',
+          as: 'employeeInfo'
+        }
+      },
+      { $unwind: '$employeeInfo' },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'employeeInfo.user',
+          foreignField: '_id',
+          as: 'userInfo'
+        }
+      },
+      { $unwind: '$userInfo' },
+      {
+        $match: {
+          'userInfo.role': { $in: ['HR', 'EMPLOYEE'] }
+        }
+      }
+    ]);
+
+
+    const leaveEmployeeIds = leaves
+      .filter(l => l.employee) // تجاهل الطلبات اللي الموظف بتاعها اتحذف
+      .map(l => l.employee._id.toString());
 
     // حساب الحالات
     const present = attendances.filter(
@@ -601,7 +687,7 @@ const dailyAttendanceTable = async (req, res) => {
     const table = attendances.map(a => ({
       employeeName: a.employee.name,
       departmentName: a.employee.department ? a.employee.department.name : "غير محدد",
-      status: a.status ,
+      status: a.status,
       lateMinutes: a.lateMinutes || 0,
     }));
 
@@ -610,7 +696,7 @@ const dailyAttendanceTable = async (req, res) => {
     console.error("Error fetching daily attendance table:", err);
     res.status(500).json({ error: "Server Error" });
   }
-}; 
+};
 
 // جدول الحضور اليومي لفرع معين
 const dailyAttendanceTableOnebranch = async (req, res) => {
@@ -656,7 +742,7 @@ const dailyAttendanceTableOnebranch = async (req, res) => {
       status: a.status
     }));
 
-    res.json({ data:table });
+    res.json({ data: table });
   } catch (err) {
     console.error("Error fetching daily attendance table:", err);
     res.status(500).json({ error: "Server Error" });
@@ -693,7 +779,7 @@ const dailyAttendanceTableOnebranch = async (req, res) => {
 
 //     let totalAbsent = 0;
 //     let totalLate = 0;
-    
+
 
 //     const days = attendances.map(a => {
 //       if (a.status === "غائب") totalAbsent++;
@@ -921,71 +1007,71 @@ const monthlyReport = async (req, res) => {
       // تأكد عدم الحصول على أرقام سالبة
       if (totalLeaveTaken < 0) totalLeaveTaken = 0;
       if (remainingLeave < 0) remainingLeave = 0;
-reports.push({
-  _id: employee._id,
-  name: employee.name,
-  email: employee.user?.email || "",
-  department: employee.department?.name || "N/A",
-  jobTitle: employee.jobTitle || "",
-  attendance: { present: attendedDays, late, absent },
-  leaves: {
-    annual: {
-      total: baseLeaveBalance.annual,
-      remaining: lb?.annual ?? baseLeaveBalance.annual,
-      taken: baseLeaveBalance.annual - (lb?.annual ?? baseLeaveBalance.annual)
-    },
-    sick: {
-      total: baseLeaveBalance.sick,
-      remaining: lb?.sick ?? baseLeaveBalance.sick,
-      taken: baseLeaveBalance.sick - (lb?.sick ?? baseLeaveBalance.sick)
-    },
-    marriage: {
-      total: baseLeaveBalance.marriage,
-      remaining: lb?.marriage ?? baseLeaveBalance.marriage,
-      taken: baseLeaveBalance.marriage - (lb?.marriage ?? baseLeaveBalance.marriage)
-    },
-    emergency: {
-      total: baseLeaveBalance.emergency,
-      remaining: lb?.emergency ?? baseLeaveBalance.emergency,
-      taken: baseLeaveBalance.emergency - (lb?.emergency ?? baseLeaveBalance.emergency)
-    },
-    maternity: {
-      total: baseLeaveBalance.maternity,
-      remaining: lb?.maternity ?? baseLeaveBalance.maternity,
-      taken: baseLeaveBalance.maternity - (lb?.maternity ?? baseLeaveBalance.maternity)
-    },
-    unpaid: {
-      total: baseLeaveBalance.unpaid,
-      remaining: lb?.unpaid ?? baseLeaveBalance.unpaid,
-      taken: baseLeaveBalance.unpaid - (lb?.unpaid ?? baseLeaveBalance.unpaid)
-    },
-    // الإجماليات
-    total: (
-      baseLeaveBalance.annual +
-      baseLeaveBalance.sick +
-      baseLeaveBalance.marriage +
-      baseLeaveBalance.emergency +
-      baseLeaveBalance.maternity +
-      baseLeaveBalance.unpaid
-    ),
-    remaining: (
-      (lb?.annual ?? baseLeaveBalance.annual) +
-      (lb?.sick ?? baseLeaveBalance.sick) +
-      (lb?.marriage ?? baseLeaveBalance.marriage) +
-      (lb?.emergency ?? baseLeaveBalance.emergency) +
-      (lb?.maternity ?? baseLeaveBalance.maternity) +
-      (lb?.unpaid ?? baseLeaveBalance.unpaid)
-    ),
-    taken: (
-      (baseLeaveBalance.annual - (lb?.annual ?? baseLeaveBalance.annual)) +
-      (baseLeaveBalance.sick - (lb?.sick ?? baseLeaveBalance.sick)) +
-      (baseLeaveBalance.marriage - (lb?.marriage ?? baseLeaveBalance.marriage)) +
-      (baseLeaveBalance.emergency - (lb?.emergency ?? baseLeaveBalance.emergency)) +
-      (baseLeaveBalance.maternity - (lb?.maternity ?? baseLeaveBalance.maternity)) +
-      (baseLeaveBalance.unpaid - (lb?.unpaid ?? baseLeaveBalance.unpaid))
-    )
-  }
-});
+      reports.push({
+        _id: employee._id,
+        name: employee.name,
+        email: employee.user?.email || "",
+        department: employee.department?.name || "N/A",
+        jobTitle: employee.jobTitle || "",
+        attendance: { present: attendedDays, late, absent },
+        leaves: {
+          annual: {
+            total: baseLeaveBalance.annual,
+            remaining: lb?.annual ?? baseLeaveBalance.annual,
+            taken: baseLeaveBalance.annual - (lb?.annual ?? baseLeaveBalance.annual)
+          },
+          sick: {
+            total: baseLeaveBalance.sick,
+            remaining: lb?.sick ?? baseLeaveBalance.sick,
+            taken: baseLeaveBalance.sick - (lb?.sick ?? baseLeaveBalance.sick)
+          },
+          marriage: {
+            total: baseLeaveBalance.marriage,
+            remaining: lb?.marriage ?? baseLeaveBalance.marriage,
+            taken: baseLeaveBalance.marriage - (lb?.marriage ?? baseLeaveBalance.marriage)
+          },
+          emergency: {
+            total: baseLeaveBalance.emergency,
+            remaining: lb?.emergency ?? baseLeaveBalance.emergency,
+            taken: baseLeaveBalance.emergency - (lb?.emergency ?? baseLeaveBalance.emergency)
+          },
+          maternity: {
+            total: baseLeaveBalance.maternity,
+            remaining: lb?.maternity ?? baseLeaveBalance.maternity,
+            taken: baseLeaveBalance.maternity - (lb?.maternity ?? baseLeaveBalance.maternity)
+          },
+          unpaid: {
+            total: baseLeaveBalance.unpaid,
+            remaining: lb?.unpaid ?? baseLeaveBalance.unpaid,
+            taken: baseLeaveBalance.unpaid - (lb?.unpaid ?? baseLeaveBalance.unpaid)
+          },
+          // الإجماليات
+          total: (
+            baseLeaveBalance.annual +
+            baseLeaveBalance.sick +
+            baseLeaveBalance.marriage +
+            baseLeaveBalance.emergency +
+            baseLeaveBalance.maternity +
+            baseLeaveBalance.unpaid
+          ),
+          remaining: (
+            (lb?.annual ?? baseLeaveBalance.annual) +
+            (lb?.sick ?? baseLeaveBalance.sick) +
+            (lb?.marriage ?? baseLeaveBalance.marriage) +
+            (lb?.emergency ?? baseLeaveBalance.emergency) +
+            (lb?.maternity ?? baseLeaveBalance.maternity) +
+            (lb?.unpaid ?? baseLeaveBalance.unpaid)
+          ),
+          taken: (
+            (baseLeaveBalance.annual - (lb?.annual ?? baseLeaveBalance.annual)) +
+            (baseLeaveBalance.sick - (lb?.sick ?? baseLeaveBalance.sick)) +
+            (baseLeaveBalance.marriage - (lb?.marriage ?? baseLeaveBalance.marriage)) +
+            (baseLeaveBalance.emergency - (lb?.emergency ?? baseLeaveBalance.emergency)) +
+            (baseLeaveBalance.maternity - (lb?.maternity ?? baseLeaveBalance.maternity)) +
+            (baseLeaveBalance.unpaid - (lb?.unpaid ?? baseLeaveBalance.unpaid))
+          )
+        }
+      });
 
 
     }
@@ -1015,7 +1101,7 @@ reports.push({
 
 
 
- // تقرير شهري لكل الحضور الخاص بفرع الاتش ار مانجر دا بس 
+// تقرير شهري لكل الحضور الخاص بفرع الاتش ار مانجر دا بس 
 const monthlyReportoneBranch = async (req, res) => {
   try {
     const today = new Date();
@@ -1076,13 +1162,13 @@ const monthlyReportoneBranch = async (req, res) => {
       let totalLeaveTaken = 0;
 
       // إذا كان للموظف رصيد خاص، نستخدمه، وإلا نستخدم الرصيد الأساسي
-     totalLeaveBalance = 
-          baseLeaveBalance.annual +
-          baseLeaveBalance.sick +
-          baseLeaveBalance.marriage +
-          baseLeaveBalance.emergency +
-          baseLeaveBalance.maternity +
-          baseLeaveBalance.unpaid;
+      totalLeaveBalance =
+        baseLeaveBalance.annual +
+        baseLeaveBalance.sick +
+        baseLeaveBalance.marriage +
+        baseLeaveBalance.emergency +
+        baseLeaveBalance.maternity +
+        baseLeaveBalance.unpaid;
 
       console.log('total for', employee.name, ':', totalLeaveBalance);
 
@@ -1105,7 +1191,7 @@ const monthlyReportoneBranch = async (req, res) => {
       // الرصيد المتبقي
       const remainingLeave = totalLeaveBalance - totalLeaveTaken;
       console.log('remaining leave for', employee.name, ':', remainingLeave);
-      
+
       // منع الرصيد السالب من العرض
       const displayRemaining = remainingLeave < 0 ? 0 : remainingLeave;
 
@@ -1115,7 +1201,7 @@ const monthlyReportoneBranch = async (req, res) => {
         email: employee.user?.email || "",
         department: employee.department?.name || "N/A",
         jobTitle: employee.jobTitle || "",
-       
+
         attendance: {
           present: attendedDays,
           late,
@@ -1126,7 +1212,7 @@ const monthlyReportoneBranch = async (req, res) => {
           taken: totalLeaveTaken,          // الإجازات المستخدمة خلال السنة
           remaining: displayRemaining      // الرصيد المتبقي (غير سالب)
         },
-     
+
       });
     }
 
@@ -1139,8 +1225,8 @@ const monthlyReportoneBranch = async (req, res) => {
         emergency: baseLeaveBalance.emergency,
         maternity: baseLeaveBalance.maternity,
         unpaid: baseLeaveBalance.unpaid,
-        total: baseLeaveBalance.annual + baseLeaveBalance.sick + baseLeaveBalance.marriage + 
-               baseLeaveBalance.emergency + baseLeaveBalance.maternity + baseLeaveBalance.unpaid
+        total: baseLeaveBalance.annual + baseLeaveBalance.sick + baseLeaveBalance.marriage +
+          baseLeaveBalance.emergency + baseLeaveBalance.maternity + baseLeaveBalance.unpaid
       },
       reports
     });
@@ -1155,48 +1241,48 @@ const monthlyReportoneBranch = async (req, res) => {
 
 
 const dailyEmployeeAttendance = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const employee = await Employee.findById(id).populate("workplace");
-    if (!employee) return res.status(404).json({ message: "الموظف غير موجود" });
+  try {
+    const { id } = req.params;
+    const employee = await Employee.findById(id).populate("workplace");
+    if (!employee) return res.status(404).json({ message: "الموظف غير موجود" });
 
-    const nowUTC = DateTime.utc();
-    const todayStartUTC = nowUTC.startOf('day').toJSDate();
+    const nowUTC = DateTime.utc();
+    const todayStartUTC = nowUTC.startOf('day').toJSDate();
 
-    const branch = employee.workplace;
-    const officialStart = branch.workStart;
-    const allowedLate = branch.gracePeriod;
+    const branch = employee.workplace;
+    const officialStart = branch.workStart;
+    const allowedLate = branch.gracePeriod;
     const branchTimezone = 'Africa/Cairo';
 
-    const attendance = await Attendance.findOne({
-      employee: id,
-      date: { $gte: todayStartUTC }
-    });
+    const attendance = await Attendance.findOne({
+      employee: id,
+      date: { $gte: todayStartUTC }
+    });
 
-    if (!attendance || attendance.status !== "متأخر") {
-      return res.json({ message: "لا يوجد تأخير لهذا اليوم" });
-    }
-    
-    // تحويل كائن Date من UTC إلى الوقت المحلي
-    const checkInDateTime = DateTime.fromJSDate(attendance.checkIn, { zone: branchTimezone });
-    const checkInTime = checkInDateTime.toFormat('HH:mm');
-    
-    // *** التعديل هنا: نستخدم قيمة lateMinutes المحفوظة من قاعدة البيانات مباشرةً ***
-    const delayMinutesFromDB = attendance.lateMinutes;
-    
-    res.json({
-      employeeName: employee.name,
-      date: nowUTC.setLocale('ar-EG').toFormat('dd/MM/yyyy'),
-      checkIn: checkInTime,
-      officialStartTime: officialStart,
-      delayMinutes: delayMinutesFromDB, // استخدام القيمة من قاعدة البيانات
-      allowedLateMinutes: allowedLate
-    });
+    if (!attendance || attendance.status !== "متأخر") {
+      return res.json({ message: "لا يوجد تأخير لهذا اليوم" });
+    }
 
-  } catch (err) {
-    console.error("Error:", err);
-    res.status(500).json({ message: "Server Error" });
-  }
+    // تحويل كائن Date من UTC إلى الوقت المحلي
+    const checkInDateTime = DateTime.fromJSDate(attendance.checkIn, { zone: branchTimezone });
+    const checkInTime = checkInDateTime.toFormat('HH:mm');
+
+    // *** التعديل هنا: نستخدم قيمة lateMinutes المحفوظة من قاعدة البيانات مباشرةً ***
+    const delayMinutesFromDB = attendance.lateMinutes;
+
+    res.json({
+      employeeName: employee.name,
+      date: nowUTC.setLocale('ar-EG').toFormat('dd/MM/yyyy'),
+      checkIn: checkInTime,
+      officialStartTime: officialStart,
+      delayMinutes: delayMinutesFromDB, // استخدام القيمة من قاعدة البيانات
+      allowedLateMinutes: allowedLate
+    });
+
+  } catch (err) {
+    console.error("Error:", err);
+    res.status(500).json({ message: "Server Error" });
+  }
 };
 
 // جدول شهري للتاخيرات لموظف معين
@@ -1204,59 +1290,59 @@ const dailyEmployeeAttendance = async (req, res) => {
 
 
 const monthlyEmployeeAttendance = async (req, res) => {
-  try {
- const { id } = req.params;
- const employee = await Employee.findById(id).populate("workplace");
-if (!employee) return res.status(404).json({ message: "الموظف غير موجود" });
+  try {
+    const { id } = req.params;
+    const employee = await Employee.findById(id).populate("workplace");
+    if (!employee) return res.status(404).json({ message: "الموظف غير موجود" });
 
- const nowUTC = DateTime.utc();
- const startOfMonth = nowUTC.startOf('month').toJSDate();
- const endOfMonth = nowUTC.endOf('month').toJSDate();
+    const nowUTC = DateTime.utc();
+    const startOfMonth = nowUTC.startOf('month').toJSDate();
+    const endOfMonth = nowUTC.endOf('month').toJSDate();
 
- const attendances = await Attendance.find({
- employee: employee._id,
- date: { $gte: startOfMonth, $lte: endOfMonth }
- });
-  
- const officialStart = employee.workplace?.workStart || "09:00";
- const allowedLateMinutes = employee.workplace?.gracePeriod || 0;
+    const attendances = await Attendance.find({
+      employee: employee._id,
+      date: { $gte: startOfMonth, $lte: endOfMonth }
+    });
 
- const dailyDelays = [];
-let totalMonthlyDelay = 0;
+    const officialStart = employee.workplace?.workStart || "09:00";
+    const allowedLateMinutes = employee.workplace?.gracePeriod || 0;
 
-attendances.forEach(a => {
- if (a.status === "متأخر") {
-   const delay = a.lateMinutes;
+    const dailyDelays = [];
+    let totalMonthlyDelay = 0;
 
-   // تنسيق التاريخ باللغة العربية
-   const attendanceDate = DateTime.fromJSDate(a.date).setLocale('ar-EG').toFormat('dd/MM/yyyy');
-  
-  // هنا التعديل: تنسيق وقت الحضور باللغة الإنجليزية
-   const checkInTime = DateTime.fromJSDate(a.checkIn).setLocale('en-US').toFormat('HH:mm');
+    attendances.forEach(a => {
+      if (a.status === "متأخر") {
+        const delay = a.lateMinutes;
 
-   dailyDelays.push({
-   employeeName: employee.name,
-  date: attendanceDate,
-  checkIn: checkInTime,
-   officialStart,
-  delayMinutes: delay,
- allowedLateMinutes
- });
+        // تنسيق التاريخ باللغة العربية
+        const attendanceDate = DateTime.fromJSDate(a.date).setLocale('ar-EG').toFormat('dd/MM/yyyy');
 
- totalMonthlyDelay += delay;
- }
- });
+        // هنا التعديل: تنسيق وقت الحضور باللغة الإنجليزية
+        const checkInTime = DateTime.fromJSDate(a.checkIn).setLocale('en-US').toFormat('HH:mm');
 
- res.json({
-   employeeName: employee.name,
- month: nowUTC.setLocale("ar-EG").toFormat("MMMM yyyy"),
- dailyDelays,
-  totalMonthlyDelay
-    });
-  } catch (err) {
- console.error(err);
-res.status(500).json({ error: "Server Error" });
-  }
+        dailyDelays.push({
+          employeeName: employee.name,
+          date: attendanceDate,
+          checkIn: checkInTime,
+          officialStart,
+          delayMinutes: delay,
+          allowedLateMinutes
+        });
+
+        totalMonthlyDelay += delay;
+      }
+    });
+
+    res.json({
+      employeeName: employee.name,
+      month: nowUTC.setLocale("ar-EG").toFormat("MMMM yyyy"),
+      dailyDelays,
+      totalMonthlyDelay
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server Error" });
+  }
 };
 
 
@@ -1272,7 +1358,7 @@ const getYearlyAttendanceSummary = async (req, res) => {
     const yearEnd = new Date(year, 11, 31, 23, 59, 59, 999);
 
     // بيانات الموظف
-    const emp = await Employee.findOne({user:employeeId}).select("name department");
+    const emp = await Employee.findOne({ user: employeeId }).select("name department");
     if (!emp) return res.status(404).json({ error: "الموظف غير موجود" });
 
     // حضور السنة
@@ -1504,17 +1590,17 @@ const getAbsentByDate = async (req, res) => {
       status: "غائب",
       date: { $gte: start, $lte: end }
     })
-    .populate({
-  path: "employee",
-  select: "name salary department",
-  populate: {
-    path: "department",
-    select: "name"
-  }
-})
-  .populate("branch", "name")
+      .populate({
+        path: "employee",
+        select: "name salary department",
+        populate: {
+          path: "department",
+          select: "name"
+        }
+      })
+      .populate("branch", "name")
     // هنا بنجيب خصم الغياب لو موجود
-   
+
     // لو ما فيش relation مباشرة، ممكن نجيب الخصم بعدين لكل attendance:
     const result = await Promise.all(
       absents.map(async (att) => {
@@ -1537,7 +1623,9 @@ const getAbsentByDate = async (req, res) => {
 }
 
 
-module.exports = { checkIn, checkOut ,getTodayAttendance 
-   ,dailyState ,dailyStateBranch , dailyAttendanceTable ,getMonthlyAttendanceForEmployee 
-   , monthlyReport ,monthlyReportoneBranch ,dailyAttendanceTableOnebranch ,dailyAttendanceReport
-    ,dailyEmployeeAttendance ,monthlyEmployeeAttendance ,getYearlyAttendanceSummary ,getAbsentByDate };
+module.exports = {
+  checkIn, checkOut, getTodayAttendance
+  , dailyState, dailyStateBranch, dailyAttendanceTable, getMonthlyAttendanceForEmployee
+  , monthlyReport, monthlyReportoneBranch, dailyAttendanceTableOnebranch, dailyAttendanceReport
+  , dailyEmployeeAttendance, monthlyEmployeeAttendance, getYearlyAttendanceSummary, getAbsentByDate
+};
