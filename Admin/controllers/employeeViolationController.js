@@ -179,7 +179,7 @@ exports.repeatWarningRecord = async (req, res) => {
       // نحدد مصدر الخصم
       if (currentPenalty.deductFrom === 'الراتب') {
         salarySource = employee.salary?.base || 0;
-      } 
+      }
       else if (currentPenalty.deductFrom === 'البدلات') {
         salarySource =
           (employee.salary?.housingAllowance || 0) +
@@ -427,12 +427,12 @@ exports.getAllRecords = async (req, res) => {
 
 
 exports.deleteRecord = async (req, res) => {
-    try {
-        await EmployeeViolation.findByIdAndDelete(req.params.id);
-        res.status(200).json({ status: 'success', data: null });
-    } catch (err) {
-        res.status(400).json({ status: 'fail', message: err.message });
-    }
+  try {
+    await EmployeeViolation.findByIdAndDelete(req.params.id);
+    res.status(200).json({ status: 'success', data: null });
+  } catch (err) {
+    res.status(400).json({ status: 'fail', message: err.message });
+  }
 };
 
 
@@ -441,132 +441,134 @@ exports.deleteRecord = async (req, res) => {
 
 
 exports.getEmployeeViolations = async (req, res) => {
-    try {
-        const userId = req.user._id; // الـ ID اللي جاي من اللوجين (User)
+  try {
+    const userId = req.user._id; // الـ ID اللي جاي من اللوجين (User)
 
-        // 1. لازم نحول الـ User ID لموظف عشان نجيب الـ employeeId الصحيح
-        const employee = await Employee.findOne({ user: userId });
+    // 1. لازم نحول الـ User ID لموظف عشان نجيب الـ employeeId الصحيح
+    const employee = await Employee.findOne({ user: userId });
 
-        if (!employee) {
-            return res.status(404).json({
-                success: false,
-                message: "لم يتم العثور على بيانات موظف مرتبطة بهذا الحساب"
-            });
-        }
-        console.log(req.user._id);
-
-
-        // 2. البحث عن المخالفات باستخدام الـ ID بتاع الموظف اللي لقيناه
-        const records = await EmployeeViolation.find({ employeeId: employee._id })
-            .populate({
-                path: 'violationPenaltyId',
-                populate: {
-                    path: 'violationId',
-                    select: 'nameAr nameEn descriptionAr descriptionEn'
-                }
-            })
-            .sort({ createdAt: -1 }); 
-
-     
-        const formattedData = records.map(r => ({
-            id: r._id,
-            violationTitleAr: r.violationPenaltyId?.violationId?.nameAr || 'مخالفة غير مسجلة',
-            violationTitleEn: r.violationPenaltyId?.violationId?.nameEn || 'Unregistered violation',
-            violationDescriptionAr: r.violationPenaltyId?.violationId?.descriptionAr || '-',
-            violationDescriptionEn: r.violationPenaltyId?.violationId?.descriptionEn || '-',
-            occurrences: r.occurrences.map(o => ({
-                occurrenceNumber: o.occurrenceNumber,
-                date: o.date,
-                penaltyType: o.penaltyType,
-                percentageValue: o.percentageValue,
-                daysCount: o.daysCount,
-                deductFrom: o.deductFrom,
-                decisionText: o.decisionText ,
-                 addedby:o.addedBy
-            })),
-            currentOccurrence: r.currentOccurrence
-        }));
-
-        res.status(200).json({
-            success: true,
-            count: formattedData.length,
-            data: formattedData
-        });
-
-    } catch (err) {
-        console.error("Error:", err);
-        res.status(400).json({
-            success: false,
-            message: "حدث خطأ أثناء جلب المخالفات",
-            error: err.message
-        });
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "لم يتم العثور على بيانات موظف مرتبطة بهذا الحساب"
+      });
     }
+    console.log(req.user._id);
+
+
+    // 2. البحث عن المخالفات باستخدام الـ ID بتاع الموظف اللي لقيناه
+    const records = await EmployeeViolation.find({ employeeId: employee._id })
+      .populate({
+        path: 'violationPenaltyId',
+        populate: {
+          path: 'violationId',
+          select: 'nameAr nameEn descriptionAr descriptionEn'
+        }
+      })
+      .sort({ createdAt: -1 });
+
+
+    const formattedData = records.map(r => ({
+      id: r._id,
+      violationTitleAr: r.violationPenaltyId?.violationId?.nameAr || 'مخالفة غير مسجلة',
+      violationTitleEn: r.violationPenaltyId?.violationId?.nameEn || 'Unregistered violation',
+      violationDescriptionAr: r.violationPenaltyId?.violationId?.descriptionAr || '-',
+      violationDescriptionEn: r.violationPenaltyId?.violationId?.descriptionEn || '-',
+      occurrences: r.occurrences.map(o => ({
+        occurrenceNumber: o.occurrenceNumber,
+        date: o.date,
+        penaltyType: o.penaltyType,
+        percentageValue: o.percentageValue,
+        daysCount: o.daysCount,
+        deductFrom: o.deductFrom,
+        decisionText: o.decisionText,
+        addedby: o.addedBy
+      })),
+      currentOccurrence: r.currentOccurrence
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: formattedData.length,
+      data: formattedData
+    });
+
+  } catch (err) {
+    console.error("Error:", err);
+    res.status(400).json({
+      success: false,
+      message: "حدث خطأ أثناء جلب المخالفات",
+      error: err.message
+    });
+  }
 };
-
+//employeeNumber:EMP-00005  nour
+//  "id": "698de72daec12f7ca7b6610f",
+// "employeeId": "6926f011c6d34d766dba67a3",
 exports.getEmployeeViolationById = async (req, res) => {
-    try {
-        const { userId } = req.body
-        const employee = await Employee.findOne({ user: userId });
+  try {
+    const { id } = req.params
+    const employee = await Employee.findOne({ _id: id });
 
-        if (!employee) {
-            return res.status(404).json({
-                success: false,
-                message: "لم يتم العثور على بيانات موظف مرتبطة بهذا الحساب"
-            });
-        }
-        console.log(userId);
-
-
-        const records = await EmployeeViolation.find({ employeeId: employee._id })
-            .populate('employeeId', 'name employeeNumber')
-            .populate({
-                path: 'violationPenaltyId',
-                populate: {
-                    path: 'violationId',
-                    select: 'nameAr nameEn descriptionAr descriptionEn'
-                }
-            })
-            .sort({ createdAt: -1 });
-
-        if (!records || records.length === 0) {
-            return res.status(404).json({ status: 'fail', message: 'لا توجد مخالفات مسجلة لهذا الموظف' });
-        }
-
-        const formattedData = records.map(r => ({
-            id: r._id,
-            employeeId: r.employeeId?._id || null,
-            employeeName: r.employeeId?.name || 'غير معروف',
-            employeeNo: r.employeeId?.employeeNumber || '-',
-
-            violationPenaltyId: r.violationPenaltyId?._id || null,
-            violationTitleAr: r.violationPenaltyId?.violationId?.nameAr || 'مخالفة غير مسجلة',
-            violationTitleEn: r.violationPenaltyId?.violationId?.nameEn || 'Unregistered violation',
-            violationDescriptionAr: r.violationPenaltyId?.violationId?.descriptionAr || '-',
-            violationDescriptionEn: r.violationPenaltyId?.violationId?.descriptionEn || '-',
-
-            occurrences: r.occurrences.map(o => ({
-                occurrenceNumber: o.occurrenceNumber,
-                date: o.date,
-                addedBy: o.addedBy,
-                addedById: o.addedById,
-                penaltyType: o.penaltyType,
-                percentageValue: o.percentageValue,
-                daysCount: o.daysCount,
-                deductFrom: o.deductFrom,
-                decisionText: o.decisionText,
-                calculatedDeduction: o.calculatedDeduction
-            })),
-            currentOccurrence: r.currentOccurrence
-        }));
-
-        res.status(200).json({
-            status: 'success',
-            count: formattedData.length,
-            data: formattedData
-        });
-
-    } catch (err) {
-        console.error(err);
-        res.status(400).json({ status: 'fail', message: err.message });
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "لم يتم العثور على بيانات موظف مرتبطة بهذا الحساب"
+      });
     }
+
+
+
+    const records = await EmployeeViolation.find({ employeeId: employee._id })
+      .populate('employeeId', 'name employeeNumber')
+      .populate({
+        path: 'violationPenaltyId',
+        populate: {
+          path: 'violationId',
+          select: 'nameAr nameEn descriptionAr descriptionEn'
+        }
+      })
+      .sort({ createdAt: -1 });
+
+    if (!records || records.length === 0) {
+      return res.status(404).json({ status: 'fail', message: 'لا توجد مخالفات مسجلة لهذا الموظف' });
+    }
+
+    const formattedData = records.map(r => ({
+      id: r._id,
+      employeeId: r.employeeId?._id || null,
+      employeeName: r.employeeId?.name || 'غير معروف',
+      employeeNo: r.employeeId?.employeeNumber || '-',
+
+      violationPenaltyId: r.violationPenaltyId?._id || null,
+      violationTitleAr: r.violationPenaltyId?.violationId?.nameAr || 'مخالفة غير مسجلة',
+      violationTitleEn: r.violationPenaltyId?.violationId?.nameEn || 'Unregistered violation',
+      violationDescriptionAr: r.violationPenaltyId?.violationId?.descriptionAr || '-',
+      violationDescriptionEn: r.violationPenaltyId?.violationId?.descriptionEn || '-',
+
+      occurrences: r.occurrences.map(o => ({
+        occurrenceNumber: o.occurrenceNumber,
+        date: o.date,
+        addedBy: o.addedBy,
+        addedById: o.addedById,
+        penaltyType: o.penaltyType,
+        percentageValue: o.percentageValue,
+        daysCount: o.daysCount,
+        deductFrom: o.deductFrom,
+        decisionText: o.decisionText,
+        calculatedDeduction: o.calculatedDeduction
+      })),
+      currentOccurrence: r.currentOccurrence
+    }));
+
+    res.status(200).json({
+      status: 'success',
+      count: formattedData.length,
+      data: formattedData
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(400).json({ status: 'fail', message: err.message });
+  }
 };
