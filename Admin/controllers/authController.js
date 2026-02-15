@@ -42,12 +42,13 @@ exports.login = async (req, res) => {
 
     const SPECIAL_EMPLOYEE_ID = "692875d296f813993e273b5c";
 
-const token = generateToken(user._id, user.role);
-
-// لو الموظف هو اللي معينين، الـ cookie بتخلص بعد دقيقتين
+let token;
 if (user._id == SPECIAL_EMPLOYEE_ID) {
+  // 2 دقائق = "2m"
+  token = generateToken(user._id, user.role, "2m");
   setTokenCookie(res, token, 2 * 60 * 1000); 
 } else {
+  token = generateToken(user._id, user.role);
   setTokenCookie(res, token); 
 }
    
