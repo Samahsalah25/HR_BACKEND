@@ -12,7 +12,6 @@ const mongoose = require('mongoose');
 const Employee = require('../models/employee');
 
 
-const Employee = require('../models/employee');
 
 
 exports.createViolationRecord = async (req, res) => {
@@ -369,110 +368,59 @@ exports.repeatWarningRecord = async (req, res) => {
 
 exports.getAllRecords = async (req, res) => {
   try {
-    const { month, year } = req.query; // جاي من الفرونت مثلا ?month=2&year=2026
+    const { month, year } = req.query;
 
+    // فلترة حسب الشهر والسنة لو موجودة
     let filter = {};
     if (month && year) {
-      // فلترة حسب الشهر والسنة
-      const start = new Date(year, month - 1, 1); // بداية الشهر
-      const end = new Date(year, month, 0, 23, 59, 59, 999); // آخر يوم في الشهر
+      const start = new Date(year, month - 1, 1);
+      const end = new Date(year, month, 0, 23, 59, 59, 999);
       filter.createdAt = { $gte: start, $lte: end };
     }
 
-    
+    // جلب السجلات
     const records = await EmployeeViolation.find(filter)
-  .populate('employeeId', 'name employeeNumber ') // اسم الموظف والرقم الوظيفي
-  .populate({
-    path: 'violationPenaltyId',
-    populate: {
-      path: 'violationId',
-      select: 'nameAr nameEn descriptionAr descriptionEn'
-    }
-  })
-  .sort({ violationDate: -1 });
-    try {
-        const { month, year } = req.query; // جاي من الفرونت مثلا ?month=2&year=2026
-
-        let filter = {};
-        if (month && year) {
-            // فلترة حسب الشهر والسنة
-            const start = new Date(year, month - 1, 1); // بداية الشهر
-            const end = new Date(year, month, 0, 23, 59, 59, 999); // آخر يوم في الشهر
-            filter.createdAt = { $gte: start, $lte: end };
+      .populate('employeeId', 'name employeeNumber')
+      .populate({
+        path: 'violationPenaltyId',
+        populate: {
+          path: 'violationId',
+          select: 'nameAr nameEn descriptionAr descriptionEn'
         }
+      })
+      .sort({ violationDate: -1 });
 
+    // تجهيز البيانات للفرونت
+    const formattedData = records.map(r => ({
+      id: r._id,
+      employeeId: r.employeeId?._id || null,
+      employeeName: r.employeeId?.name || 'غير معروف',
+      employeeNo: r.employeeId?.employeeNumber || '-',
+      violationPenaltyId: r.violationPenaltyId?._id || null,
+      violationTitleAr: r.violationPenaltyId?.violationId?.nameAr || 'مخالفة غير مسجلة',
+      violationTitleEn: r.violationPenaltyId?.violationId?.nameEn || 'Unregistered violation',
+      violationDescriptionAr: r.violationPenaltyId?.violationId?.descriptionAr || '-',
+      violationDescriptionEn: r.violationPenaltyId?.violationId?.descriptionEn || '-',
+      occurrences: r.occurrences.map(o => ({
+        occurrenceNumber: o.occurrenceNumber,
+        date: o.date,
+        addedBy: o.addedBy,
+        addedById: o.addedById,
+        penaltyType: o.penaltyType,
+        percentageValue: o.percentageValue,
+        daysCount: o.daysCount,
+        deductFrom: o.deductFrom,
+        decisionText: o.decisionText
+      })),
+      currentOccurrence: r.currentOccurrence
+    }));
 
-        const records = await EmployeeViolation.find(filter)
-            .populate('employeeId', 'name employeeNumber ') // اسم الموظف والرقم الوظيفي
-            .populate({
-                path: 'violationPenaltyId',
-                populate: {
-                    path: 'violationId',
-                    select: 'nameAr nameEn descriptionAr descriptionEn'
-                }
-            })
-            .sort({ violationDate: -1 });
-        try {
-            const { month, year } = req.query; // جاي من الفرونت مثلا ?month=2&year=2026
-
-            let filter = {};
-            if (month && year) {
-                // فلترة حسب الشهر والسنة
-                const start = new Date(year, month - 1, 1); // بداية الشهر
-                const end = new Date(year, month, 0, 23, 59, 59, 999); // آخر يوم في الشهر
-                filter.createdAt = { $gte: start, $lte: end };
-            }
-
-
-            const records = await EmployeeViolation.find(filter)
-                .populate('employeeId', 'name employeeNumber') // اسم الموظف والرقم الوظيفي
-                .populate({
-                    path: 'violationPenaltyId',
-                    populate: {
-                        path: 'violationId',
-                        select: 'nameAr nameEn descriptionAr descriptionEn'
-                    }
-                })
-                .sort({ violationDate: -1 });
-
-
-
-        const formattedData = records.map(r => ({
-            id: r._id,
-            employeeId: r.employeeId?._id || null,
-            employeeName: r.employeeId?.name || 'غير معروف',
-            employeeNo: r.employeeId?.employeeNumber || '-',
-            
-   
-    violationPenaltyId: r.violationPenaltyId?._id || null,  
-            violationTitleAr: r.violationPenaltyId?.violationId?.nameAr || 'مخالفة غير مسجلة',
-            violationTitleEn: r.violationPenaltyId?.violationId?.nameEn || 'Unregistered violation',
-            violationDescriptionAr: r.violationPenaltyId?.violationId?.descriptionAr || '-',
-            violationDescriptionEn: r.violationPenaltyId?.violationId?.descriptionEn || '-',
-            occurrences: r.occurrences.map(o => ({
-                occurrenceNumber: o.occurrenceNumber,
-                date: o.date,
-                addedBy: o.addedBy,
-                addedById: o.addedById,
-                penaltyType: o.penaltyType,
-                percentageValue: o.percentageValue,
-                daysCount: o.daysCount,
-                deductFrom: o.deductFrom,
-                decisionText: o.decisionText
-            })),
-            currentOccurrence: r.currentOccurrence
-        }));
-
-res.status(200).json({ status: 'success', data: formattedData });
+    res.status(200).json({ status: 'success', data: formattedData });
 
   } catch (err) {
-    res.status(400).json({ status: 'fail', message: err.message });
+    console.error("Error fetching records:", err);
+    res.status(500).json({ status: 'fail', message: 'حدث خطأ أثناء جلب السجلات' });
   }
-        res.status(200).json({ status: 'success', data: formattedData });
-
-    } catch (err) {
-        res.status(400).json({ status: 'fail', message: err.message });
-    }
 };
 
 
