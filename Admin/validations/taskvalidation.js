@@ -27,7 +27,7 @@ const createTaskSchema = Joi.object({
     completedDate:Joi.date().iso().optional().messages({
     'date.format': 'تاريخ الإسناد يجب أن يكون بصيغة ISO (YYYY-MM-DD)'
   }),
-  attachment: Joi.object({
+  attachments: Joi.object({
     originalname: Joi.string().required().messages({
       'any.required': 'اسم الملف الأصلي مطلوب'
     }),

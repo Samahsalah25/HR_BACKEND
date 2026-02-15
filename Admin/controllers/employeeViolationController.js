@@ -503,3 +503,70 @@ exports.getEmployeeViolations = async (req, res) => {
     }
 };
 
+exports.getEmployeeViolationById = async (req, res) => {
+    try {
+        const { userId } = req.body
+        const employee = await Employee.findOne({ user: userId });
+
+        if (!employee) {
+            return res.status(404).json({
+                success: false,
+                message: "لم يتم العثور على بيانات موظف مرتبطة بهذا الحساب"
+            });
+        }
+        console.log(userId);
+
+
+        const records = await EmployeeViolation.find({ employeeId: employee._id })
+            .populate('employeeId', 'name employeeNumber')
+            .populate({
+                path: 'violationPenaltyId',
+                populate: {
+                    path: 'violationId',
+                    select: 'nameAr nameEn descriptionAr descriptionEn'
+                }
+            })
+            .sort({ createdAt: -1 });
+
+        if (!records || records.length === 0) {
+            return res.status(404).json({ status: 'fail', message: 'لا توجد مخالفات مسجلة لهذا الموظف' });
+        }
+
+        const formattedData = records.map(r => ({
+            id: r._id,
+            employeeId: r.employeeId?._id || null,
+            employeeName: r.employeeId?.name || 'غير معروف',
+            employeeNo: r.employeeId?.employeeNumber || '-',
+
+            violationPenaltyId: r.violationPenaltyId?._id || null,
+            violationTitleAr: r.violationPenaltyId?.violationId?.nameAr || 'مخالفة غير مسجلة',
+            violationTitleEn: r.violationPenaltyId?.violationId?.nameEn || 'Unregistered violation',
+            violationDescriptionAr: r.violationPenaltyId?.violationId?.descriptionAr || '-',
+            violationDescriptionEn: r.violationPenaltyId?.violationId?.descriptionEn || '-',
+
+            occurrences: r.occurrences.map(o => ({
+                occurrenceNumber: o.occurrenceNumber,
+                date: o.date,
+                addedBy: o.addedBy,
+                addedById: o.addedById,
+                penaltyType: o.penaltyType,
+                percentageValue: o.percentageValue,
+                daysCount: o.daysCount,
+                deductFrom: o.deductFrom,
+                decisionText: o.decisionText,
+                calculatedDeduction: o.calculatedDeduction
+            })),
+            currentOccurrence: r.currentOccurrence
+        }));
+
+        res.status(200).json({
+            status: 'success',
+            count: formattedData.length,
+            data: formattedData
+        });
+
+    } catch (err) {
+        console.error(err);
+        res.status(400).json({ status: 'fail', message: err.message });
+    }
+};
