@@ -255,10 +255,12 @@ const updateMeeting = async (req, res) => {
       // إذا تم رفع ملف جديد، نقوم برفعه لكلوديناري
       const result = await uploadToCloudinary(req.file.buffer, 'meetings');
 
-      attachments = [{
-        filename: req.file.originalname,
-        url: result.secure_url // الرابط الجديد من كلوديناري
-      }];
+    attachments = [{
+  filename: req.file.originalname,
+  originalname: req.file.originalname,
+  url: result.secure_url
+}];
+
     }
     // -------------------------------------------
 
