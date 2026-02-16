@@ -206,7 +206,7 @@ const getMeetingById = async (req, res) => {
         filename: att.filename,
         originalname: att.originalname,
         path: att.path,
-        url: `/uploads/meetings/${att.filename}`, // رابط مباشر للـ frontend
+        url: att.url, // , // رابط مباشر للـ frontend
       })) || [],
     };
 
