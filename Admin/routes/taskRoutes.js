@@ -33,7 +33,6 @@ router.get('/tasksOverviewForMyBranch', authenticate, authorizeRoles('HR'), task
 router.get('/taskbyemployee/:id',authenticate, taskByemployee);
 
 
-
 // tasks state  النسب خلال المكتملة خلال الشهر واالسنة
 router.get('/getTasksStats', authenticate, authorizeRoles('HR'), getTasksStats)
 

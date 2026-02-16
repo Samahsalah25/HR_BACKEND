@@ -20,6 +20,7 @@
 // };
 
 // module.exports = authenticate;
+
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
 
