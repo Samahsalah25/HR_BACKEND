@@ -90,6 +90,31 @@ exports.logout = (req, res) => {
 
 
 // controllers/authController.js
+// exports.getMe = async (req, res) => {
+//   try {
+//     // هات اليوزر من الـ token
+//     const user = await User.findById(req.user._id).select("-password");
+//     if (!user) {
+//       return res.status(404).json({ success: false, message: "المستخدم غير موجود" });
+//     }
+
+//     // هات الامبلوي اللي مربوط باليوزر ده
+//     const employee = await Employee.findOne({ user: user._id })
+//       .populate("department", "name")
+//       .populate("workplace", "name location");
+
+//     res.json({
+//       success: true,
+//       user: {
+//         ...user.toObject(),
+//         employee: employee ? employee.toObject() : null,
+//       },
+//     });
+//   } catch (err) {
+//     res.status(500).json({ success: false, message: err.message });
+//   }
+// };
+
 exports.getMe = async (req, res) => {
   try {
     // هات اليوزر من الـ token
@@ -101,7 +126,19 @@ exports.getMe = async (req, res) => {
     // هات الامبلوي اللي مربوط باليوزر ده
     const employee = await Employee.findOne({ user: user._id })
       .populate("department", "name")
-      .populate("workplace", "name location");
+      .populate("workplace", "name location")
+      // هنا بنجيب مدة العقد كاملة بدل _id بس
+      .populate({
+        path: "contract.duration",
+        model: "Contract", // اسم الموديل اللي عملتيه
+        select: "name duration unit"
+      })
+      // نفس الشيء للإقامة
+      .populate({
+        path: "residency.duration",
+        model: "ResidencyYear",
+        select: "year"
+      });
 
     res.json({
       success: true,
@@ -114,5 +151,4 @@ exports.getMe = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
-
 
