@@ -932,7 +932,7 @@ const monthlyReport = async (req, res) => {
     const endOfMonth = nowUTC.endOf('month').toJSDate();
 
     // الرصيد الاساسي للشركة (document where employee: null)
-    const baseLeaveBalance = await LeaveBalance.findOne({ employee: null });
+    const baseLeaveBalance = await LeaveBalance.findOne({ employee: null  });
     if (!baseLeaveBalance) {
       return res.status(404).json({ message: "لم يتم العثور على الرصيد الأساسي للإجازات" });
     }
