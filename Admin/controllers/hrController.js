@@ -1,10 +1,10 @@
 const Employee = require('../models/employee');
 const User = require('../models/user');
 const Department = require('../models/depaertment'); // لاحظ spelling
-const LeaveBalance=require('../models/leaveBalanceModel')
-const mongoose=require('mongoose')
-const Contract=require('../models/Contract') ;
-const ResidencyYear =require('../models/ResidencyYear')
+const LeaveBalance = require('../models/leaveBalanceModel')
+const mongoose = require('mongoose')
+const Contract = require('../models/Contract');
+const ResidencyYear = require('../models/ResidencyYear')
 
 const getAllEmployees = async (req, res) => {
   try {
@@ -15,9 +15,9 @@ const getAllEmployees = async (req, res) => {
       .populate('residency.duration');
 
     // فلترة الموظفين اللي رولهم Employee
-   const filtered = employees.filter(emp => 
-  ["EMPLOYEE", "Manager", "HR"].includes(emp.user.role)
-);
+    const filtered = employees.filter(emp =>
+      ["EMPLOYEE", "Manager", "HR"].includes(emp.user.role)
+    );
 
     const result = filtered.map(emp => {
       // معالجة مدة العقد
@@ -41,12 +41,12 @@ const getAllEmployees = async (req, res) => {
       return {
         _id: emp._id,
         name: emp.name,
-        role:emp.user.role ,
+        role: emp.user.role,
         email: emp.user.email,
         department: emp.department ? emp.department.name : null,
         jobTitle: emp.jobTitle,
-            employeeNumber: emp.employeeNumber || "",        
-    residencyNationality: emp.residency?.nationality || "", 
+        employeeNumber: emp.employeeNumber || "",
+        residencyNationality: emp.residency?.nationality || "",
         contractStart: emp.contract.start,
         contractEnd: emp.contract.end,
         contractDuration: contractDurationText,
@@ -96,12 +96,12 @@ const createEmployee = async (req, res) => {
       role
     } = req.body;
 
-   
+
     if (req.user.role !== "HR") {
       return res.status(403).json({ message: "ليس لديك صلاحية لإضافة موظف جديد" });
     }
 
- 
+
     const existingUser = await User.findOne({ email }).session(session);
     if (existingUser) {
       return res.status(400).json({ message: `البريد الإلكتروني ${email} مستخدم بالفعل` });
@@ -129,10 +129,10 @@ const createEmployee = async (req, res) => {
       }
     }
 
-  
+
     const user = await User.create([{ name, email, password, role: role || "EMPLOYEE" }], { session });
 
- 
+
     let employee = await Employee.create([{
       name,
       jobTitle,
@@ -187,6 +187,8 @@ const createEmployee = async (req, res) => {
       throw new Error("رصيد الإجازات الافتراضي للشركة غير محدد");
     }
 
+    const currentYear = new Date().getFullYear();
+
     const totalLeaveBalance =
       companyLeaves.annual +
       companyLeaves.sick +
@@ -203,7 +205,8 @@ const createEmployee = async (req, res) => {
       emergency: companyLeaves.emergency,
       maternity: companyLeaves.maternity,
       unpaid: companyLeaves.unpaid,
-      remaining: totalLeaveBalance
+      remaining: totalLeaveBalance,
+      year: currentYear
     }], { session });
 
     await session.commitTransaction();
@@ -234,7 +237,7 @@ const createEmployee = async (req, res) => {
 
 
 // get contrcsts state
-const getContractsStats  = async (req, res) => {
+const getContractsStats = async (req, res) => {
   try {
     const today = new Date();
     const next30Days = new Date();
@@ -287,8 +290,8 @@ const getAllContracts = async (req, res) => {
     const today = new Date();
 
     const employees = await Employee.find()
-      .populate('user', 'name') 
-      .populate('contract.duration'); 
+      .populate('user', 'name')
+      .populate('contract.duration');
 
     const contracts = employees
       .filter(emp => emp.contract && emp.contract.start && emp.contract.end) // اللي عنده عقد
@@ -348,9 +351,8 @@ const getEmployeeById = async (req, res) => {
       contractEnd: employee.contract?.end || null,
       contractDurationId: employee.contract?.duration?._id || null,
       contractDurationLabel: employee.contract?.duration
-        ? `${employee.contract.duration.duration} ${
-            employee.contract.duration.unit === "years" ? "سنة" : "شهر"
-          }`
+        ? `${employee.contract.duration.duration} ${employee.contract.duration.unit === "years" ? "سنة" : "شهر"
+        }`
         : null,
 
       //  بيانات الإقامة
@@ -358,25 +360,24 @@ const getEmployeeById = async (req, res) => {
       residencyEnd: employee.residency?.end || null,
       residencyDurationId: employee.residency?.duration?._id || null,
       residencyDurationLabel: employee.residency?.duration
-        ? `${employee.residency.duration.duration} ${
-            employee.residency.duration.unit === "years" ? "سنة" : "شهر"
-          }`
+        ? `${employee.residency.duration.duration} ${employee.residency.duration.unit === "years" ? "سنة" : "شهر"
+        }`
         : null,
       residencyType: employee.residency?.type || "",
       residencyNationality: employee.residency?.nationality || "",
       residencyAdditionNumber: employee.residency?.additionNumber || "",
       residencyIssuingAuthority: employee.residency?.issuingAuthority || "",
       residencyInsuranceNumber: employee.residency?.insuranceNumber || "",
-contactInfo: {
-  phone: employee.contactInfo?.phone || "",
-  address: employee.contactInfo?.address || "",
-},
-bankInfo: {
-  bankName: employee.bankInfo?.bankName || "",
-  iban: employee.bankInfo?.iban || "",
-  swift: employee.bankInfo?.swift || "",
-  accountNumber: employee.bankInfo?.accountNumber || "",
-},
+      contactInfo: {
+        phone: employee.contactInfo?.phone || "",
+        address: employee.contactInfo?.address || "",
+      },
+      bankInfo: {
+        bankName: employee.bankInfo?.bankName || "",
+        iban: employee.bankInfo?.iban || "",
+        swift: employee.bankInfo?.swift || "",
+        accountNumber: employee.bankInfo?.accountNumber || "",
+      },
 
       //  الراتب
       salary: {
@@ -386,9 +387,9 @@ bankInfo: {
         otherAllowance: employee.salary?.otherAllowance || 0,
       },
       documents: employee.documents?.map(doc => ({
-    name: doc.name,
-    url: doc.url
-  })) || []
+        name: doc.name,
+        url: doc.url
+      })) || []
     };
 
     res.status(200).json(result);
@@ -402,15 +403,15 @@ bankInfo: {
 
 const deleteEmployee = async (req, res) => {
   try {
-    const { id } = req.params; 
+    const { id } = req.params;
 
-    
+
     const employee = await Employee.findById(id);
     if (!employee) {
       return res.status(404).json({ message: 'الموظف غير موجود' });
     }
 
-  
+
     if (employee.user) {
       await User.findByIdAndDelete(employee.user);
     }
@@ -473,12 +474,12 @@ const getEmployeesByBranch = async (req, res) => {
         jobTitle: emp.jobTitle || "",
         contractStart: formatDate(emp.contract?.start),
         contractEnd: formatDate(emp.contract?.end),
-        contractDuration: emp.contract?.duration 
+        contractDuration: emp.contract?.duration
           ? `${emp.contract.duration.duration} ${emp.contract.duration.unit === "years" ? "سنة" : "شهر"}`
           : null,
         residencyStart: formatDate(emp.residency?.start),
         residencyEnd: formatDate(emp.residency?.end),
-        residencyDuration: emp.residency?.duration 
+        residencyDuration: emp.residency?.duration
           ? `${emp.residency.duration.year} سنة`
           : null
       }
@@ -497,12 +498,12 @@ const getManagerss = async (req, res) => {
     const managers = await Employee.find()
       .populate({
         path: "user",
-        match: { role: "Manager" }, 
-        select: "role name email", 
+        match: { role: "Manager" },
+        select: "role name email",
       })
-      .select("name jobTitle"); 
+      .select("name jobTitle");
 
-    
+
     const filtered = managers.filter(emp => emp.user !== null);
 
     res.json(filtered);
@@ -521,7 +522,7 @@ const updateEmployee = async (req, res) => {
   try {
     const { id } = req.params;
     console.log("Files:", req.files);
-console.log("Body:", req.body);
+    console.log("Body:", req.body);
 
     const {
       name,
@@ -613,14 +614,14 @@ console.log("Body:", req.body);
       employee.residency.end = end;
     }
 
-   // بعد إنشاء الموظف
-if (req.files && req.files.length > 0) {
-  employee.documents = req.files.map(file => ({
-    name: file.originalname,
-    url: file.path, 
-  }));
- 
-}
+    // بعد إنشاء الموظف
+    if (req.files && req.files.length > 0) {
+      employee.documents = req.files.map(file => ({
+        name: file.originalname,
+        url: file.path,
+      }));
+
+    }
 
 
 
@@ -639,21 +640,21 @@ if (req.files && req.files.length > 0) {
     });
 
   } catch (error) {
-   await session.abortTransaction();
-  session.endSession();
-  console.error(" Update employee error:", error);           // هذا لطباعة كامل الـ error object
-  if (error instanceof multer.MulterError) {
-    console.error("MulterError details:", error.field, error.message);
-  }
-  res.status(500).json({
-    message: "حدث خطأ أثناء تحديث الموظف",
-    error: error.toString(),    //  
-    stack: error.stack          
-  });
+    await session.abortTransaction();
+    session.endSession();
+    console.error(" Update employee error:", error);           // هذا لطباعة كامل الـ error object
+    if (error instanceof multer.MulterError) {
+      console.error("MulterError details:", error.field, error.message);
+    }
+    res.status(500).json({
+      message: "حدث خطأ أثناء تحديث الموظف",
+      error: error.toString(),    //  
+      stack: error.stack
+    });
   }
 };
 
 
 
 
-module.exports = { getAllEmployees ,createEmployee ,getContractsStats ,getManagerss ,getAllContracts , getEmployeeById ,deleteEmployee ,getEmployeesByBranch ,updateEmployee}; 
+module.exports = { getAllEmployees, createEmployee, getContractsStats, getManagerss, getAllContracts, getEmployeeById, deleteEmployee, getEmployeesByBranch, updateEmployee }; 
