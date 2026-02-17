@@ -66,10 +66,10 @@ const getCompanyLeaves = async (req, res) => {
 const getLeaveById = async (req, res) => {
   try {
     const { id } = req.params;
-    // const leave = await LeaveBalance.findById(id).populate("employee", "name");
-    const currentYear = Date().getFullYear();
-    const leave = await LeaveBalance.findOne({ employee: id, year: currentYear })
-      .populate("employee", "name");
+    const leave = await LeaveBalance.findById(id).populate("employee", "name");
+    // const currentYear = Date().getFullYear();
+    // const leave = await LeaveBalance.findOne({ employee: id, year: currentYear })
+    //   .populate("employee", "name");
 
     if (!leave) {
       return res.status(404).json({
