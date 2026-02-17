@@ -63,7 +63,9 @@ const LeaveBalance = require('../Admin/models/leaveBalanceModel.js');
 const Employee = require('../Admin/models/employee.js');
 
 const initYearlyLeaves = () => {
-    cron.schedule('1 0 0 1 1 *', async () => {
+    // cron.schedule('1 0 0 1 1 *', async() 
+
+    cron.schedule('* * * * *', async () => {
         console.log('--- بدأت عملية تجديد أرصدة الإجازات السنوية ---');
 
         const session = await mongoose.startSession();
