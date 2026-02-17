@@ -15,7 +15,7 @@ const createCompanyLeaves = async (req, res) => {
 
 
     const companyLeaves = new LeaveBalance({
-      employee: null, 
+      employee: null,
       annual,
       sick,
       marriage,
@@ -66,7 +66,10 @@ const getCompanyLeaves = async (req, res) => {
 const getLeaveById = async (req, res) => {
   try {
     const { id } = req.params;
-    const leave = await LeaveBalance.findById(id).populate("employee", "name");
+    // const leave = await LeaveBalance.findById(id).populate("employee", "name");
+    const currentYear = Date().getFullYear();
+    const leave = await LeaveBalance.findOne({ employee: id, year: currentYear })
+      .populate("employee", "name");
 
     if (!leave) {
       return res.status(404).json({
@@ -87,6 +90,23 @@ const getLeaveById = async (req, res) => {
     });
   }
 };
+
+const getLeaveByEmployeeId = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const currentYear = Date().getFullYear();
+
+    const leave = await LeaveBalance.findOne({ employee: id, year: currentYear })
+      .populate("employee", "name");
+
+    if (!leave) return res.status(404).json({ success: false, message: "مفيش رصيد" });
+
+    res.json({ success: true, data: leave });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 
 //  تعديل إعدادات الإجازة حسب الـ ID
 const updateLeaveById = async (req, res) => {
@@ -148,4 +168,4 @@ const deleteLeaveById = async (req, res) => {
 };
 
 
-module.exports = { createCompanyLeaves ,getCompanyLeaves ,deleteLeaveById ,updateLeaveById ,getLeaveById  };
+module.exports = { createCompanyLeaves, getCompanyLeaves, deleteLeaveById, updateLeaveById, getLeaveById, getLeaveByEmployeeId };

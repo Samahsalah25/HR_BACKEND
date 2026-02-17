@@ -1,14 +1,14 @@
 const Employee = require('../models/employee');
 const User = require('../models/user')
 const ResidencyYear = require('../models/ResidencyYear');
-const LeaveBalance=require('../models/leaveBalanceModel')
-const mongoose=require('mongoose')
-const Attendance=require('../models/Attendance');
+const LeaveBalance = require('../models/leaveBalanceModel')
+const mongoose = require('mongoose')
+const Attendance = require('../models/Attendance');
 const Contract = require("../models/Contract");
 const Task = require('../models/Task');
-const Request=require('../models/requestModel')
+const Request = require('../models/requestModel')
 const Counter = require("../models/counterSchema");
-const SalaryAdvance =require('../models/salaryAdvance')
+const SalaryAdvance = require('../models/salaryAdvance')
 
 exports.createEmployee = async (req, res) => {
   const session = await mongoose.startSession();
@@ -106,14 +106,14 @@ exports.createEmployee = async (req, res) => {
       end.setFullYear(end.getFullYear() + residencyDuration.year);
       employee.residency.end = end;
     }
-// بعد إنشاء الموظف
-if (req.files && req.files.length > 0) {
-  employee.documents = req.files.map(file => ({
-    name: file.originalname,
-    url: file.path, 
-  }));
-  await employee.save({ session });
-}
+    // بعد إنشاء الموظف
+    if (req.files && req.files.length > 0) {
+      employee.documents = req.files.map(file => ({
+        name: file.originalname,
+        url: file.path,
+      }));
+      await employee.save({ session });
+    }
 
     await employee.save({ session });
 
@@ -123,6 +123,8 @@ if (req.files && req.files.length > 0) {
     if (!companyLeaves) {
       throw new Error("رصيد الإجازات الافتراضي للشركة غير محدد");
     }
+
+    const currentYear = new Date().getFullYear();
 
     const totalLeaveBalance =
       companyLeaves.annual +
@@ -140,7 +142,8 @@ if (req.files && req.files.length > 0) {
       emergency: companyLeaves.emergency,
       maternity: companyLeaves.maternity,
       unpaid: companyLeaves.unpaid,
-      remaining: totalLeaveBalance
+      remaining: totalLeaveBalance,
+      year: currentYear
     }], { session });
 
     await session.commitTransaction();
@@ -220,14 +223,14 @@ exports.employeeOverview = async (req, res) => {
       jobTitle: employee.jobTitle,
       leaveBalances: leaveBalance
         ? {
-            annual: leaveBalance.annual,
-            sick: leaveBalance.sick,
-            marriage: leaveBalance.marriage,
-            emergency: leaveBalance.emergency,
-            maternity: leaveBalance.maternity,
-            unpaid: leaveBalance.unpaid,
-            totalRemaining
-          }
+          annual: leaveBalance.annual,
+          sick: leaveBalance.sick,
+          marriage: leaveBalance.marriage,
+          emergency: leaveBalance.emergency,
+          maternity: leaveBalance.maternity,
+          unpaid: leaveBalance.unpaid,
+          totalRemaining
+        }
         : {},
       annualAbsences: absences,
       daysUntilContractEnd
@@ -486,7 +489,7 @@ exports.getEmployees = async (req, res) => {
         .populate("workplace", "name location")
         .populate("manager", "name jobTitle")
         .populate("user", "name email role");
-    } 
+    }
     else if (req.user.role === "Manager") {
       // Manager يشوف موظفين قسمه + مدراء آخرين، مستبعد نفسه
       employees = await Employee.find({
@@ -500,7 +503,7 @@ exports.getEmployees = async (req, res) => {
         .populate("workplace", "name location")
         .populate("manager", "name jobTitle")
         .populate("user", "name email role");
-    } 
+    }
     else if (req.user.role === "EMPLOYEE") {
       // EMPLOYEE يشوف زمايله في نفس القسم فقط، مستبعد نفسه
       employees = await Employee.find({
@@ -513,7 +516,7 @@ exports.getEmployees = async (req, res) => {
         .populate("user", "name email role");
 
       // فلترة: استبعد HR & Manager
-      employees = employees.filter(emp => 
+      employees = employees.filter(emp =>
         emp.user.role !== "HR" && emp.user.role !== "Manager"
       );
     }
@@ -584,8 +587,8 @@ exports.employeeStatus = async (req, res) => {
         ? attendance.checkOut
           ? "تم الانصراف"
           : attendance.checkIn
-          ? "تم تسجيل الحضور"
-          : "لم يتم تسجيل الحضور"
+            ? "تم تسجيل الحضور"
+            : "لم يتم تسجيل الحضور"
         : "لم يتم تسجيل الحضور"
     });
   } catch (err) {
@@ -664,18 +667,18 @@ exports.getMyAttendanceRecord = async (req, res) => {
       // وقت الدخول والخروج
       const checkIn = rec.checkIn
         ? rec.checkIn.toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          })
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        })
         : null;
 
       const checkOut = rec.checkOut
         ? rec.checkOut.toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          })
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        })
         : "لم يتم تسجيل الانصراف";
 
       // الوقت اللي اشتغله
@@ -736,8 +739,8 @@ exports.getMyAttendanceThroughMonth = async (req, res) => {
       employee: employee._id,
       date: { $gte: startOfMonth, $lte: endOfMonth }
     })
-    .sort({ date: -1 }) // الأحدث أولاً
-    .limit(limit);
+      .sort({ date: -1 }) // الأحدث أولاً
+      .limit(limit);
 
     // اسم الشهر الحالي مع السنة
     const monthName = today.toLocaleDateString("ar-EG", { month: "long", year: "numeric" });
@@ -870,7 +873,7 @@ exports.getMyTasks = async (req, res) => {
         })}`;
       }
 
-      let relation = "من أجلي" ;
+      let relation = "من أجلي";
       let assignedToInfo = null;
       if (!task.assignedTo._id.equals(employee._id)) {
         relation = "لموظف آخر";
@@ -981,10 +984,10 @@ exports.getMyTasks = async (req, res) => {
 exports.promoteToManager = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // نعدل اليوزر ونخلي دوره MANAGER
     await User.findOneAndUpdate({ _id: id }, { role: "MANAGER" });
-    
+
     // نعدل بيانات الموظف (اختياري) 
     await Employee.findOneAndUpdate({ user: id }, { jobTitle: "Manager" });
 
@@ -1052,40 +1055,40 @@ exports.getMyRequests = async (req, res) => {
     });
 
     // تحويل السلف
-   // تحويل السلف بعد التعديل
-const formattedSalaryAdvances = salaryAdvances.map(sa => {
-  let displayStatus = "";
-  let decidedAt = null;
+    // تحويل السلف بعد التعديل
+    const formattedSalaryAdvances = salaryAdvances.map(sa => {
+      let displayStatus = "";
+      let decidedAt = null;
 
-  if (sa.status === "pending") displayStatus = "قيد المراجعة";
-  else if (sa.status === "approved" || sa.status === "completed") {
-    displayStatus = "مقبول";
-    decidedAt = sa.approvedAt; // لو مقبولة
-  } else if (sa.status === "rejected") {
-    displayStatus = "مرفوض";
-    decidedAt = sa.rejectedAt; // لو مرفوضة
-  }
-   else if (sa.status === "forwarded") {
-    displayStatus = "محول";
-    
-  }
+      if (sa.status === "pending") displayStatus = "قيد المراجعة";
+      else if (sa.status === "approved" || sa.status === "completed") {
+        displayStatus = "مقبول";
+        decidedAt = sa.approvedAt; // لو مقبولة
+      } else if (sa.status === "rejected") {
+        displayStatus = "مرفوض";
+        decidedAt = sa.rejectedAt; // لو مرفوضة
+      }
+      else if (sa.status === "forwarded") {
+        displayStatus = "محول";
 
-  return {
-    _id: sa._id,
-    employeeName: sa.employee.name,
-    jobTitle: sa.employee.jobTitle,
-    type: "سلفة من الراتب",
-    status: displayStatus,
-    submittedAt: sa.createdAt.toISOString(),
-    decidedAt: decidedAt ? decidedAt.toISOString() : null, // هنبعت التاريخ الصح هنا
-    notes: sa.notes || [],
-    attachments: sa.attachments || [],
-    amount: sa.amount,
-    installmentsCount: sa.installmentsCount,
-    installmentAmount: sa.installmentAmount,
-    remainingAmount: sa.remainingAmount,
-  };
-});
+      }
+
+      return {
+        _id: sa._id,
+        employeeName: sa.employee.name,
+        jobTitle: sa.employee.jobTitle,
+        type: "سلفة من الراتب",
+        status: displayStatus,
+        submittedAt: sa.createdAt.toISOString(),
+        decidedAt: decidedAt ? decidedAt.toISOString() : null, // هنبعت التاريخ الصح هنا
+        notes: sa.notes || [],
+        attachments: sa.attachments || [],
+        amount: sa.amount,
+        installmentsCount: sa.installmentsCount,
+        installmentAmount: sa.installmentAmount,
+        remainingAmount: sa.remainingAmount,
+      };
+    });
 
 
     // دمج الطلبات + السلف

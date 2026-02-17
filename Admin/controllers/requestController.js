@@ -40,18 +40,18 @@ exports.createRequest = [
       const employeeDoc = await Employee.findOne({ user: req.user._id });
       if (!employeeDoc) return res.status(404).json({ message: 'لم يتم العثور على بيانات الموظف' });
 
-   let attachments = [];
+      let attachments = [];
 
-if (req.files && req.files.length > 0) {
-  for (const file of req.files) {
-    const result = await uploadToCloudinary(file.buffer, 'requests');
+      if (req.files && req.files.length > 0) {
+        for (const file of req.files) {
+          const result = await uploadToCloudinary(file.buffer, 'requests');
 
-    attachments.push({
-      filename: file.originalname,
-      url: result.secure_url
-    });
-  }
-}
+          attachments.push({
+            filename: file.originalname,
+            url: result.secure_url
+          });
+        }
+      }
 
       // Parse البيانات لو جايه كـ JSON string
       const leaveData = leave && typeof leave === 'string' ? JSON.parse(leave) : leave;
@@ -632,7 +632,9 @@ exports.approveRequest = async (req, res) => {
         (new Date(r.leave.endDate) - new Date(r.leave.startDate)) / (1000 * 60 * 60 * 24)
       ) + 1;
 
-      const leaveBalance = await LeaveBalance.findOne({ employee: r.employee._id });
+      const leaveYear = new Date(r.leave.startDate).getFullYear();
+
+      const leaveBalance = await LeaveBalance.findOne({ employee: r.employee._id, year: leaveYear });
       if (!leaveBalance) return res.status(404).json({ message: 'رصيد الإجازات غير موجود' });
 
       const leaveMap = {
@@ -919,16 +921,16 @@ exports.updateRequest = [
         return res.status(403).json({ message: 'غير مسموح بتعديل هذا الطلب' });
       }
       // تحديث المرفقات
-    if (req.files && req.files.length > 0) {
-  for (const file of req.files) {
-    const result = await uploadToCloudinary(file.buffer, 'requests');
+      if (req.files && req.files.length > 0) {
+        for (const file of req.files) {
+          const result = await uploadToCloudinary(file.buffer, 'requests');
 
-    request.attachments.push({
-      filename: file.originalname,
-      url: result.secure_url
-    });
-  }
-}
+          request.attachments.push({
+            filename: file.originalname,
+            url: result.secure_url
+          });
+        }
+      }
 
 
       // تحديث النوع

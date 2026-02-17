@@ -174,6 +174,11 @@ const seedAdmin = require('./scripts/seedAdmin.js');
 const setupAttendanceCron = require('./cron/attendanceCron.js');
 const startTaskStatusCron = require('./cron/tasksCorn.js');
 
+const initYearlyLeaves = require('./cron/cronLeaves.js');
+
+
+
+
 const app = express();
 app.set("trust proxy", 1);
 const server = http.createServer(app);
@@ -284,6 +289,7 @@ const PORT = process.env.PORT || 4000;
     await seedAdmin();
     setupAttendanceCron();
     startTaskStatusCron();
+    initYearlyLeaves();
 
     server.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);

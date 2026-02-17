@@ -932,7 +932,8 @@ const monthlyReport = async (req, res) => {
     const endOfMonth = nowUTC.endOf('month').toJSDate();
 
     // الرصيد الاساسي للشركة (document where employee: null)
-    const baseLeaveBalance = await LeaveBalance.findOne({ employee: null  });
+    // const baseLeaveBalance = await LeaveBalance.findOne({ employee: null });
+    const baseLeaveBalance = await LeaveBalance.findOne({ employee: null, year: year }) || await LeaveBalance.findOne({ employee: null }); // fallback لو ملقاش للسنة دي
     if (!baseLeaveBalance) {
       return res.status(404).json({ message: "لم يتم العثور على الرصيد الأساسي للإجازات" });
     }
@@ -968,7 +969,11 @@ const monthlyReport = async (req, res) => {
       const attendedDays = present + late;
 
       // جلب LeaveBalance للموظف (إن وجد)
-      const lb = await LeaveBalance.findOne({ employee: employee._id });
+      // const lb = await LeaveBalance.findOne({ employee: employee._id });
+      const lb = await LeaveBalance.findOne({
+        employee: employee._id,
+        year: year
+      });
 
       // إذا لم يوجد LeaveBalance للموظف نعتبره يأخذ القيم من base
       let totalLeaveBalance = baseTotalAllTypes;
