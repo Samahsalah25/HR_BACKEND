@@ -1,7 +1,7 @@
 const Employee = require("../models/employee");
 const Branch = require("../models/branchSchema");
 const Department = require("../models/depaertment");
-const LeaveBalance =require("../models/leaveBalanceModel")
+const LeaveBalance = require("../models/leaveBalanceModel")
 const ResidencyYear = require("../models/ResidencyYear"); // لو عندك الموديل دا عشان نحسب السنين
 // utils/geocoding.js
 const axios = require("axios");
@@ -166,7 +166,7 @@ async function getAddressFromCoordinates(lat, lng) {
 
     const { data } = await axios.get(url, {
       headers: {
-       "User-Agent": "HR-Dashboard/1.0 (malaksalah@gmail.com)"
+        "User-Agent": "HR-Dashboard/1.0 (malaksalah@gmail.com)"
 
       }
     });
@@ -261,7 +261,7 @@ exports.getBranchesDetails = async (req, res) => {
     console.error("Error in getBranchesDetails:", error);
     res.status(500).json({ success: false, message: "حدث خطأ أثناء جلب تفاصيل الفروع" });
   }
-}; 
+};
 
 // exports.getBranchesWithDepartments = async (req, res) => {
 //   try {
@@ -456,14 +456,14 @@ exports.getEmployeesSummary = async (req, res) => {
         department: emp.department?.name || "غير محدد",
         role: emp.user?.role || "غير محدد", //  أضفنا الدور
         contractDurationName: emp.contract?.duration?.name || "غير محدد",
-           residencyNationality: emp.residency?.nationality || " غير محدد" ,
+        residencyNationality: emp.residency?.nationality || " غير محدد",
         contractPeriod:
           emp.contract?.start && emp.contract?.end
             ? `${new Date(emp.contract.start).toLocaleDateString("ar-EG")} - ${new Date(
-                emp.contract.end
-              ).toLocaleDateString("ar-EG")}`
+              emp.contract.end
+            ).toLocaleDateString("ar-EG")}`
             : "غير محدد",
-      carriedLeaves: leaveBalance?.annual || 0,
+        carriedLeaves: leaveBalance?.annual || 0,
 
       });
     }
@@ -483,20 +483,83 @@ exports.getEmployeesSummary = async (req, res) => {
   }
 };
 
-     
+
 /// contract 
+
+// exports.getContractsSummary = async (req, res) => {
+//   try {
+//     const employees = await Employee.find()
+//       .populate("contract.duration", "name unit")
+//       .populate("department", "name");
+
+//     const contractList = employees.map((emp) => {
+//       // نحسب الحالة حسب تاريخ اليوم
+//       let status = "مستمرة";
+//       const now = new Date();
+
+//       if (emp.contract?.end && emp.contract.end < now) {
+//         status = "منتهية";
+//       } else if (emp.contract?.end && emp.contract.end - now <= 30 * 24 * 60 * 60 * 1000) {
+//         status = "قريبة من الانتهاء";
+//       }
+
+//       return {
+//         employeeName: emp.name || "غير محدد",
+//         department: emp.department?.name || "غير محدد",
+//         contractDuration: emp.contract?.duration?.name || "غير محددة",
+//         unit: emp.contract?.duration?.unit || "غير محددة",
+//         startDate: emp.contract?.start
+//           ? emp.contract.start.toLocaleDateString("ar-EG")
+//           : "غير محدد",
+//         endDate: emp.contract?.end
+//           ? emp.contract.end.toLocaleDateString("ar-EG")
+//           : "غير محدد",
+//         status,
+//       };
+//     });
+
+//     res.status(200).json({
+//       success: true,
+//       total: contractList.length,
+//       contracts: contractList,
+//     });
+//   } catch (error) {
+//     console.error("Error fetching contracts:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "حدث خطأ أثناء جلب العقود",
+//       error: error.message,
+//     });
+//   }
+// };
+
 
 exports.getContractsSummary = async (req, res) => {
   try {
+    //  جلب الموظفين كلهم
     const employees = await Employee.find()
-      .populate("contract.duration", "name unit") 
+      .populate("contract.duration", "name unit")
       .populate("department", "name");
 
+    //  تحديد السنة السابقة
+    const currentYear = new Date().getFullYear();
+    const previousYear = currentYear - 1;
+
+    //  جلب "كل" أرصدة السنة اللي فاتت مرة واحدة وتخزينها  
+    const allPrevBalances = await LeaveBalance.find({ year: previousYear });
+
     const contractList = employees.map((emp) => {
-      // نحسب الحالة حسب تاريخ اليوم
+
+      // البحث عن رصيد الموظف ده في مصفوفة الأرصدة اللي جبناها فوق
+      const prevBalance = allPrevBalances.find(b =>
+        b.employee && b.employee.toString() === emp._id.toString()
+      );
+
+      // تحديد قيمة الرصيد المرحل
+      const carriedOverLeaves = prevBalance ? prevBalance.annual : "لا يوجد";
+
       let status = "مستمرة";
       const now = new Date();
-
       if (emp.contract?.end && emp.contract.end < now) {
         status = "منتهية";
       } else if (emp.contract?.end && emp.contract.end - now <= 30 * 24 * 60 * 60 * 1000) {
@@ -508,13 +571,11 @@ exports.getContractsSummary = async (req, res) => {
         department: emp.department?.name || "غير محدد",
         contractDuration: emp.contract?.duration?.name || "غير محددة",
         unit: emp.contract?.duration?.unit || "غير محددة",
-        startDate: emp.contract?.start
-          ? emp.contract.start.toLocaleDateString("ar-EG")
-          : "غير محدد",
-        endDate: emp.contract?.end
-          ? emp.contract.end.toLocaleDateString("ar-EG")
-          : "غير محدد",
+        startDate: emp.contract?.start ? emp.contract.start.toLocaleDateString("ar-EG") : "غير محدد",
+        endDate: emp.contract?.end ? emp.contract.end.toLocaleDateString("ar-EG") : "غير محدد",
         status,
+        previousYear: previousYear,
+        carriedOverAnnual: carriedOverLeaves // الرصيد المرحل من السنة اللي فاتت
       };
     });
 
@@ -524,12 +585,8 @@ exports.getContractsSummary = async (req, res) => {
       contracts: contractList,
     });
   } catch (error) {
-    console.error("Error fetching contracts:", error);
-    res.status(500).json({
-      success: false,
-      message: "حدث خطأ أثناء جلب العقود",
-      error: error.message,
-    });
+    console.error("Error:", error);
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
@@ -617,9 +674,16 @@ exports.getCompanyLeavePolicy = async (req, res) => {
 //     });
 //   }
 // };
+
+
+
 exports.getEmployeesByLeaveType = async (req, res) => {
   try {
     const { type } = req.params;
+
+    // 1. تحديد السنة المطلوبة (من الـ query أو السنة الحالية كـ default)
+    const currentYear = new Date().getFullYear();
+    const year = parseInt(req.query.year) || currentYear;
 
     // الأنواع المسموح بها من الإجازات
     const validTypes = ["annual", "sick", "marriage", "emergency", "maternity", "unpaid"];
@@ -630,35 +694,37 @@ exports.getEmployeesByLeaveType = async (req, res) => {
       });
     }
 
-    //  جلب رصيد الشركة الأساسي (document اللي employee = null)
-    const companyBase = await LeaveBalance.findOne({ employee: null });
+    // 2. جلب رصيد الشركة الأساسي "للسنة المحددة"
+    // بنحاول نجيب رصيد السنة دي، لو مفيش بنرجع للرصيد العام (fallback)
+    const companyBase = await LeaveBalance.findOne({ employee: null, year: year })
+      || await LeaveBalance.findOne({ employee: null });
+
     if (!companyBase) {
       return res.status(404).json({
         success: false,
-        message: "لم يتم العثور على رصيد الإجازات الأساسي للشركة"
+        message: `لم يتم العثور على رصيد الإجازات الأساسي لسنة ${year}`
       });
     }
 
-    // جلب جميع سجلات الموظفين اللي عندهم رصيد إجازات
+    // 3. جلب سجلات الموظفين "للسنة المحددة فقط"
     const balances = await LeaveBalance.find({
-      employee: { $exists: true, $ne: null }
+      employee: { $exists: true, $ne: null },
+      year: year // الفلتر ده هو اللي هيظبطلك التقرير
     }).populate("employee", "name employeeNumber");
 
     // بناء التقرير
     const report = balances
       .filter(b => b.employee)
       .map(b => {
-        // الرصيد الأساسي لهذا النوع من الشركة
         const totalDays = companyBase[type] ?? 0;
-        // الباقي فعلاً عند الموظف
         const remainingDays = b[type] ?? totalDays;
-        // المأخوذ نحسبه بالطرح
         const usedDays = totalDays - remainingDays;
 
         return {
           employeeName: b.employee.name,
           employeeNumber: b.employee.employeeNumber,
           leaveType: type,
+          year: year, // ضيفنا السنة في الرد عشان تبقى واضحة
           totalDays,
           usedDays: usedDays < 0 ? 0 : usedDays,
           remainingDays: remainingDays < 0 ? 0 : remainingDays
@@ -667,6 +733,7 @@ exports.getEmployeesByLeaveType = async (req, res) => {
 
     res.status(200).json({
       success: true,
+      year: year, // توضيح السنة في الـ Metadata بتاع الـ Response
       count: report.length,
       data: report
     });
@@ -684,12 +751,13 @@ exports.getEmployeesByLeaveType = async (req, res) => {
 
 
 
+
 //  عرض جميع بيانات الإقامة
 
 exports.getResidencyData = async (req, res) => {
   try {
     const employees = await Employee.find()
-      .populate("residency.duration", "year") 
+      .populate("residency.duration", "year")
       .select("name residency");
 
     const residencyList = employees.map((emp) => {
@@ -710,7 +778,7 @@ exports.getResidencyData = async (req, res) => {
         name: emp.name || "لم يتم التحديد",
         additionNumber: r.additionNumber || "لم يتم التحديد",
         duration:
-          r.duration?.year ? `${r.duration.year} سنوات` : "لم يتم التحديد", 
+          r.duration?.year ? `${r.duration.year} سنوات` : "لم يتم التحديد",
         start: r.start
           ? new Date(r.start).toISOString().split("T")[0]
           : "لم يتم التحديد",
