@@ -7,56 +7,143 @@ const ResidencyYear = require("../models/ResidencyYear"); // لو عندك ال�
 const axios = require("axios");
 
 
+// exports.getDashboardStats = async (req, res) => {
+//   try {
+//     // عدد الموظفين الكلي
+//     const totalEmployees = await Employee.countDocuments();
+
+//     // عدد الفروع
+//     const totalBranches = await Branch.countDocuments();
+
+//     // عدد الأقسام
+//     const totalDepartments = await Department.countDocuments();
+
+//     // تجميع الموظفين حسب القسم
+//     const employeesByDept = await Employee.aggregate([
+//       {
+//         $group: {
+//           _id: "$department",
+//           count: { $sum: 1 },
+//         },
+//       },
+//       {
+//         $lookup: {
+//           from: "departments",
+//           localField: "_id",
+//           foreignField: "_id",
+//           as: "department",
+//         },
+//       },
+//       {
+//         $unwind: "$department",
+//       },
+//       {
+//         $project: {
+//           _id: 0,
+//           departmentId: "$department._id",
+//           departmentName: "$department.name",
+//           employeeCount: "$count",
+//         },
+//       },
+//     ]);
+
+//     // حساب النسبة المئوية لكل قسم
+//     const departmentsWithPercentage = employeesByDept.map((dept) => ({
+//       ...dept,
+//       percentage:
+//         totalEmployees > 0
+//           ? ((dept.employeeCount / totalEmployees) * 100).toFixed(2)
+//           : 0,
+//     }));
+
+//     // إرسال النتيجة
+//     res.status(200).json({
+//       success: true,
+//       totalEmployees,
+//       totalBranches,
+//       totalDepartments,
+//       departments: departmentsWithPercentage,
+//     });
+//   } catch (err) {
+//     console.error("Dashboard Error:", err);
+//     res.status(500).json({
+//       success: false,
+//       message: "حدث خطأ أثناء تحميل البيانات",
+//       error: err.message,
+//     });
+//   }
+// };
+
 exports.getDashboardStats = async (req, res) => {
   try {
-    // عدد الموظفين الكلي
-    const totalEmployees = await Employee.countDocuments();
+    const today = new Date();
 
-    // عدد الفروع
-    const totalBranches = await Branch.countDocuments();
+    const baseFilter = {
+      $or: [
+        { "contract.end": { $gte: today } },
+        { "contract.end": { $exists: false } },
+        { "contract.end": null }
+      ]
+    };
 
-    // عدد الأقسام
-    const totalDepartments = await Department.countDocuments();
+    const stats = await Employee.aggregate([
+      { $match: baseFilter },
 
-    // تجميع الموظفين حسب القسم
-    const employeesByDept = await Employee.aggregate([
+      {
+        $lookup: {
+          from: "users",
+          localField: "user",
+          foreignField: "_id",
+          as: "userDetails",
+        },
+      },
+      { $unwind: "$userDetails" },
+
+      {
+        $match: {
+          "userDetails.role": { $ne: "admin" }
+        }
+      },
+
       {
         $group: {
           _id: "$department",
-          count: { $sum: 1 },
-        },
+          count: { $sum: 1 }
+        }
       },
+
       {
         $lookup: {
           from: "departments",
           localField: "_id",
           foreignField: "_id",
-          as: "department",
-        },
+          as: "deptInfo"
+        }
       },
-      {
-        $unwind: "$department",
-      },
+      { $unwind: "$deptInfo" },
+
       {
         $project: {
           _id: 0,
-          departmentId: "$department._id",
-          departmentName: "$department.name",
-          employeeCount: "$count",
-        },
-      },
+          departmentId: "$_id",
+          departmentName: "$deptInfo.name",
+          employeeCount: "$count"
+        }
+      }
     ]);
 
-    // حساب النسبة المئوية لكل قسم
-    const departmentsWithPercentage = employeesByDept.map((dept) => ({
+    const totalEmployees = stats.reduce((acc, curr) => acc + curr.employeeCount, 0);
+
+    const totalBranches = await Branch.countDocuments();
+    const totalDepartments = await Department.countDocuments();
+
+    const departmentsWithPercentage = stats.map((dept) => ({
       ...dept,
-      percentage:
-        totalEmployees > 0
-          ? ((dept.employeeCount / totalEmployees) * 100).toFixed(2)
-          : 0,
+      percentage: totalEmployees > 0
+        ? ((dept.employeeCount / totalEmployees) * 100).toFixed(2)
+        : "0.00"
     }));
 
-    // إرسال النتيجة
     res.status(200).json({
       success: true,
       totalEmployees,
@@ -64,16 +151,16 @@ exports.getDashboardStats = async (req, res) => {
       totalDepartments,
       departments: departmentsWithPercentage,
     });
+
   } catch (err) {
     console.error("Dashboard Error:", err);
     res.status(500).json({
       success: false,
-      message: "حدث خطأ أثناء تحميل البيانات",
+      message: "حدث خطأ أثناء تحميل إحصائيات الداشبورد",
       error: err.message,
     });
   }
 };
-
 
 // احذف const fetch = require("node-fetch");
 
