@@ -88,7 +88,7 @@ exports.getAssetsById = async (req, res) => {
 exports.getAllAssets = async (req, res) => {
     try {
         const { assetType } = req.body
-        const assets = await Assets.find({ assetType: assetType }).select('assetId assetName status currentEmployee');
+        const assets = await Assets.find({ assetType: assetType });
         if (assets.length == 0) {
             return res.status(400).json({
                 status: false,
