@@ -86,26 +86,22 @@ exports.getAssetsById = async (req, res) => {
 }
 
 exports.getAllAssets = async (req, res) => {
-    try {
-        const { assetType } = req.body
-        const assets = await Assets.find({ assetType: assetType });
-        if (assets.length == 0) {
-            return res.status(400).json({
-                status: false,
-                message: "لم يتم العثور على العهدة المطلوبة"
-            });
-        }
-        return res.status(200).json({
-            status: "success",
-            message: "success",
-            data: assets
-        });
-    } catch (err) {
-        console.error(err);
-        res.status(400).json({ status: 'fail', message: err.message });
-    }
+  try {
+    const { assetType } = req.query; 
 
-}
+    const filter = assetType ? { assetType } : {}; 
+    const assets = await Assets.find(filter);
+
+    return res.status(200).json({
+      status: "success",
+      message: "success",
+      data: assets
+    });
+  } catch (err) {
+    res.status(400).json({ status: "fail", message: err.message });
+  }
+};
+
 
 
 
