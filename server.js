@@ -164,6 +164,7 @@ const additionRoutes = require("./Admin/routes/additionRoutes.js");
 const violationRoutes = require("./Admin/routes/violationRoutes.js")
 const ViolationPenaltyRoutes = require("./Admin/routes/ViolationPenaltyRoutes.js")
 const empoyeeViolationRoutes = require("./Admin/routes/employeeViolationRoutes.js")
+const inventoryRoutes = require("./Admin/routes/inventoryRoute.js")
 
 //
 // DB & scripts
@@ -175,6 +176,7 @@ const setupAttendanceCron = require('./cron/attendanceCron.js');
 const startTaskStatusCron = require('./cron/tasksCorn.js');
 
 const initYearlyLeaves = require('./cron/cronLeaves.js');
+const Inventory = require('./Admin/models/AssetsSchema.js');
 
 
 
@@ -247,6 +249,7 @@ app.use("/api/additions", additionRoutes);
 app.use("/api/violation", violationRoutes)
 app.use("/api/ViolationPenalty", ViolationPenaltyRoutes)
 app.use("/api/empoyeeViolation", empoyeeViolationRoutes)
+app.use("/api/inventory", inventoryRoutes)
 // ========= Socket.io =========
 const io = new Server(server, {
   cors: {
