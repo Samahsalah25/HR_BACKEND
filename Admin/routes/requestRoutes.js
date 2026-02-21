@@ -6,6 +6,10 @@ const {
   getBranchRequests,
   getRequestById,
   approveRequest,
+  approveCustodyRequest,
+  confirmDelivery,
+  confirmReturn,
+  createAndApproveCustodyByHR,
   rejectRequest,
   forwardRequest,
   getRequestsByType,
@@ -44,6 +48,10 @@ router.get('/:id', getRequestById);
 
 // HR/Admin: اعتماد / رفض / تحويل / إضافة ملاحظة
 router.patch('/:id/approve', authenticate, authorizeRoles('HR'), approveRequest);
+router.patch("/approveCustodyRequest/:id", authenticate, authorizeRoles('HR'), approveCustodyRequest)
+router.patch("/confirmDelivery/:id", authenticate, authorizeRoles('HR'), confirmDelivery)
+router.patch("/confirmReturn/:id", authenticate, authorizeRoles('HR'), confirmReturn)
+router.post("/createAndApproveCustodyByHR", authenticate, authorizeRoles('HR'), createAndApproveCustodyByHR)
 router.patch('/:id/reject', authenticate, authorizeRoles('HR'), rejectRequest);
 router.patch('/:id/forward', authenticate, authorizeRoles('HR'), forwardRequest);
 router.post('/:id/notes', authenticate, authorizeRoles('HR'), validate(addNoteSchema), addNote);

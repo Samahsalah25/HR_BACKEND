@@ -1,5 +1,6 @@
 const Request = require('../models/requestModel');
 const Employee = require('../models/employee');
+const Assets = require("../models/AssetsSchema.js")
 const multer = require('multer');
 const path = require('path');
 const LeaveBalance = require('../models/leaveBalanceModel')
@@ -709,6 +710,198 @@ exports.approveRequest = async (req, res) => {
   }
 };
 
+// =============== Approve (HR/Admin) Custody  ===============
+
+
+exports.approveCustodyRequest = async (req, res) => {
+  try {
+    if (!['HR', 'ADMIN'].includes(req.user.role))
+      return res.status(403).json({ message: 'غير مسموح' });
+
+    const {
+      receivedDate,
+      receivedBy,
+      returnDate,
+      returnedTo,
+      note
+    } = req.body;
+
+    const r = await Request.findById(req.params.id).populate('employee');
+    if (!r) return res.status(404).json({ message: 'الطلب غير موجود' });
+
+
+
+    if (r.type !== 'عهدة') {
+      return res.status(400).json({ message: 'هذا الطلب ليس طلب عهدة' });
+    }
+    r.status = 'مقبول';
+    r.decidedAt = new Date();
+    r.decidedBy = req.user._id;
+    if (note) r.decisionNote = note;
+
+    r.custody.status = 'قيد المراجعة';
+    r.custody.receivedDate = receivedDate;
+    r.custody.receivedBy = receivedBy; // الـ ID بتاع الموظف المسئول
+    r.custody.returnDate = returnDate;
+    r.custody.returnedTo = returnedTo; // الـ ID بتاع مسئول الاستيراد
+
+    if (r.custody.custodyId) {
+      await Assets.findByIdAndUpdate(r.custody.custodyId, {
+        status: 'مستخدمة',
+        currentEmployee: r.employee.name
+      });
+    }
+
+    await r.save();
+
+    await Notification.create({
+      employee: r.employee._id,
+      type: 'request',
+      message: `تمت الموافقة على طلب العهدة الخاص بك وحالته الآن: ${r.custody.status}`,
+      link: `/employee/services`,
+      read: false
+    });
+
+
+    // if (receivedBy) {
+    //   await Notification.create({
+    //     employee: receivedBy, 
+    //     type: 'request',
+    //     message: `لديك مهمة تسليم عهدة جديدة للموظف: ${r.employee.name}`,
+    //     link: `/admin/custody-delivery`, 
+    //     read: false
+    //   });
+    // }
+
+    res.json({
+      message: 'تمت الموافقة على طلب العهدة بنجاح',
+      request: r
+    });
+
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: 'خطأ أثناء معالجة طلب العهدة', error: e.message });
+  }
+};
+// =============== تسليم العهده  (HR/Admin) Custody  ===============
+
+exports.confirmDelivery = async (req, res) => {
+  try {
+    const r = await Request.findById(req.params.id);
+    if (!r) return res.status(404).json({ message: 'الطلب غير موجود' });
+
+    r.custody.status = 'مسلمة';
+    r.custody.receivedDate = new Date();
+
+
+    await Assets.findByIdAndUpdate(r.custody.custodyId, { status: 'مستخدمة' });
+
+    await r.save();
+    res.json({ message: 'تم تأكيد تسليم العهدة للموظف بنجاح', request: r });
+  } catch (e) {
+    res.status(500).json({ message: 'خطأ أثناء تأكيد التسليم', error: e.message });
+  }
+};
+
+exports.confirmReturn = async (req, res) => {
+  try {
+    const r = await Request.findById(req.params.id);
+    if (!r) return res.status(404).json({ message: 'الطلب غير موجود' });
+
+    r.custody.status = 'مستلمة';
+    r.custody.returnDate = new Date();
+
+    await Assets.findByIdAndUpdate(r.custody.custodyId, {
+      status: 'عائدة',
+      currentEmployee: null
+    });
+
+    await r.save();
+    res.json({ message: 'تم تأكيد استلام العهدة في المخزن بنجاح', request: r });
+  } catch (e) {
+    res.status(500).json({ message: 'خطأ أثناء تأكيد الاسترداد', error: e.message });
+  }
+};
+
+// ===============Hr  بيعمل طلب عهده الي موظف  ===============
+
+exports.createAndApproveCustodyByHR = async (req, res) => {
+  try {
+    if (!['HR', 'ADMIN'].includes(req.user.role)) {
+      return res.status(403).json({ message: 'غير مسموح ليك بالعملية دي' });
+    }
+
+    const {
+      employeeId,
+      custodyId,
+      purpose,
+      duration,
+      receivedBy,
+      receivedDate,
+      returnedTo,
+      returnDate,
+      note
+    } = req.body;
+
+
+    const emp = await Employee.findById(employeeId);
+    if (!emp) {
+      return res.status(404).json({ message: 'employee not founded' });
+    }
+
+    const asset = await Assets.findById(custodyId);
+    if (!asset) {
+      return res.status(404).json({ message: 'asset not founded' });
+    }
+
+
+    if (asset.status == 'مستخدمة' || asset.status == 'تحت الصيانة') {
+      return res.status(400).json({ message: `asset not availbal` });
+    }
+
+
+    const newRequest = await Request.create({
+      employee: employeeId,
+      type: 'عهدة',
+      status: 'مقبول',
+      decidedAt: new Date(),
+      decidedBy: req.user._id,
+      decisionNote: note || 'تم التخصيص مباشرة من قبل الموارد البشرية',
+      custody: {
+        custodyId,
+        purpose,
+        duration,
+        status: 'قيد المراجعة',
+        receivedBy,
+        receivedDate,
+        returnedTo,
+        returnDate
+      }
+    });
+
+    asset.status = 'مستخدمة';
+    asset.currentEmployee = emp.name;
+    await asset.save();
+
+    // 7. الإشعارات
+    await Notification.create({
+      employee: employeeId,
+      type: 'request',
+      message: `تم صرف عهدة جديدة لك: ${purpose}`,
+      link: `/employee/services`,
+      read: false
+    });
+
+    res.status(201).json({
+      message: 'تم التحقق من البيانات وإنشاء العهدة بنجاح',
+      request: newRequest
+    });
+
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: 'حصل خطأ في السيرفر وأنا بتأكد من البيانات', error: e.message });
+  }
+};
 
 // =============== Reject (HR/Admin) ===============
 exports.rejectRequest = async (req, res) => {
