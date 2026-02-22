@@ -652,18 +652,7 @@ exports.getRequestById = async (req, res) => {
     // ------------------------
     // حالة العهدة أو تصفية عهدة
     // ------------------------
-    if ((request.type === 'عهدة' || request.type === 'تصفية عهدة') && request.custody?.custodyId) {
-      const asset = await Assets.findById(request.custody.custodyId);
-      if (asset) {
-        request = request.toObject(); // نحولها object عشان نقدر نعدل فيها
-        request.custody = {
-          ...request.custody,
-          name: asset.assetName,
-          custodyType: asset.assetType,
-          description: asset.description,
-        };
-      }
-    }
+  
 
     // ------------------------
     // رجع كل البيانات
