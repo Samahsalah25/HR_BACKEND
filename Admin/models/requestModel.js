@@ -73,7 +73,7 @@ const requestSchema = new mongoose.Schema({
     custodyId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'assets',
-    
+
     },
     status: {
       type: String,
