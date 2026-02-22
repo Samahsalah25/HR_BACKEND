@@ -73,7 +73,7 @@ const requestSchema = new mongoose.Schema({
     custodyId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'assets',
-      required: [true, 'لازم تختار العهدة']
+      // required: [true, 'لازم تختار العهدة']
     },
     status: {
       type: String,
