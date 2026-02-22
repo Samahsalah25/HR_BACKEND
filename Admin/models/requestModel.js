@@ -68,11 +68,35 @@ const requestSchema = new mongoose.Schema({
   },
 
   custody: {
-    custodyType: { type: String, enum: ['أجهزة إلكترونية', 'أدوات مكتبية', 'معدات تشغيل', 'أخرى'] },
-    quantity: Number,
+    // custodyType: { type: String, enum: ['أجهزة إلكترونية', 'أدوات مكتبية', 'معدات تشغيل', 'أخرى'] },
+    // quantity: Number, 
+    custodyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'assets',
+      required: [true, 'لازم تختار العهدة']
+    },
+    status: {
+      type: String,
+      enum: ['قيد المراجعة', 'مسلمة', 'مستلمة'],
+      default: 'قيد المراجعة'
+    },
     requestDate: { type: Date, default: Date.now },
     purpose: String,
-    duration: { type: String, enum: ['شهر', '3 شهور', '6 شهور', 'سنة', 'غير محددة'] }
+    duration: { type: String, enum: ['شهر', '3 شهور', '6 شهور', 'سنة', 'غير محددة'] },
+    receivedDate: { type: Date },
+    receivedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Employee',
+    },
+    returnDate: {
+      type: Date,
+
+    },
+    returnedTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Employee',
+    }
+
   },
 
   custodyClearance: {
@@ -80,8 +104,8 @@ const requestSchema = new mongoose.Schema({
     custodyType: String,
     quantity: Number,
     reason: { type: String, enum: ['انتهاء فترة الاستخدام', 'عطل', 'استبدال بعهدة جديدة', 'أخرى'] },
-    description: String ,
-      clearanceDate: Date, 
+    description: String,
+    clearanceDate: Date,
   },
 
   expense: {
