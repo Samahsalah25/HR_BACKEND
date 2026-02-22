@@ -18,7 +18,7 @@ router.delete("/deleteAssets/:id", authenticate, authorizeRoles("ADMIN"), delete
 
 router.get("/getAssetsById/:id", authenticate, authorizeRoles("ADMIN"), getAssetsById)
 
-router.get("/getAllAssets", authenticate, authorizeRoles("ADMIN"), getAllAssets)
+router.get("/getAllAssets", authenticate, authorizeRoles("ADMIN" ,"HR"), getAllAssets)
 
 
 
