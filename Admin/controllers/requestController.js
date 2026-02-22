@@ -561,6 +561,7 @@ exports.getBranchRequests = async (req, res) => {
 //     res.status(500).json({ message: 'خطأ أثناء جلب تفاصيل الطلب' });
 //   }
 // };
+
 exports.getRequestById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -574,39 +575,42 @@ exports.getRequestById = async (req, res) => {
           populate: { path: 'department', select: 'name' }
         });
 
-      if (!borrow) {
-        return res.status(404).json({ message: 'السلفة غير موجودة' });
-      }
+      if (!borrow) return res.status(404).json({ message: 'السلفة غير موجودة' });
 
-      return res.json({
-        ...borrow.toObject(),
-        type: 'سلفة'
-      });
+      return res.json({ ...borrow.toObject(), type: 'سلفة' });
     }
 
     // الطلب العادي
-    const request = await Request.findById(id)
+    let request = await Request.findById(id)
       .populate({
         path: 'employee',
         select: 'name department jobTitle',
         populate: { path: 'department', select: 'name' }
       });
 
-    if (!request) {
-      return res.status(404).json({ message: 'الطلب غير موجود' });
+    if (!request) return res.status(404).json({ message: 'الطلب غير موجود' });
+
+    // ✅ لو الطلب عهدة، نجيب الاسم والنوع من الـ asset مباشرة
+    if (request.type === 'عهدة' && request.custody?.custodyId) {
+      const asset = await Assets.findById(request.custody.custodyId);
+      if (asset) {
+        request = request.toObject(); // نحولها object عشان نقدر نعدل فيها
+        request.custody = {
+          ...request.custody,
+          name: asset.assetName,
+          custodyType: asset.assetType,
+          description: asset.description,
+        };
+      }
     }
 
-    res.json({
-      ...request.toObject(),
-      type: request.type || 'طلب'
-    });
+    res.json({ ...request, type: request.type || 'طلب' });
 
   } catch (e) {
     console.error(e);
     res.status(500).json({ message: 'خطأ أثناء جلب التفاصيل' });
   }
 };
-
 
 // =============== Approve (HR/Admin) ===============
 
