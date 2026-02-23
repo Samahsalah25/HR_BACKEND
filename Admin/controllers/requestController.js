@@ -886,48 +886,44 @@ exports.confirmReturn = async (req, res) => {
 
 exports.getMyDeliveryTasks = async (req, res) => {
   try {
-    const currentUserId = req.user._id;
+    const employee = await Employee.findOne({ user: req.user._id }).select('_id');
+
+    if (!employee) {
+      return res.status(404).json({ message: 'لا يوجد موظف مرتبط بالمستخدم' });
+    }
 
     const tasks = await Request.find({
-      'type': 'عهدة',
-      'custody.receivedBy': currentUserId,
-      'custody.status': 'قيد المراجعة'
+      type: 'عهدة',
+      'custody.receivedBy': employee._id
     })
       .populate('employee', 'name department')
       .populate({
         path: 'custody.custodyId',
-        select: 'assetType assetId assetName serialNumber currentEmployee status'
+        select: 'assetType assetId assetName serialNumber status',
+        populate: { path: 'currentEmployee', select: 'name' }
       })
       .populate('custody.returnedTo', 'name')
       .sort({ 'custody.receivedDate': 1 });
 
-    // if (tasks.length === 0) {
-    //   return res.status(404).json({ message: 'لا توجد مهام تسليم حالياً' });
-    // }
-
     const formattedTasks = tasks.map(task => {
-      const assetInfo = task.custody?.custodyId;
+      const assetInfo = task.custody?.custodyId || {};
 
       return {
+        requestId: task._id,
 
-        currentEmployee: assetInfo?.currentEmployee || 'لا يوجد موظف حالي',
+        currentEmployee:
+          assetInfo?.currentEmployee?.name || 'لا يوجد موظف حالي',
+
         custodyType: assetInfo?.assetType || 'غير محدد',
 
-        assetNumber: assetInfo?.assetId || assetInfo?.serialNumber || '-',
+        assetNumber:
+          assetInfo?.assetId || assetInfo?.serialNumber || '-',
 
         receivedDate: task.custody?.receivedDate
           ? new Date(task.custody.receivedDate).toLocaleDateString('ar-EG')
           : '-',
 
-        // receivedBy: task.employee?.name || 'غير معروف',
-
-        // returnDate: task.custody?.returnDate
-        //   ? new Date(task.custody.returnDate).toLocaleDateString('ar-EG')
-        //   : '-',
-
-        // returnedTo: task.employee?.name || '-',
-
-        status: task.custody?.status
+        status: task.custody?.status || '-'
       };
     });
 
@@ -937,6 +933,7 @@ exports.getMyDeliveryTasks = async (req, res) => {
     });
 
   } catch (e) {
+    console.error("getMyDeliveryTasks error:", e);
     res.status(500).json({
       message: 'خطأ أثناء جلب مهام التسليم',
       error: e.message
