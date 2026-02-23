@@ -936,11 +936,14 @@ exports.getMyReturnTasks = async (req, res) => {
 //69146254d2f2d5527adb2393
 exports.getMyApprovedCustodyRequests = async (req, res) => {
   try {
-    const employeeId = req.user._id;
-    console.log(employeeId);
+    
+const employee = await Employee.findOne({ user: req.user._id });
 
+if (!employee) {
+  return res.status(404).json({ message: 'لا يوجد موظف مرتبط بالمستخدم' });
+}
     const approvedRequests = await Request.find({
-      employee: employeeId,
+      employee: employee._id,
       type: 'عهدة',
       status: 'مقبول'
     })
