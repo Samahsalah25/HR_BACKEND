@@ -1019,7 +1019,7 @@ exports.getMyApprovedCustodyRequests = async (req, res) => {
       .populate('employee', 'name department')
       .populate({
         path: 'custody.custodyId',
-        select: 'assetType assetId assetName serialNumber currentEmployee status'
+        select: 'assetType assetId assetName serialNumber currentEmployee status,assetName'
       })
       .populate('custody.receivedBy', 'name')
       .populate('custody.returnedTo', 'name')
@@ -1034,6 +1034,7 @@ exports.getMyApprovedCustodyRequests = async (req, res) => {
 
         currentEmployee: assetInfo?.currentEmployee || 'لا يوجد موظف حالي',
         custodyType: assetInfo?.assetType || 'غير محدد',
+        assetName: assetInfo?.assetName || 'غير محدد',
 
         assetNumber: assetInfo?.assetId || assetInfo?.serialNumber || '-',
 
