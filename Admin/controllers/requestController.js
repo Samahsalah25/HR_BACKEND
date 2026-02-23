@@ -901,9 +901,9 @@ exports.getMyDeliveryTasks = async (req, res) => {
       .populate('custody.returnedTo', 'name')
       .sort({ 'custody.receivedDate': 1 });
 
-    if (tasks.length === 0) {
-      return res.status(404).json({ message: 'لا توجد مهام تسليم حالياً' });
-    }
+    // if (tasks.length === 0) {
+    //   return res.status(404).json({ message: 'لا توجد مهام تسليم حالياً' });
+    // }
 
     const formattedTasks = tasks.map(task => {
       const assetInfo = task.custody?.custodyId;
