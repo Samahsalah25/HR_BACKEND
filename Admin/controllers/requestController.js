@@ -7,7 +7,7 @@ const LeaveBalance = require('../models/leaveBalanceModel')
 const Notification = require('../models/notification');
 const SalaryAdvance = require('../models/salaryAdvance');
 const uploadToCloudinary = require('../../utlis/uploadToCloudinary');
-const User =require('../models/user.js')
+const User = require('../models/user.js')
 // هل المستخدم HR/Admin؟
 const isHRorAdmin = (user) => ['HR', 'ADMIN'].includes(user.role);
 
@@ -784,6 +784,7 @@ exports.approveCustodyRequest = async (req, res) => {
 
     const r = await Request.findById(req.params.id).populate('employee');
     if (!r) return res.status(404).json({ message: 'الطلب غير موجود' });
+    console.log(r.employee.name);
 
 
 
@@ -802,11 +803,14 @@ exports.approveCustodyRequest = async (req, res) => {
     r.custody.returnedTo = returnedTo; // الـ ID بتاع مسئول الاستيراد
 
     if (r.custody.custodyId) {
-      await Assets.findByIdAndUpdate(r.custody.custodyId, {
+      const assets = await Assets.findByIdAndUpdate(r.custody.custodyId, {
         status: 'مستخدمة',
         currentEmployee: r.employee.name
       });
+      console.log(assets);
+
     }
+
 
     await r.save();
 
@@ -879,31 +883,90 @@ exports.confirmReturn = async (req, res) => {
   }
 };
 
+// exports.getMyDeliveryTasks = async (req, res) => {
+//   try {
+//     const currentUserId = req.user._id;
+//     console.log(currentUserId)
+//     const tasks = await Request.find({
+//       'type': 'عهدة',
+//       'custody.receivedBy': currentUserId,
+//       'custody.status': 'قيد المراجعة'
+//     })
+//       .populate('employee', 'name department')
+//       .populate('custody.custodyId', 'name serialNumber code')
+//       .sort({ 'custody.receivedDate': 1 });
+
+//     if (tasks.length == 0) return res.status(404).json({ message: 'الطلب غير موجود' });
+
+//     // 3. الرد
+//     res.status(200).json({
+//       results: tasks.length,
+//       tasks
+//     });
+
+//   } catch (e) {
+//     res.status(500).json({ message: 'خطأ أثناء جلب مهام التسليم', error: e.message });
+//   
 exports.getMyDeliveryTasks = async (req, res) => {
   try {
     const currentUserId = req.user._id;
-    console.log(currentUserId)
+
     const tasks = await Request.find({
       'type': 'عهدة',
       'custody.receivedBy': currentUserId,
       'custody.status': 'قيد المراجعة'
     })
       .populate('employee', 'name department')
-      .populate('custody.custodyId', 'name serialNumber code')
+      .populate({
+        path: 'custody.custodyId',
+        select: 'assetType assetId assetName serialNumber currentEmployee status'
+      })
+      .populate('custody.returnedTo', 'name')
       .sort({ 'custody.receivedDate': 1 });
 
-    if (tasks.length == 0) return res.status(404).json({ message: 'الطلب غير موجود' });
+    if (tasks.length === 0) {
+      return res.status(404).json({ message: 'لا توجد مهام تسليم حالياً' });
+    }
 
-    // 3. الرد
+    const formattedTasks = tasks.map(task => {
+      const assetInfo = task.custody?.custodyId;
+
+      return {
+
+        currentEmployee: assetInfo?.currentEmployee || 'لا يوجد موظف حالي',
+        custodyType: assetInfo?.assetType || 'غير محدد',
+
+        assetNumber: assetInfo?.assetId || assetInfo?.serialNumber || '-',
+
+        receivedDate: task.custody?.receivedDate
+          ? new Date(task.custody.receivedDate).toLocaleDateString('ar-EG')
+          : '-',
+
+        // receivedBy: task.employee?.name || 'غير معروف',
+
+        // returnDate: task.custody?.returnDate
+        //   ? new Date(task.custody.returnDate).toLocaleDateString('ar-EG')
+        //   : '-',
+
+        // returnedTo: task.employee?.name || '-',
+
+        status: task.custody?.status
+      };
+    });
+
     res.status(200).json({
-      results: tasks.length,
-      tasks
+      results: formattedTasks.length,
+      tasks: formattedTasks
     });
 
   } catch (e) {
-    res.status(500).json({ message: 'خطأ أثناء جلب مهام التسليم', error: e.message });
+    res.status(500).json({
+      message: 'خطأ أثناء جلب مهام التسليم',
+      error: e.message
+    });
   }
 };
+
 
 exports.getMyReturnTasks = async (req, res) => {
   try {
@@ -936,12 +999,12 @@ exports.getMyReturnTasks = async (req, res) => {
 //69146254d2f2d5527adb2393
 exports.getMyApprovedCustodyRequests = async (req, res) => {
   try {
-    
-const employee = await Employee.findOne({ user: req.user._id });
 
-if (!employee) {
-  return res.status(404).json({ message: 'لا يوجد موظف مرتبط بالمستخدم' });
-}
+    const employee = await Employee.findOne({ user: req.user._id });
+
+    if (!employee) {
+      return res.status(404).json({ message: 'لا يوجد موظف مرتبط بالمستخدم' });
+    }
     const approvedRequests = await Request.find({
       employee: employee._id,
       type: 'عهدة',
@@ -1110,7 +1173,7 @@ exports.forwardCustodyRequest = async (req, res) => {
       return res.status(403).json({ message: 'غير مسموح' });
     }
     const {
-     // ID المدير المحول إليه
+      // ID المدير المحول إليه
       receivedDate,
       receivedBy,
       returnDate,
@@ -1126,9 +1189,9 @@ exports.forwardCustodyRequest = async (req, res) => {
     }
     const admin = await User.findOne({ role: 'ADMIN' });
 
-if (!admin) {
-  return res.status(400).json({ message: 'لا يوجد أدمن للتحويل' });
-}
+    if (!admin) {
+      return res.status(400).json({ message: 'لا يوجد أدمن للتحويل' });
+    }
 
 
 
