@@ -652,7 +652,7 @@ exports.getRequestById = async (req, res) => {
     // ------------------------
     // حالة العهدة أو تصفية عهدة
     // ------------------------
-  
+
 
     // ------------------------
     // رجع كل البيانات
@@ -879,6 +879,91 @@ exports.confirmReturn = async (req, res) => {
   }
 };
 
+exports.getMyDeliveryTasks = async (req, res) => {
+  try {
+    const currentUserId = req.user._id;
+    console.log(currentUserId)
+    const tasks = await Request.find({
+      'type': 'عهدة',
+      'custody.receivedBy': currentUserId,
+      'custody.status': 'قيد المراجعة'
+    })
+      .populate('employee', 'name department')
+      .populate('custody.custodyId', 'name serialNumber code')
+      .sort({ 'custody.receivedDate': 1 });
+
+    if (tasks.length == 0) return res.status(404).json({ message: 'الطلب غير موجود' });
+
+    // 3. الرد
+    res.status(200).json({
+      results: tasks.length,
+      tasks
+    });
+
+  } catch (e) {
+    res.status(500).json({ message: 'خطأ أثناء جلب مهام التسليم', error: e.message });
+  }
+};
+
+exports.getMyReturnTasks = async (req, res) => {
+  try {
+    const currentUserId = req.user._id;
+    console.log(currentUserId);
+
+    const returnTasks = await Request.find({
+      'type': 'عهدة',
+      'custody.returnedTo': currentUserId,
+      'custody.status': 'مسلمة'
+    })
+      .populate('employee', 'name department photo')
+      .populate('custody.custodyId', 'name serialNumber code')
+      .sort({ 'custody.returnDate': 1 });
+
+
+    if (returnTasks.length == 0) return res.status(404).json({ message: 'الطلب غير موجود' });
+
+    res.status(200).json({
+      results: returnTasks.length,
+      tasks: returnTasks
+    });
+
+  } catch (e) {
+    res.status(500).json({ message: 'خطأ أثناء جلب مهام استلام المرتجعات', error: e.message });
+  }
+};
+
+//===============get all approve request 
+//69146254d2f2d5527adb2393
+exports.getMyApprovedCustodyRequests = async (req, res) => {
+  try {
+    const employeeId = req.user._id;
+    console.log(employeeId);
+
+    const approvedRequests = await Request.find({
+      employee: employeeId,
+      type: 'عهدة',
+      status: 'مقبول'
+    })
+      .populate('custody.custodyId', 'name code serialNumber')
+      .sort({ decidedAt: -1 });
+
+    if (approvedRequests.length == 0) return res.status(404).json({ message: 'الطلب غير موجود' });
+
+    res.status(200).json({
+      success: true,
+      count: approvedRequests.length,
+      data: approvedRequests
+    });
+
+  } catch (e) {
+    res.status(500).json({
+      success: false,
+      message: 'خطأ أثناء جلب العهد المعتمدة',
+      error: e.message
+    });
+  }
+};
+
 // ===============Hr  بيعمل طلب عهده الي موظف  ===============
 
 exports.createAndApproveCustodyByHR = async (req, res) => {
@@ -1010,6 +1095,62 @@ exports.forwardRequest = async (req, res) => {
     await r.save();
 
     res.json({ message: 'تم تحويل الطلب', request: r });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: 'خطأ أثناء التحويل' });
+  }
+};
+
+exports.forwardCustodyRequest = async (req, res) => {
+  try {
+    if (!isHRorAdmin(req.user)) {
+      return res.status(403).json({ message: 'غير مسموح' });
+    }
+    const {
+      managerId,     // ID المدير المحول إليه
+      receivedDate,
+      receivedBy,
+      returnDate,
+      returnedTo,
+      note
+    } = req.body;
+
+    const r = await Request.findById(req.params.id);
+    if (!r) return res.status(404).json({ message: 'الطلب مش موجود' });
+
+    if (r.type !== 'عهدة') {
+      return res.status(400).json({ message: 'ده مش طلب عهدة يا هندسة' });
+    }
+
+    r.status = 'محول';
+    r.forwardedTo = managerId;
+
+    r.custody.status = 'قيد المراجعة';
+    r.custody.receivedDate = receivedDate;
+    r.custody.receivedBy = receivedBy;
+    r.custody.returnDate = returnDate;
+    r.custody.returnedTo = returnedTo;
+
+    if (note) {
+      r.notes.push({
+        text: `تم تحويل الطلب للمدير مع ملاحظة: ${note}`,
+        by: req.user._id,
+        at: new Date()
+      });
+    }
+
+    await r.save();
+
+    await Notification.create({
+      employee: managerId,
+      type: 'request',
+      message: `طلب عهدة محول إليك لمراجعته واعتماده.`,
+      link: `/admin/requests/${r._id}`,
+      read: false
+    });
+
+    res.json({ message: 'تم تحويل الطلب وتجهيز بيانات العهدة للمدير', request: r });
+
   } catch (e) {
     console.error(e);
     res.status(500).json({ message: 'خطأ أثناء التحويل' });

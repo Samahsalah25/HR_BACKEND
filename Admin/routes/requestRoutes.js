@@ -9,9 +9,13 @@ const {
   approveCustodyRequest,
   confirmDelivery,
   confirmReturn,
+  getMyDeliveryTasks,
+  getMyReturnTasks,
+  getMyApprovedCustodyRequests,
   createAndApproveCustodyByHR,
   rejectRequest,
   forwardRequest,
+  forwardCustodyRequest,
   getRequestsByType,
   getRequestsByEmployee,
   getRequestsByWorkplace,
@@ -25,6 +29,12 @@ const authenticate = require('../middlesware/authenticate');
 const authorizeRoles = require('../middlesware/roleMiddleware');
 const { createRequestSchema, updateRequestSchema, addNoteSchema } = require('../validations/requestvalidation');
 const validate = require('../middlesware/validate');
+
+
+router.get("/getMyDeliveryTasks", authenticate, authorizeRoles('HR', 'EMPLOYEE', 'Manager'), getMyDeliveryTasks)
+router.get("/getMyReturnTasks", authenticate, authorizeRoles('HR', 'EMPLOYEE', 'Manager'), getMyReturnTasks)
+router.get("/getMyApprovedCustodyRequests", authenticate, authorizeRoles('HR', 'EMPLOYEE', 'Manager'), getMyApprovedCustodyRequests)
+
 
 // الموظف ينشئ طلب
 router.post('/', authenticate, authorizeRoles('HR', 'EMPLOYEE', 'Manager'), validate(createRequestSchema), createRequest);
@@ -47,6 +57,7 @@ router.get('/getrequests/:id', authenticate, authorizeRoles('HR', 'EMPLOYEE'), g
 router.get('/:id', getRequestById);
 
 // HR/Admin: اعتماد / رفض / تحويل / إضافة ملاحظة
+
 router.patch('/:id/approve', authenticate, authorizeRoles('HR'), approveRequest);
 router.patch("/approveCustodyRequest/:id", authenticate, authorizeRoles('HR'), approveCustodyRequest)
 router.patch("/confirmDelivery/:id", authenticate, authorizeRoles('HR'), confirmDelivery)
@@ -54,6 +65,7 @@ router.patch("/confirmReturn/:id", authenticate, authorizeRoles('HR'), confirmRe
 router.post("/createAndApproveCustodyByHR", authenticate, authorizeRoles('HR'), createAndApproveCustodyByHR)
 router.patch('/:id/reject', authenticate, authorizeRoles('HR'), rejectRequest);
 router.patch('/:id/forward', authenticate, authorizeRoles('HR'), forwardRequest);
+router.patch('/:id/forwardCustodyRequest', authenticate, authorizeRoles('HR'), forwardCustodyRequest);
 router.post('/:id/notes', authenticate, authorizeRoles('HR'), validate(addNoteSchema), addNote);
 
 router.patch('/:id', authenticate, updateRequest)
