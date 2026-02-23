@@ -884,6 +884,63 @@ exports.confirmReturn = async (req, res) => {
 };
 
 
+// exports.getMyDeliveryTasks = async (req, res) => {
+//   try {
+//     const employee = await Employee.findOne({ user: req.user._id }).select('_id');
+
+//     if (!employee) {
+//       return res.status(404).json({ message: 'لا يوجد موظف مرتبط بالمستخدم' });
+//     }
+
+//     const tasks = await Request.find({
+//       type: 'عهدة',
+//       'custody.receivedBy': employee._id
+//     })
+//       .populate('employee', 'name department')
+//       .populate({
+//         path: 'custody.custodyId',
+//         select: 'assetType assetId assetName serialNumber status',
+//         populate: { path: 'currentEmployee', select: 'name' }
+//       })
+//       .populate('custody.returnedTo', 'name')
+//       .sort({ 'custody.receivedDate': 1 });
+
+//     const formattedTasks = tasks.map(task => {
+//       const assetInfo = task.custody?.custodyId || {};
+
+//       return {
+//         requestId: task._id,
+
+//         currentEmployee:
+//           assetInfo?.currentEmployee?.name || 'لا يوجد موظف حالي',
+
+//         custodyType: assetInfo?.assetType || 'غير محدد',
+
+//         assetNumber:
+//           assetInfo?.assetId || assetInfo?.serialNumber || '-',
+
+//         receivedDate: task.custody?.receivedDate
+//           ? new Date(task.custody.receivedDate).toLocaleDateString('ar-EG')
+//           : '-',
+
+//         status: task.custody?.status || '-'
+//       };
+//     });
+
+//     res.status(200).json({
+//       results: formattedTasks.length,
+//       tasks: formattedTasks
+//     });
+
+//   } catch (e) {
+//     console.error("getMyDeliveryTasks error:", e);
+//     res.status(500).json({
+//       message: 'خطأ أثناء جلب مهام التسليم',
+//       error: e.message
+//     });
+//   }
+// };
+
 exports.getMyDeliveryTasks = async (req, res) => {
   try {
     const employee = await Employee.findOne({ user: req.user._id }).select('_id');
@@ -894,13 +951,13 @@ exports.getMyDeliveryTasks = async (req, res) => {
 
     const tasks = await Request.find({
       type: 'عهدة',
-      'custody.receivedBy': employee._id
+      'custody.receivedBy': employee._id,
+      'custody.status': 'قيد المراجعة'
     })
       .populate('employee', 'name department')
       .populate({
         path: 'custody.custodyId',
-        select: 'assetType assetId assetName serialNumber status',
-        populate: { path: 'currentEmployee', select: 'name' }
+        select: 'assetType assetId assetName serialNumber currentEmployee status'
       })
       .populate('custody.returnedTo', 'name')
       .sort({ 'custody.receivedDate': 1 });
@@ -911,8 +968,11 @@ exports.getMyDeliveryTasks = async (req, res) => {
       return {
         requestId: task._id,
 
-        currentEmployee:
-          assetInfo?.currentEmployee?.name || 'لا يوجد موظف حالي',
+        //  اسم الموظف اللي طلب العهدة
+        requestedBy: task.employee?.name || 'غير معروف',
+
+        //  اسم الأصل
+        assetName: assetInfo?.assetName || '-',
 
         custodyType: assetInfo?.assetType || 'غير محدد',
 
@@ -940,8 +1000,6 @@ exports.getMyDeliveryTasks = async (req, res) => {
     });
   }
 };
-
-
 exports.getMyReturnTasks = async (req, res) => {
   try {
     const currentUserId = req.user._id;
