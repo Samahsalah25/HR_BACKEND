@@ -961,6 +961,7 @@ exports.getMyReturnTasks = async (req, res) => {
       })
       .populate('custody.returnedTo', 'name')
       .sort({ 'custody.receivedDate': 1 });
+
     if (tasks.length == 0) return res.status(404).json({ message: 'الطلب غير موجود' });
 
     const formattedTasks = tasks.map(task => {
@@ -1010,20 +1011,50 @@ exports.getMyApprovedCustodyRequests = async (req, res) => {
     if (!employee) {
       return res.status(404).json({ message: 'لا يوجد موظف مرتبط بالمستخدم' });
     }
-    const approvedRequests = await Request.find({
+    const tasks = await Request.find({
       employee: employee._id,
       type: 'عهدة',
       status: 'مقبول'
     })
-      .populate('custody.custodyId', 'name code serialNumber')
-      .sort({ decidedAt: -1 });
+      .populate('employee', 'name department')
+      .populate({
+        path: 'custody.custodyId',
+        select: 'assetType assetId assetName serialNumber currentEmployee status'
+      })
+      .populate('custody.receivedBy', 'name')
+      .populate('custody.returnedTo', 'name')
+      .sort({ 'custody.receivedDate': 1 });
 
-    if (approvedRequests.length == 0) return res.status(404).json({ message: 'الطلب غير موجود' });
+    if (tasks.length == 0) return res.status(404).json({ message: 'الطلب غير موجود' });
+
+    const formattedTasks = tasks.map(task => {
+      const assetInfo = task.custody?.custodyId;
+
+      return {
+
+        currentEmployee: assetInfo?.currentEmployee || 'لا يوجد موظف حالي',
+        custodyType: assetInfo?.assetType || 'غير محدد',
+
+        assetNumber: assetInfo?.assetId || assetInfo?.serialNumber || '-',
+
+        receivedDate: task.custody?.receivedDate
+          ? new Date(task.custody.receivedDate).toLocaleDateString('ar-EG')
+          : '-',
+
+        receivedBy: task.custody?.receivedBy?.name || 'غير معروف',
+        returnDate: task.custody?.returnDate
+          ? new Date(task.custody.returnDate).toLocaleDateString('ar-EG')
+          : '-',
+
+        returnedTo: task.custody?.returnedTo?.name || '-',
+        status: task.custody?.status
+      };
+    });
 
     res.status(200).json({
       success: true,
-      count: approvedRequests.length,
-      data: approvedRequests
+      count: formattedTasks.length,
+      data: formattedTasks
     });
 
   } catch (e) {
