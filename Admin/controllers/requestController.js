@@ -1121,9 +1121,17 @@ exports.forwardCustodyRequest = async (req, res) => {
     if (r.type !== 'عهدة') {
       return res.status(400).json({ message: 'ده مش طلب عهدة يا هندسة' });
     }
+    const admin = await User.findOne({ role: 'ADMIN' });
+
+if (!admin) {
+  return res.status(400).json({ message: 'لا يوجد أدمن للتحويل' });
+}
+
+
+
 
     r.status = 'محول';
-    r.forwardedTo = managerId;
+    r.forwardedTo = admin._id;;
 
     r.custody.status = 'قيد المراجعة';
     r.custody.receivedDate = receivedDate;
@@ -1142,7 +1150,7 @@ exports.forwardCustodyRequest = async (req, res) => {
     await r.save();
 
     await Notification.create({
-      employee: managerId,
+      employee: admin._id,
       type: 'request',
       message: `طلب عهدة محول إليك لمراجعته واعتماده.`,
       link: `/admin/requests/${r._id}`,
