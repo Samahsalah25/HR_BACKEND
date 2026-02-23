@@ -1138,6 +1138,78 @@ exports.getMyApprovedCustodyRequests = async (req, res) => {
     });
   }
 };
+//=======get all CustodyRequests ===================
+
+exports.getAllApprovedCustodyRequests = async (req, res) => {
+  try {
+    const { month, year } = req.query;
+
+    let filter = {
+      type: 'عهدة',
+      status: 'مقبول'
+    };
+
+    if (month && year) {
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0, 23, 59, 59);
+
+      filter['custody.requestDate'] = {
+        $gte: startDate,
+        $lte: endDate
+      };
+    }
+
+    const tasks = await Request.find(filter)
+      .populate('employee', 'name department')
+      .populate({
+        path: 'custody.custodyId',
+        select: 'assetType assetId assetName serialNumber currentEmployee status'
+      })
+      .populate('custody.receivedBy', 'name')
+      .populate('custody.returnedTo', 'name')
+      .sort({ 'custody.receivedDate': -1 });
+
+    const formattedTasks = tasks.map(task => {
+      const assetInfo = task.custody?.custodyId;
+      return {
+        employeeName: task.employee?.name || '-',
+
+        custodyType: assetInfo?.assetType || 'غير محدد',
+
+        assetNumber: assetInfo?.assetId || assetInfo?.serialNumber || '-',
+        assetName: assetInfo?.assetName || 'غير محدد',
+
+        receivedDate: task.custody?.receivedDate
+          ? new Date(task.custody.receivedDate).toLocaleDateString('ar-EG')
+          : '-',
+
+        receivedBy: task.custody?.receivedBy?.name || 'غير معروف',
+
+        returnDate: task.custody?.returnDate
+          ? new Date(task.custody.returnDate).toLocaleDateString('ar-EG')
+          : '-',
+
+        returnedTo: task.custody?.returnedTo?.name || '-',
+
+        status: task.custody?.status || 'مقبول'
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      results: formattedTasks.length,
+      data: formattedTasks
+    });
+
+  } catch (e) {
+    res.status(500).json({
+      success: false,
+      message: 'خطأ أثناء جلب كافة العهد المعتمدة',
+      error: e.message
+    });
+  }
+};
+
 
 // ===============Hr  بيعمل طلب عهده الي موظف  ===============
 

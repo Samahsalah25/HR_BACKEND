@@ -13,6 +13,7 @@ const {
   getMyReturnTasks,
   getMyApprovedCustodyRequests,
   createAndApproveCustodyByHR,
+  getAllApprovedCustodyRequests,
   rejectRequest,
   forwardRequest,
   forwardCustodyRequest,
@@ -33,8 +34,10 @@ const validate = require('../middlesware/validate');
 
 router.get("/getMyDeliveryTasks", authenticate, authorizeRoles('HR', 'EMPLOYEE', 'Manager'), getMyDeliveryTasks)
 router.get("/getMyReturnTasks", authenticate, authorizeRoles('HR', 'EMPLOYEE', 'Manager'), getMyReturnTasks)
+
 router.get("/getMyApprovedCustodyRequests", authenticate, authorizeRoles('HR', 'EMPLOYEE', 'Manager'), getMyApprovedCustodyRequests)
 
+router.get("/getAllApprovedCustodyRequests", authenticate, authorizeRoles('HR'), getAllApprovedCustodyRequests)
 
 // الموظف ينشئ طلب
 router.post('/', authenticate, authorizeRoles('HR', 'EMPLOYEE', 'Manager'), validate(createRequestSchema), createRequest);
