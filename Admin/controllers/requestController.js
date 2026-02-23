@@ -1059,15 +1059,16 @@ exports.getMyReturnTasks = async (req, res) => {
   }
 };
 //===============get all approve request 
+
 //69146254d2f2d5527adb2393
 exports.getMyApprovedCustodyRequests = async (req, res) => {
   try {
-
     const employee = await Employee.findOne({ user: req.user._id });
 
     if (!employee) {
       return res.status(404).json({ message: 'لا يوجد موظف مرتبط بالمستخدم' });
     }
+
     const tasks = await Request.find({
       employee: employee._id,
       type: 'عهدة',
@@ -1082,28 +1083,42 @@ exports.getMyApprovedCustodyRequests = async (req, res) => {
       .populate('custody.returnedTo', 'name')
       .sort({ 'custody.receivedDate': 1 });
 
-    if (tasks.length == 0) return res.status(404).json({ message: 'الطلب غير موجود' });
+    if (tasks.length == 0)
+      return res.status(404).json({ message: 'الطلب غير موجود' });
 
     const formattedTasks = tasks.map(task => {
       const assetInfo = task.custody?.custodyId;
 
       return {
+        requestId: task._id,
 
-        currentEmployee: assetInfo?.currentEmployee || 'لا يوجد موظف حالي',
+        //  اسم الموظف اللي طلب العهدة
+        requestedBy: task.employee?.name || '-',
+
+        //  النوع
         custodyType: assetInfo?.assetType || 'غير محدد',
 
+        //  اسم العهدة (الجديد)
+        assetName: assetInfo?.assetName || '-',
+
+        //رقم الأصل
         assetNumber: assetInfo?.assetId || assetInfo?.serialNumber || '-',
+
+        // الموظف الحالي
+        currentEmployee: assetInfo?.currentEmployee || 'لا يوجد موظف حالي',
 
         receivedDate: task.custody?.receivedDate
           ? new Date(task.custody.receivedDate).toLocaleDateString('ar-EG')
           : '-',
 
         receivedBy: task.custody?.receivedBy?.name || 'غير معروف',
+
         returnDate: task.custody?.returnDate
           ? new Date(task.custody.returnDate).toLocaleDateString('ar-EG')
           : '-',
 
         returnedTo: task.custody?.returnedTo?.name || '-',
+
         status: task.custody?.status
       };
     });
