@@ -951,8 +951,7 @@ exports.getMyDeliveryTasks = async (req, res) => {
 
     const tasks = await Request.find({
       type: 'عهدة',
-      'custody.receivedBy': employee._id,
-      'custody.status': 'قيد المراجعة'
+      'custody.receivedBy': employee._id
     })
       .populate('employee', 'name department')
       .populate({
