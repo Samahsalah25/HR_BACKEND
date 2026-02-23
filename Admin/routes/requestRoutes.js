@@ -60,8 +60,8 @@ router.get('/:id', getRequestById);
 
 router.patch('/:id/approve', authenticate, authorizeRoles('HR'), approveRequest);
 router.patch("/approveCustodyRequest/:id", authenticate, authorizeRoles('HR'), approveCustodyRequest)
-router.patch("/confirmDelivery/:id", authenticate, authorizeRoles('HR'), confirmDelivery)
-router.patch("/confirmReturn/:id", authenticate, authorizeRoles('HR'), confirmReturn)
+router.patch("/confirmDelivery/:id", authenticate, authorizeRoles('HR ,"EMPLOYEE' ,"ADMIN" ,"Manager"), confirmDelivery)
+router.patch("/confirmReturn/:id", authenticate, authorizeRoles('HR' ,"EMPLOYEE" ,"ADMIN" ,"Manager"), confirmReturn)
 router.post("/createAndApproveCustodyByHR", authenticate, authorizeRoles('HR'), createAndApproveCustodyByHR)
 router.patch('/:id/reject', authenticate, authorizeRoles('HR'), rejectRequest);
 router.patch('/:id/forward', authenticate, authorizeRoles('HR'), forwardRequest);
