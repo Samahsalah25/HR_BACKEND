@@ -883,30 +883,7 @@ exports.confirmReturn = async (req, res) => {
   }
 };
 
-// exports.getMyDeliveryTasks = async (req, res) => {
-//   try {
-//     const currentUserId = req.user._id;
-//     console.log(currentUserId)
-//     const tasks = await Request.find({
-//       'type': 'عهدة',
-//       'custody.receivedBy': currentUserId,
-//       'custody.status': 'قيد المراجعة'
-//     })
-//       .populate('employee', 'name department')
-//       .populate('custody.custodyId', 'name serialNumber code')
-//       .sort({ 'custody.receivedDate': 1 });
 
-//     if (tasks.length == 0) return res.status(404).json({ message: 'الطلب غير موجود' });
-
-//     // 3. الرد
-//     res.status(200).json({
-//       results: tasks.length,
-//       tasks
-//     });
-
-//   } catch (e) {
-//     res.status(500).json({ message: 'خطأ أثناء جلب مهام التسليم', error: e.message });
-//   
 exports.getMyDeliveryTasks = async (req, res) => {
   try {
     const currentUserId = req.user._id;
@@ -971,23 +948,51 @@ exports.getMyDeliveryTasks = async (req, res) => {
 exports.getMyReturnTasks = async (req, res) => {
   try {
     const currentUserId = req.user._id;
-    console.log(currentUserId);
 
-    const returnTasks = await Request.find({
+    const tasks = await Request.find({
       'type': 'عهدة',
       'custody.returnedTo': currentUserId,
       'custody.status': 'مسلمة'
     })
-      .populate('employee', 'name department photo')
-      .populate('custody.custodyId', 'name serialNumber code')
-      .sort({ 'custody.returnDate': 1 });
+      .populate('employee', 'name department')
+      .populate({
+        path: 'custody.custodyId',
+        select: 'assetType assetId assetName serialNumber currentEmployee status'
+      })
+      .populate('custody.returnedTo', 'name')
+      .sort({ 'custody.receivedDate': 1 });
+    if (tasks.length == 0) return res.status(404).json({ message: 'الطلب غير موجود' });
 
+    const formattedTasks = tasks.map(task => {
+      const assetInfo = task.custody?.custodyId;
 
-    if (returnTasks.length == 0) return res.status(404).json({ message: 'الطلب غير موجود' });
+      return {
+
+        currentEmployee: assetInfo?.currentEmployee || 'لا يوجد موظف حالي',
+        custodyType: assetInfo?.assetType || 'غير محدد',
+
+        assetNumber: assetInfo?.assetId || assetInfo?.serialNumber || '-',
+
+        receivedDate: task.custody?.receivedDate
+          ? new Date(task.custody.receivedDate).toLocaleDateString('ar-EG')
+          : '-',
+
+        // receivedBy: task.employee?.name || 'غير معروف',
+
+        // returnDate: task.custody?.returnDate
+        //   ? new Date(task.custody.returnDate).toLocaleDateString('ar-EG')
+        //   : '-',
+
+        // returnedTo: task.employee?.name || '-',
+
+        status: task.custody?.status
+      };
+    });
+
 
     res.status(200).json({
-      results: returnTasks.length,
-      tasks: returnTasks
+      results: formattedTasks.length,
+      tasks: formattedTasks
     });
 
   } catch (e) {
