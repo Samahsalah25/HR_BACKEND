@@ -1107,7 +1107,7 @@ exports.forwardCustodyRequest = async (req, res) => {
       return res.status(403).json({ message: 'غير مسموح' });
     }
     const {
-      managerId,     // ID المدير المحول إليه
+     // ID المدير المحول إليه
       receivedDate,
       receivedBy,
       returnDate,
