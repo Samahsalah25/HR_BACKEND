@@ -1158,7 +1158,7 @@ exports.getAllApprovedCustodyRequests = async (req, res) => {
     $gte: startDate,
     $lte: endDate
   };
-}س
+}
 
     const tasks = await Request.find(filter)
       .populate('employee', 'name department')
