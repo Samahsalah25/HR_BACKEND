@@ -1149,15 +1149,16 @@ exports.getAllApprovedCustodyRequests = async (req, res) => {
       status: 'مقبول'
     };
 
-    if (month && year) {
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0, 23, 59, 59);
+  if (month && year) {
+  const startDate = new Date(Number(year), Number(month) - 1, 1);
+  const endDate = new Date(Number(year), Number(month), 0, 23, 59, 59);
 
-      filter['custody.requestDate'] = {
-        $gte: startDate,
-        $lte: endDate
-      };
-    }
+  filter['custody.requestDate'] = {
+    $exists: true,
+    $gte: startDate,
+    $lte: endDate
+  };
+}س
 
     const tasks = await Request.find(filter)
       .populate('employee', 'name department')
