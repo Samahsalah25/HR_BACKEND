@@ -1077,7 +1077,7 @@ exports.getMyApprovedCustodyRequests = async (req, res) => {
       .populate('employee', 'name department')
       .populate({
         path: 'custody.custodyId',
-        select: 'assetType assetId assetName serialNumber currentEmployee status,assetName'
+        select: 'assetType assetId _id assetName serialNumber currentEmployee status,assetName'
       })
       .populate('custody.receivedBy', 'name')
       .populate('custody.returnedTo', 'name')
