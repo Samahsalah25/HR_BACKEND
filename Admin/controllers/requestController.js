@@ -1098,7 +1098,7 @@ exports.getMyApprovedCustodyRequests = async (req, res) => {
         //  النوع
         custodyType: assetInfo?.assetType || 'غير محدد',
         assetName: assetInfo?.assetName || 'غير محدد',
-assetId:assetInfo?._id || '-'
+assetId:assetInfo?._id || '-' ,
         //  اسم العهدة (الجديد)
         assetName: assetInfo?.assetName || '-',
 
