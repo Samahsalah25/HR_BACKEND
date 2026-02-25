@@ -100,9 +100,11 @@ const requestSchema = new mongoose.Schema({
   },
 
   custodyClearance: {
-    custodyNumber: String,
-    custodyType: String,
-    quantity: Number,
+    custodyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'assets',
+    required: true
+  },
     reason: { type: String, enum: ['انتهاء فترة الاستخدام', 'عطل', 'استبدال بعهدة جديدة', 'أخرى'] },
     description: String,
     clearanceDate: Date,
