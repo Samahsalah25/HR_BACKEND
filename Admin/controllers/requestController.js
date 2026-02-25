@@ -1033,7 +1033,7 @@ exports.getMyReturnTasks = async (req, res) => {
         assetName: assetInfo?.assetName || '-',
 
         custodyType: assetInfo?.assetType || 'غير محدد',
-assetId:assetInfo?._id || '-',
+
         assetNumber:
           assetInfo?.assetId || assetInfo?.serialNumber || '-',
 
@@ -1098,7 +1098,7 @@ exports.getMyApprovedCustodyRequests = async (req, res) => {
         //  النوع
         custodyType: assetInfo?.assetType || 'غير محدد',
         assetName: assetInfo?.assetName || 'غير محدد',
-
+assetId:assetInfo?._id || '-'
         //  اسم العهدة (الجديد)
         assetName: assetInfo?.assetName || '-',
 
