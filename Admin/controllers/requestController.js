@@ -1033,7 +1033,7 @@ exports.getMyReturnTasks = async (req, res) => {
         assetName: assetInfo?.assetName || '-',
 
         custodyType: assetInfo?.assetType || 'غير محدد',
-
+assetId:assetInfo?._id || '-',
         assetNumber:
           assetInfo?.assetId || assetInfo?.serialNumber || '-',
 
