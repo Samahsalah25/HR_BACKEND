@@ -748,6 +748,38 @@ exports.approveRequest = async (req, res) => {
     }
 
     await r.save();
+
+    //==========          تصفية العهد      ================
+    if (r.type === 'تصفية عهدة' && r.custodyClearance?.custodyId) {
+      const assetId = r.custodyClearance.custodyId;
+      const clearanceReason = r.custodyClearance.reason;
+      const clearanceDate = r.custodyClearance.clearanceDate || new Date();
+
+      if (r.custody) {
+        r.custody.status = 'مستلمة';
+        r.custody.returnDate = clearanceDate;
+        r.custody.returnedTo = req.user._id;
+      }
+
+      const asset = await Assets.findById(assetId);
+      if (asset) {
+        asset.currentEmployee = null;
+
+        if (clearanceReason === 'عطل') {
+          asset.status = 'تحت الصيانة';
+        } else {
+          asset.status = 'متاح';
+        }
+
+        // console.log(asset)
+
+        await asset.save();
+      } else {
+        return res.status(404).json({ message: 'الأصل (Asset) المراد تصفيته غير موجود' });
+      }
+    }
+
+
     // ======== إنشاء Notification للموظف ========
     await Notification.create({
       employee: r.employee._id,
@@ -1098,7 +1130,7 @@ exports.getMyApprovedCustodyRequests = async (req, res) => {
         //  النوع
         custodyType: assetInfo?.assetType || 'غير محدد',
         assetName: assetInfo?.assetName || 'غير محدد',
-assetId:assetInfo?._id || '-' ,
+        assetId: assetInfo?._id || '-',
         //  اسم العهدة (الجديد)
         assetName: assetInfo?.assetName || '-',
 
@@ -1149,16 +1181,16 @@ exports.getAllApprovedCustodyRequests = async (req, res) => {
       status: 'مقبول'
     };
 
-  if (month && year) {
-  const startDate = new Date(Number(year), Number(month) - 1, 1);
-  const endDate = new Date(Number(year), Number(month), 0, 23, 59, 59);
+    if (month && year) {
+      const startDate = new Date(Number(year), Number(month) - 1, 1);
+      const endDate = new Date(Number(year), Number(month), 0, 23, 59, 59);
 
-  filter['custody.requestDate'] = {
-    $exists: true,
-    $gte: startDate,
-    $lte: endDate
-  };
-}
+      filter['custody.requestDate'] = {
+        $exists: true,
+        $gte: startDate,
+        $lte: endDate
+      };
+    }
 
     const tasks = await Request.find(filter)
       .populate('employee', 'name department')
