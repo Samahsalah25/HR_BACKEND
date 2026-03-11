@@ -1035,11 +1035,9 @@ exports.getMyDeliveryTasks = async (req, res) => {
 exports.getMyReturnTasks = async (req, res) => {
   try {
     const employee = await Employee.findOne({ user: req.user._id }).select('_id');
-
     if (!employee) {
       return res.status(404).json({ message: 'لا يوجد موظف مرتبط بالمستخدم' });
     }
-
     const tasks = await Request.find({
       type: 'عهدة',
       'custody.returnedTo': employee._id
@@ -1054,10 +1052,8 @@ exports.getMyReturnTasks = async (req, res) => {
 
     const formattedTasks = tasks.map(task => {
       const assetInfo = task.custody?.custodyId || {};
-
       return {
         requestId: task._id,
-
         // اسم اللي طلب العهدة
         requestedBy: task.employee?.name || 'غير معروف',
 
@@ -1091,16 +1087,13 @@ exports.getMyReturnTasks = async (req, res) => {
   }
 };
 //===============get all approve request 
-
 //69146254d2f2d5527adb2393
 exports.getMyApprovedCustodyRequests = async (req, res) => {
   try {
     const employee = await Employee.findOne({ user: req.user._id });
-
     if (!employee) {
       return res.status(404).json({ message: 'لا يوجد موظف مرتبط بالمستخدم' });
     }
-
     const tasks = await Request.find({
       employee: employee._id,
       type: 'عهدة',
@@ -1133,25 +1126,20 @@ exports.getMyApprovedCustodyRequests = async (req, res) => {
         assetId: assetInfo?._id || '-',
         //  اسم العهدة (الجديد)
         assetName: assetInfo?.assetName || '-',
-
         //رقم الأصل
         assetNumber: assetInfo?.assetId || assetInfo?.serialNumber || '-',
-
         // الموظف الحالي
         currentEmployee: assetInfo?.currentEmployee || 'لا يوجد موظف حالي',
-
         receivedDate: task.custody?.receivedDate
           ? new Date(task.custody.receivedDate).toLocaleDateString('ar-EG')
           : '-',
 
         receivedBy: task.custody?.receivedBy?.name || 'غير معروف',
-
         returnDate: task.custody?.returnDate
           ? new Date(task.custody.returnDate).toLocaleDateString('ar-EG')
           : '-',
 
         returnedTo: task.custody?.returnedTo?.name || '-',
-
         status: task.custody?.status
       };
     });
@@ -1175,7 +1163,6 @@ exports.getMyApprovedCustodyRequests = async (req, res) => {
 exports.getAllApprovedCustodyRequests = async (req, res) => {
   try {
     const { month, year } = req.query;
-
     let filter = {
       type: 'عهدة',
       status: 'مقبول'
@@ -1269,6 +1256,7 @@ exports.createAndApproveCustodyByHR = async (req, res) => {
     if (!emp) {
       return res.status(404).json({ message: 'employee not founded' });
     }
+
 
     const asset = await Assets.findById(custodyId);
     if (!asset) {
@@ -1386,6 +1374,7 @@ exports.forwardCustodyRequest = async (req, res) => {
     if (!isHRorAdmin(req.user)) {
       return res.status(403).json({ message: 'غير مسموح' });
     }
+    
     const {
       // ID المدير المحول إليه
       receivedDate,

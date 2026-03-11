@@ -917,10 +917,15 @@ exports.getMonthlyInstallments = async (req, res) => {
 
     const result = [];
 
-    for (const inst of installments) {
-      const allInstallments = await SalaryAdvanceInstallment.find({
-        salaryAdvance: inst.salaryAdvance._id
-      });
+   for (const inst of installments) {
+
+  if (!inst.salaryAdvance || !inst.employee) {
+    continue;
+  }
+
+  const allInstallments = await SalaryAdvanceInstallment.find({
+    salaryAdvance: inst.salaryAdvance._id
+  });
 
       const totalPaid = allInstallments
         .filter(i => i.status === 'paid')
