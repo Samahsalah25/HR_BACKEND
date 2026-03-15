@@ -6,7 +6,7 @@ const Request = require("../models/requestModel");
 
 
 // =====================================================
-// 🟢 1) إنشاء طلب إنهاء خدمة (Draft)
+// 1) إنشاء طلب إنهاء خدمة (Draft)
 // =====================================================
 exports.createEndService = async (req, res) => {
   try {
@@ -40,7 +40,7 @@ exports.createEndService = async (req, res) => {
 
 
 // =====================================================
-// 🟢 2) جلب بيانات Step 3 — العهد الحالية
+// 2) جلب بيانات Step 3 — العهد الحالية
 // =====================================================
 exports.getEmployeeCustody = async (req, res) => {
   try {
@@ -61,7 +61,7 @@ exports.getEmployeeCustody = async (req, res) => {
 
 
 // =====================================================
-// 🟢 3) جلب الطلبات المعلقة (Step 4)
+// 3) جلب الطلبات المعلقة (Step 4)
 // =====================================================
 exports.getPendingRequests = async (req, res) => {
   try {
@@ -81,7 +81,7 @@ exports.getPendingRequests = async (req, res) => {
 
 
 // =====================================================
-// 🟢 4) رصيد الإجازات (Step 5)
+//  4) رصيد الإجازات (Step 5)
 // =====================================================
 exports.getLeaveBalance = async (req, res) => {
   try {
@@ -101,7 +101,7 @@ exports.getLeaveBalance = async (req, res) => {
 
 
 // =====================================================
-// 🟢 5) حساب المخالصة (Step 6)
+//  5) حساب المخالصة (Step 6)
 // =====================================================
 exports.calculateSettlement = async (req, res) => {
   try {
@@ -174,7 +174,7 @@ if (leave) {
 
 
 // =====================================================
-// 🟢 6) إضافة خصم
+//  6) إضافة خصم
 // =====================================================
 exports.addDeduction = async (req, res) => {
   try {
@@ -196,7 +196,7 @@ exports.addDeduction = async (req, res) => {
 
 
 // =====================================================
-// 🟢 7) إضافة مبلغ إضافي
+//  7) إضافة مبلغ إضافي
 // =====================================================
 exports.addAddition = async (req, res) => {
   try {
@@ -252,7 +252,7 @@ exports.completeEndService = async (req, res) => {
 
     await endService.save();
 
-    // 🔥 تغيير حالة الموظف
+    //  تغيير حالة الموظف
     await Employee.findByIdAndUpdate(
       endService.employee._id,
       { status: "terminated" }
@@ -267,7 +267,7 @@ exports.completeEndService = async (req, res) => {
 
 
 // =====================================================
-// 🟢 9) جلب كل عمليات إنهاء الخدمة
+//  9) جلب كل عمليات إنهاء الخدمة
 // =====================================================
 exports.getAllEndServices = async (req, res) => {
   try {
@@ -285,7 +285,7 @@ exports.getAllEndServices = async (req, res) => {
 
 
 // =====================================================
-// 🟢 10) تفاصيل عملية واحدة
+// 10) تفاصيل عملية واحدة
 // =====================================================
 exports.getEndServiceDetails = async (req, res) => {
   try {

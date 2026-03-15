@@ -468,12 +468,14 @@ exports.employeeOverview = async (req, res) => {
 //     });
 //   }
 // };
+
 exports.getEmployees = async (req, res) => {
   try {
     // هجيب الـ Employee اللي بيمثل اليوزر الحالي
     const currentEmp = await Employee.findOne({ user: req.user._id })
       .populate("department")
       .populate("workplace")
+      .populate("contract.duration", "_id name duration unit")
       .populate("user", "name email role");
 
     if (!currentEmp) {
@@ -488,6 +490,7 @@ exports.getEmployees = async (req, res) => {
         .populate("department", "name")
         .populate("workplace", "name location")
         .populate("manager", "name jobTitle")
+        .populate("contract.duration", "_id name duration unit")
         .populate("user", "name email role");
     }
     else if (req.user.role === "Manager") {
@@ -502,6 +505,7 @@ exports.getEmployees = async (req, res) => {
         .populate("department", "name")
         .populate("workplace", "name location")
         .populate("manager", "name jobTitle")
+        .populate("contract.duration", "_id name duration unit")
         .populate("user", "name email role");
     }
     else if (req.user.role === "EMPLOYEE") {
@@ -513,6 +517,7 @@ exports.getEmployees = async (req, res) => {
         .populate("department", "name")
         .populate("workplace", "name location")
         .populate("manager", "name jobTitle")
+        .populate("contract.duration", "_id name duration unit")
         .populate("user", "name email role");
 
       // فلترة: استبعد HR & Manager
@@ -534,7 +539,6 @@ exports.getEmployees = async (req, res) => {
     });
   }
 };
-
 
 
 const moment = require("moment-timezone");
