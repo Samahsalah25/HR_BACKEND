@@ -15,6 +15,7 @@ exports.createEndService = async (req, res) => {
       reason,
       noticeDate,
       lastWorkingDay
+       
     } = req.body;
 
     const employee = await Employee.findById(employeeId);
@@ -272,7 +273,7 @@ exports.getAllEndServices = async (req, res) => {
   try {
 
     const data = await EndService.find()
-      .populate("employee")
+      .populate("employee").populate("createdBy", "name")
       .sort({ createdAt: -1 });
 
     res.json(data);
