@@ -102,10 +102,15 @@ const employeeSchema = new mongoose.Schema(
     uploadedAt: { type: Date, default: Date.now }
   }
 ],
-
+status: {
+  type: String,
+  enum: ["active", "terminated"],
+  default: "active"
+},
 
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
   },
+  
   { timestamps: true }
 );
 
