@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-
+const  authenticate = require('../middlesware/authenticate');
 const endServiceController = require("../controllers/EndservivesController");
 
 
@@ -9,7 +9,7 @@ const endServiceController = require("../controllers/EndservivesController");
 // POST /api/end-service
 // =====================================================
 router.post(
-  "/",
+  "/", authenticate ,
   endServiceController.createEndService
 );
 
