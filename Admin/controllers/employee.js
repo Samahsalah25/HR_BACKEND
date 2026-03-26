@@ -812,6 +812,9 @@ function formatTime(date) {
     hour12: true
   });
 }
+
+
+
 exports.getMyTasks = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -887,7 +890,6 @@ exports.getMyTasks = async (req, res) => {
           jobTitle: task.assignedTo.jobTitle || ""
         };
       }
-
       return {
         _id: task._id,
         title: task.title,
@@ -915,6 +917,7 @@ exports.getMyTasks = async (req, res) => {
     res.status(500).json({ error: "خطأ في السيرفر" });
   }
 };
+
 
 
 // exports.getMyRequests = async (req, res) => {
