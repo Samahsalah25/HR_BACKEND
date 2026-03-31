@@ -40,7 +40,7 @@ router.get("/getMyApprovedCustodyRequests", authenticate, authorizeRoles('HR', '
 router.get("/getAllApprovedCustodyRequests", authenticate, authorizeRoles('HR'), getAllApprovedCustodyRequests)
 
 // الموظف ينشئ طلب
-router.post('/', authenticate, authorizeRoles('HR', 'EMPLOYEE', 'Manager'), validate(createRequestSchema), createRequest);
+router.post('/', authenticate, authorizeRoles('HR', 'EMPLOYEE', 'Manager'), createRequest);
 
 // عرض الطلبات (الموظف : طلباته، HR/Admin : الكل + فلترة)
 router.get('/', getRequests);
