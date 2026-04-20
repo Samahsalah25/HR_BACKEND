@@ -67,11 +67,196 @@ const getAllEmployees = async (req, res) => {
 //Hr can create employee
 
 
+// const createEmployee = async (req, res) => {
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
+
+//   try {
+//     const {
+//       name,
+//       email,
+//       password,
+//       jobTitle,
+//       employeeNumber,
+//       department,
+//       manager,
+//       employmentType,
+//       contractStart,
+//       contractDurationId,
+//       residencyStart,
+//       residencyDurationId,
+//       residencyAdditionNumber,
+//       residencyIssuingAuthority,
+//       residencyInsuranceNumber,
+//       residencyNationality,
+//       residencyType,
+//       workHoursPerWeek,
+//       workplace,
+//       salary,
+//       role ,
+//         insurance 
+//     } = req.body;
+
+
+//     if (req.user.role !== "HR") {
+//       return res.status(403).json({ message: "ليس لديك صلاحية لإضافة موظف جديد" });
+//     }
+
+
+//     const existingUser = await User.findOne({ email }).session(session);
+//     if (existingUser) {
+//       return res.status(400).json({ message: `البريد الإلكتروني ${email} مستخدم بالفعل` });
+//     }
+
+//     const existingEmployee = await Employee.findOne({ employeeNumber }).session(session);
+//     if (existingEmployee) {
+//       return res.status(400).json({ message: `رقم الموظف ${employeeNumber} مستخدم بالفعل` });
+//     }
+
+//     let contractDuration = null;
+//     if (contractDurationId) {
+//       contractDuration = await Contract.findById(contractDurationId).session(session);
+//       if (!contractDuration) {
+//         return res.status(400).json({ message: "لم يتم العثور على مدة العقد." });
+//       }
+//     }
+
+//     //  استرجاع بيانات الإقامة 
+//     let residencyDuration = null;
+//     if (residencyDurationId) {
+//       residencyDuration = await ResidencyYear.findById(residencyDurationId).session(session);
+//       if (!residencyDuration) {
+//         return res.status(400).json({ message: "لم يتم العثور على مدة الإقامة." });
+//       }
+//     }
+
+//     let selectedInsurance = null;
+
+// if (insurance) {
+//   selectedInsurance = await Insurance.findById(insurance).session(session);
+
+//   if (!selectedInsurance) {
+//     return res.status(404).json({ message: "التأمين غير موجود" });
+//   }
+// }
+
+//     const user = await User.create([{ name, email, password, role: role || "EMPLOYEE" }], { session });
+
+
+//     let employee = await Employee.create([{
+//       name,
+//       jobTitle,
+//       employeeNumber,
+//       department,
+//       manager,
+//       employmentType,
+//       contract: {
+//         start: contractStart || null,
+//         duration: contractDuration?._id || null
+//       },
+//       residency: {
+//         nationality: residencyNationality || "",
+//         start: residencyStart || null,
+//         duration: residencyDuration?._id || null,
+//         additionNumber: residencyAdditionNumber || "",
+//         issuingAuthority: residencyIssuingAuthority || "",
+//         insuranceNumber: residencyInsuranceNumber || "",
+//         type: residencyType || ""
+//       },
+//       workHoursPerWeek: workHoursPerWeek || 0,
+//       workplace,
+//       salary,
+//       user: user[0]._id ,
+//        insurance: selectedInsurance ? {
+//     insuranceId: selectedInsurance._id,
+//     name: selectedInsurance.name,
+//     employeePercentage: selectedInsurance.employeePercentage,
+//     companyPercentage: selectedInsurance.companyPercentage
+//   } : null,
+
+//     }], { session });
+
+//     employee = employee[0];
+
+//     //  حساب تاريخ نهاية العقد تلقائيًا
+//     if (employee.contract.start && contractDuration) {
+//       const end = new Date(employee.contract.start);
+//       if (contractDuration.unit === "years") {
+//         end.setFullYear(end.getFullYear() + contractDuration.duration);
+//       } else if (contractDuration.unit === "months") {
+//         end.setMonth(end.getMonth() + contractDuration.duration);
+//       }
+//       employee.contract.end = end;
+//     }
+
+//     //  حساب تاريخ نهاية الإقامة تلقائيًا
+//     if (employee.residency.start && residencyDuration) {
+//       const end = new Date(employee.residency.start);
+//       end.setFullYear(end.getFullYear() + residencyDuration.year);
+//       employee.residency.end = end;
+//     }
+
+//     await employee.save({ session });
+
+//     //  إنشاء رصيد الإجازات الافتراضي
+//     const companyLeaves = await LeaveBalance.findOne({ employee: null }).session(session);
+//     if (!companyLeaves) {
+//       throw new Error("رصيد الإجازات الافتراضي للشركة غير محدد");
+//     }
+
+//     const currentYear = new Date().getFullYear();
+
+//     const totalLeaveBalance =
+//       companyLeaves.annual +
+//       companyLeaves.sick +
+//       companyLeaves.marriage +
+//       companyLeaves.emergency +
+//       companyLeaves.maternity +
+//       companyLeaves.unpaid;
+
+//     await LeaveBalance.create([{
+//       employee: employee._id,
+//       annual: companyLeaves.annual,
+//       sick: companyLeaves.sick,
+//       marriage: companyLeaves.marriage,
+//       emergency: companyLeaves.emergency,
+//       maternity: companyLeaves.maternity,
+//       unpaid: companyLeaves.unpaid,
+//       remaining: totalLeaveBalance,
+//       year: currentYear
+//     }], { session });
+
+//     await session.commitTransaction();
+//     session.endSession();
+
+//     //  جلب الموظف بعد الـ populate
+//     const populatedEmployee = await Employee.findById(employee._id)
+//       .populate("contract.duration")
+//       .populate("residency.duration");
+
+//     res.status(201).json({
+//       message: "تم إنشاء الموظف بنجاح",
+//       user: user[0],
+//       employee: populatedEmployee
+//     });
+
+//   } catch (error) {
+//     await session.abortTransaction();
+//     session.endSession();
+//     console.error(" Error details:", error);
+//     res.status(500).json({
+//       message: "حدث خطأ أثناء إنشاء الموظف",
+//       error: error.message
+//     });
+//   }
+// };
+
 const createEmployee = async (req, res) => {
   const session = await mongoose.startSession();
-  session.startTransaction();
 
   try {
+    session.startTransaction();
+
     const {
       name,
       email,
@@ -93,23 +278,29 @@ const createEmployee = async (req, res) => {
       workHoursPerWeek,
       workplace,
       salary,
-      role ,
-        insurance 
+      role,
+      contactInfo,
+      bankInfo,
+      insurance
     } = req.body;
 
-
     if (req.user.role !== "HR") {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(403).json({ message: "ليس لديك صلاحية لإضافة موظف جديد" });
     }
 
-
     const existingUser = await User.findOne({ email }).session(session);
     if (existingUser) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ message: `البريد الإلكتروني ${email} مستخدم بالفعل` });
     }
 
     const existingEmployee = await Employee.findOne({ employeeNumber }).session(session);
     if (existingEmployee) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ message: `رقم الموظف ${employeeNumber} مستخدم بالفعل` });
     }
 
@@ -117,94 +308,111 @@ const createEmployee = async (req, res) => {
     if (contractDurationId) {
       contractDuration = await Contract.findById(contractDurationId).session(session);
       if (!contractDuration) {
+        await session.abortTransaction();
+        session.endSession();
         return res.status(400).json({ message: "لم يتم العثور على مدة العقد." });
       }
     }
 
-    //  استرجاع بيانات الإقامة 
     let residencyDuration = null;
     if (residencyDurationId) {
       residencyDuration = await ResidencyYear.findById(residencyDurationId).session(session);
       if (!residencyDuration) {
+        await session.abortTransaction();
+        session.endSession();
         return res.status(400).json({ message: "لم يتم العثور على مدة الإقامة." });
       }
     }
 
     let selectedInsurance = null;
+    if (insurance) {
+      selectedInsurance = await Insurance.findById(insurance).session(session);
+      if (!selectedInsurance) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(404).json({ message: "التأمين غير موجود" });
+      }
+    }
 
-if (insurance) {
-  selectedInsurance = await Insurance.findById(insurance).session(session);
+    const user = await User.create(
+      [{ name, email, password, role: role || "EMPLOYEE" }],
+      { session }
+    );
 
-  if (!selectedInsurance) {
-    return res.status(404).json({ message: "التأمين غير موجود" });
-  }
-}
+    let employeeArr = await Employee.create(
+      [{
+        name,
+        jobTitle,
+        employeeNumber,
+        department,
+        manager,
+        employmentType,
+        contract: {
+          start: contractStart || null,
+          duration: contractDuration?._id || null
+        },
+        residency: {
+          nationality: residencyNationality || "",
+          start: residencyStart || null,
+          duration: residencyDuration?._id || null,
+          additionNumber: residencyAdditionNumber || "",
+          issuingAuthority: residencyIssuingAuthority || "",
+          insuranceNumber: residencyInsuranceNumber || "",
+          type: residencyType || ""
+        },
+        workHoursPerWeek: workHoursPerWeek || 0,
+        workplace,
+        salary,
+        contactInfo: contactInfo || {},
+        bankInfo: bankInfo || {},
+        user: user[0]._id,
+        insurance: selectedInsurance
+          ? {
+              insuranceId: selectedInsurance._id,
+              name: selectedInsurance.name,
+              employeePercentage: selectedInsurance.employeePercentage,
+              companyPercentage: selectedInsurance.companyPercentage
+            }
+          : null
+      }],
+      { session }
+    );
 
-    const user = await User.create([{ name, email, password, role: role || "EMPLOYEE" }], { session });
+    let employee = employeeArr[0];
 
-
-    let employee = await Employee.create([{
-      name,
-      jobTitle,
-      employeeNumber,
-      department,
-      manager,
-      employmentType,
-      contract: {
-        start: contractStart || null,
-        duration: contractDuration?._id || null
-      },
-      residency: {
-        nationality: residencyNationality || "",
-        start: residencyStart || null,
-        duration: residencyDuration?._id || null,
-        additionNumber: residencyAdditionNumber || "",
-        issuingAuthority: residencyIssuingAuthority || "",
-        insuranceNumber: residencyInsuranceNumber || "",
-        type: residencyType || ""
-      },
-      workHoursPerWeek: workHoursPerWeek || 0,
-      workplace,
-      salary,
-      user: user[0]._id ,
-       insurance: selectedInsurance ? {
-    insuranceId: selectedInsurance._id,
-    name: selectedInsurance.name,
-    employeePercentage: selectedInsurance.employeePercentage,
-    companyPercentage: selectedInsurance.companyPercentage
-  } : null,
-
-    }], { session });
-
-    employee = employee[0];
-
-    //  حساب تاريخ نهاية العقد تلقائيًا
+    // حساب العقد
     if (employee.contract.start && contractDuration) {
       const end = new Date(employee.contract.start);
+
       if (contractDuration.unit === "years") {
         end.setFullYear(end.getFullYear() + contractDuration.duration);
       } else if (contractDuration.unit === "months") {
         end.setMonth(end.getMonth() + contractDuration.duration);
       }
+
       employee.contract.end = end;
     }
 
-    //  حساب تاريخ نهاية الإقامة تلقائيًا
+    // حساب الإقامة
     if (employee.residency.start && residencyDuration) {
       const end = new Date(employee.residency.start);
       end.setFullYear(end.getFullYear() + residencyDuration.year);
       employee.residency.end = end;
     }
 
+    if (req.files && req.files.length > 0) {
+      employee.documents = req.files.map(file => ({
+        name: file.originalname,
+        url: file.path
+      }));
+    }
+
     await employee.save({ session });
 
-    //  إنشاء رصيد الإجازات الافتراضي
     const companyLeaves = await LeaveBalance.findOne({ employee: null }).session(session);
     if (!companyLeaves) {
       throw new Error("رصيد الإجازات الافتراضي للشركة غير محدد");
     }
-
-    const currentYear = new Date().getFullYear();
 
     const totalLeaveBalance =
       companyLeaves.annual +
@@ -214,27 +422,29 @@ if (insurance) {
       companyLeaves.maternity +
       companyLeaves.unpaid;
 
-    await LeaveBalance.create([{
-      employee: employee._id,
-      annual: companyLeaves.annual,
-      sick: companyLeaves.sick,
-      marriage: companyLeaves.marriage,
-      emergency: companyLeaves.emergency,
-      maternity: companyLeaves.maternity,
-      unpaid: companyLeaves.unpaid,
-      remaining: totalLeaveBalance,
-      year: currentYear
-    }], { session });
+    await LeaveBalance.create(
+      [{
+        employee: employee._id,
+        annual: companyLeaves.annual,
+        sick: companyLeaves.sick,
+        marriage: companyLeaves.marriage,
+        emergency: companyLeaves.emergency,
+        maternity: companyLeaves.maternity,
+        unpaid: companyLeaves.unpaid,
+        remaining: totalLeaveBalance,
+        year: new Date().getFullYear()
+      }],
+      { session }
+    );
 
     await session.commitTransaction();
     session.endSession();
 
-    //  جلب الموظف بعد الـ populate
     const populatedEmployee = await Employee.findById(employee._id)
       .populate("contract.duration")
       .populate("residency.duration");
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "تم إنشاء الموظف بنجاح",
       user: user[0],
       employee: populatedEmployee
@@ -243,14 +453,13 @@ if (insurance) {
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-    console.error(" Error details:", error);
-    res.status(500).json({
+
+    return res.status(500).json({
       message: "حدث خطأ أثناء إنشاء الموظف",
       error: error.message
     });
   }
 };
-
 
 
 // get contrcsts state
@@ -531,15 +740,172 @@ const getManagerss = async (req, res) => {
 };
 
 
-//update employee
+// //update employee
+// const updateEmployee = async (req, res) => {
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
+
+//   try {
+//     const { id } = req.params;
+//     console.log("Files:", req.files);
+//     console.log("Body:", req.body);
+
+//     const {
+//       name,
+//       email,
+//       jobTitle,
+//       department,
+//       manager,
+//       employmentType,
+//       contractStart,
+//       contractDurationId,
+//       residencyStart,
+//       residencyDurationId,
+//       residencyAdditionNumber,
+//       residencyIssuingAuthority,
+//       residencyInsuranceNumber,
+//       residencyNationality,
+//       residencyType,
+//       workHoursPerWeek,
+//       workplace,
+//       salary,
+//       contactInfo,
+//       bankInfo ,
+//       insurance
+//     } = req.body;
+
+//     let employee = await Employee.findById(id)
+//       .populate("user")
+//       .populate("contract.duration")
+//       .populate("residency.duration")
+//       .session(session);
+
+//     if (!employee) {
+//       await session.abortTransaction();
+//       session.endSession();
+//       return res.status(404).json({ message: "الموظف غير موجود" });
+//     }
+// let selectedInsurance = null;
+
+// if (insurance) {
+//   selectedInsurance = await Insurance.findById(insurance);
+
+//   if (!selectedInsurance) {
+//     await session.abortTransaction();
+//     session.endSession();
+//     return res.status(404).json({ message: "التأمين غير موجود" });
+//   }
+// }
+//     // تحديث بيانات المستخدم
+//     if (employee.user) {
+//       if (name) employee.user.name = name;
+//       if (email) employee.user.email = email;
+//       await employee.user.save({ session });
+//     }
+
+//     // تحديث البيانات الأساسية (غير قابل للتغيير: employeeNumber)
+//     if (name) employee.name = name;
+//     if (jobTitle) employee.jobTitle = jobTitle;
+//     if (department) employee.department = department;
+//     if (manager) employee.manager = manager;
+//     if (employmentType) employee.employmentType = employmentType;
+//     if (workHoursPerWeek) employee.workHoursPerWeek = workHoursPerWeek;
+//     if (workplace) employee.workplace = workplace;
+//     if (salary) employee.salary = salary;
+//     if (contactInfo) employee.contactInfo = contactInfo;
+//     if (bankInfo) employee.bankInfo = bankInfo;
+
+//     // تحديث العقد
+//     if (contractStart) employee.contract.start = contractStart;
+//     if (contractDurationId) employee.contract.duration = contractDurationId;
+
+//     // تحديث بيانات الإقامة
+//     if (residencyStart) employee.residency.start = residencyStart;
+//     if (residencyDurationId) employee.residency.duration = residencyDurationId;
+//     if (residencyAdditionNumber) employee.residency.additionNumber = residencyAdditionNumber;
+//     if (residencyIssuingAuthority) employee.residency.issuingAuthority = residencyIssuingAuthority;
+//     if (residencyInsuranceNumber) employee.residency.insuranceNumber = residencyInsuranceNumber;
+//     if (residencyNationality) employee.residency.nationality = residencyNationality;
+//     if (residencyType) employee.residency.type = residencyType;
+//     if (selectedInsurance) {
+//   employee.insurance = {
+//     insuranceId: selectedInsurance._id,
+//     name: selectedInsurance.name,
+//     employeePercentage: selectedInsurance.employeePercentage,
+//     companyPercentage: selectedInsurance.companyPercentage
+//   };
+// }
+
+//     await employee.populate([
+//       { path: "contract.duration" },
+//       { path: "residency.duration" }
+//     ]);
+
+//     // حساب نهاية العقد
+//     if (employee.contract.start && employee.contract.duration) {
+//       const end = new Date(employee.contract.start);
+//       if (employee.contract.duration.unit === "years") {
+//         end.setFullYear(end.getFullYear() + employee.contract.duration.duration);
+//       } else if (employee.contract.duration.unit === "months") {
+//         end.setMonth(end.getMonth() + employee.contract.duration.duration);
+//       }
+//       employee.contract.end = end;
+//     }
+
+//     // حساب نهاية الإقامة
+//     if (employee.residency.start && employee.residency.duration) {
+//       const end = new Date(employee.residency.start);
+//       end.setFullYear(end.getFullYear() + employee.residency.duration.year);
+//       employee.residency.end = end;
+//     }
+
+//     // بعد إنشاء الموظف
+//     if (req.files && req.files.length > 0) {
+//       employee.documents = req.files.map(file => ({
+//         name: file.originalname,
+//         url: file.path,
+//       }));
+
+//     }
+
+
+
+//     await employee.save({ session });
+//     await session.commitTransaction();
+//     session.endSession();
+
+//     const updatedEmployee = await Employee.findById(id)
+//       .populate("user")
+//       .populate("contract.duration")
+//       .populate("residency.duration");
+
+//     res.status(200).json({
+//       message: " تم تحديث بيانات الموظف بنجاح",
+//       employee: updatedEmployee
+//     });
+
+//   } catch (error) {
+//     await session.abortTransaction();
+//     session.endSession();
+//     console.error(" Update employee error:", error);           // هذا لطباعة كامل الـ error object
+//     if (error instanceof multer.MulterError) {
+//       console.error("MulterError details:", error.field, error.message);
+//     }
+//     res.status(500).json({
+//       message: "حدث خطأ أثناء تحديث الموظف",
+//       error: error.toString(),    //  
+//       stack: error.stack
+//     });
+//   }
+// };
+
 const updateEmployee = async (req, res) => {
   const session = await mongoose.startSession();
-  session.startTransaction();
 
   try {
+    session.startTransaction();
+
     const { id } = req.params;
-    console.log("Files:", req.files);
-    console.log("Body:", req.body);
 
     const {
       name,
@@ -561,14 +927,12 @@ const updateEmployee = async (req, res) => {
       workplace,
       salary,
       contactInfo,
-      bankInfo ,
+      bankInfo,
       insurance
     } = req.body;
 
     let employee = await Employee.findById(id)
       .populate("user")
-      .populate("contract.duration")
-      .populate("residency.duration")
       .session(session);
 
     if (!employee) {
@@ -576,25 +940,27 @@ const updateEmployee = async (req, res) => {
       session.endSession();
       return res.status(404).json({ message: "الموظف غير موجود" });
     }
-let selectedInsurance = null;
 
-if (insurance) {
-  selectedInsurance = await Insurance.findById(insurance);
+    let selectedInsurance = null;
 
-  if (!selectedInsurance) {
-    await session.abortTransaction();
-    session.endSession();
-    return res.status(404).json({ message: "التأمين غير موجود" });
-  }
-}
-    // تحديث بيانات المستخدم
+    if (insurance) {
+      selectedInsurance = await Insurance.findById(insurance).session(session);
+
+      if (!selectedInsurance) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(404).json({ message: "التأمين غير موجود" });
+      }
+    }
+
+    // ===== user update =====
     if (employee.user) {
       if (name) employee.user.name = name;
       if (email) employee.user.email = email;
       await employee.user.save({ session });
     }
 
-    // تحديث البيانات الأساسية (غير قابل للتغيير: employeeNumber)
+    // ===== basic fields =====
     if (name) employee.name = name;
     if (jobTitle) employee.jobTitle = jobTitle;
     if (department) employee.department = department;
@@ -603,14 +969,23 @@ if (insurance) {
     if (workHoursPerWeek) employee.workHoursPerWeek = workHoursPerWeek;
     if (workplace) employee.workplace = workplace;
     if (salary) employee.salary = salary;
-    if (contactInfo) employee.contactInfo = contactInfo;
-    if (bankInfo) employee.bankInfo = bankInfo;
 
-    // تحديث العقد
+    if (contactInfo) {
+      employee.contactInfo = { ...employee.contactInfo, ...contactInfo };
+    }
+
+    if (bankInfo) {
+      employee.bankInfo = { ...employee.bankInfo, ...bankInfo };
+    }
+
+    // ===== contract =====
     if (contractStart) employee.contract.start = contractStart;
-    if (contractDurationId) employee.contract.duration = contractDurationId;
 
-    // تحديث بيانات الإقامة
+    if (contractDurationId) {
+      employee.contract.duration = contractDurationId;
+    }
+
+    // ===== residency =====
     if (residencyStart) employee.residency.start = residencyStart;
     if (residencyDurationId) employee.residency.duration = residencyDurationId;
     if (residencyAdditionNumber) employee.residency.additionNumber = residencyAdditionNumber;
@@ -618,50 +993,58 @@ if (insurance) {
     if (residencyInsuranceNumber) employee.residency.insuranceNumber = residencyInsuranceNumber;
     if (residencyNationality) employee.residency.nationality = residencyNationality;
     if (residencyType) employee.residency.type = residencyType;
-    if (selectedInsurance) {
-  employee.insurance = {
-    insuranceId: selectedInsurance._id,
-    name: selectedInsurance.name,
-    employeePercentage: selectedInsurance.employeePercentage,
-    companyPercentage: selectedInsurance.companyPercentage
-  };
-}
 
+    // ===== insurance =====
+    if (selectedInsurance) {
+      employee.insurance = {
+        insuranceId: selectedInsurance._id,
+        name: selectedInsurance.name,
+        employeePercentage: selectedInsurance.employeePercentage,
+        companyPercentage: selectedInsurance.companyPercentage
+      };
+    }
+
+    // ===== re-fetch duration models (important) =====
     await employee.populate([
       { path: "contract.duration" },
       { path: "residency.duration" }
     ]);
 
-    // حساب نهاية العقد
+    // ===== contract end calc =====
     if (employee.contract.start && employee.contract.duration) {
       const end = new Date(employee.contract.start);
+
       if (employee.contract.duration.unit === "years") {
         end.setFullYear(end.getFullYear() + employee.contract.duration.duration);
       } else if (employee.contract.duration.unit === "months") {
         end.setMonth(end.getMonth() + employee.contract.duration.duration);
       }
+
       employee.contract.end = end;
     }
 
-    // حساب نهاية الإقامة
+    // ===== residency end calc =====
     if (employee.residency.start && employee.residency.duration) {
       const end = new Date(employee.residency.start);
       end.setFullYear(end.getFullYear() + employee.residency.duration.year);
       employee.residency.end = end;
     }
 
-    // بعد إنشاء الموظف
+    // ===== files =====
     if (req.files && req.files.length > 0) {
       employee.documents = req.files.map(file => ({
         name: file.originalname,
-        url: file.path,
+        url: file.path
       }));
-
     }
 
-
+    // مهم جدًا عشان nested objects
+    employee.markModified("contract");
+    employee.markModified("residency");
+    employee.markModified("insurance");
 
     await employee.save({ session });
+
     await session.commitTransaction();
     session.endSession();
 
@@ -670,27 +1053,23 @@ if (insurance) {
       .populate("contract.duration")
       .populate("residency.duration");
 
-    res.status(200).json({
-      message: " تم تحديث بيانات الموظف بنجاح",
+    return res.status(200).json({
+      message: "تم تحديث بيانات الموظف بنجاح",
       employee: updatedEmployee
     });
 
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-    console.error(" Update employee error:", error);           // هذا لطباعة كامل الـ error object
-    if (error instanceof multer.MulterError) {
-      console.error("MulterError details:", error.field, error.message);
-    }
-    res.status(500).json({
+
+    console.error("Update employee error:", error);
+
+    return res.status(500).json({
       message: "حدث خطأ أثناء تحديث الموظف",
-      error: error.toString(),    //  
-      stack: error.stack
+      error: error.message
     });
   }
 };
-
-
 
 
 module.exports = { getAllEmployees, createEmployee, getContractsStats, getManagerss, getAllContracts, getEmployeeById, deleteEmployee, getEmployeesByBranch, updateEmployee }; 

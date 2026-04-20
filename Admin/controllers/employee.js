@@ -10,11 +10,187 @@ const Request = require('../models/requestModel')
 const Counter = require("../models/counterSchema");
 const SalaryAdvance = require('../models/salaryAdvance')
 const Insurance = require("../models/InsuranceModel");
+// exports.createEmployee = async (req, res) => {
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
+
+//   try {
+//     const {
+//       name,
+//       email,
+//       password,
+//       jobTitle,
+//       department,
+//       manager,
+//       employmentType,
+//       contractStart,
+//       contractDurationId,
+//       residencyStart,
+//       residencyDurationId,
+//       residencyAdditionNumber,
+//       residencyIssuingAuthority,
+//       residencyInsuranceNumber,
+//       residencyNationality,
+//       residencyType,
+//       workHoursPerWeek,
+//       workplace,
+//       salary,
+//       role,
+//       contactInfo,
+//       bankInfo ,
+//         insurance
+//     } = req.body;
+
+//     //  تحقق البريد
+//     const existingUser = await User.findOne({ email }).session(session);
+//     if (existingUser) {
+//       return res.status(400).json({ message: `البريد ${email} مستخدم بالفعل` });
+//     }
+// let selectedInsurance = null;
+
+// if (insurance) {
+//   selectedInsurance = await Insurance.findById(insurance).session(session);
+
+//   if (!selectedInsurance) {
+//     return res.status(404).json({ message: "التأمين غير موجود" });
+//   }
+// }
+//     //  المدد
+//     const contractDuration = contractDurationId
+//       ? await Contract.findById(contractDurationId).session(session)
+//       : null;
+
+//     const residencyDuration = residencyDurationId
+//       ? await ResidencyYear.findById(residencyDurationId).session(session)
+//       : null;
+
+//     //  إنشاء المستخدم
+//     const user = await User.create([{ name, email, password, role: role || "EMPLOYEE" }], { session });
+
+//     //  توليد رقم الموظف
+//     const generatedEmpNo = await generateEmployeeNumber(session);
+
+//     // إنشاء الموظف
+//     let employee = await Employee.create([{
+//       name,
+//       jobTitle,
+//       employeeNumber: generatedEmpNo,
+//       department,
+//       manager,
+//       employmentType,
+//       contract: {
+//         start: contractStart || null,
+//         duration: contractDuration?._id || null
+//       },
+//       residency: {
+//         nationality: residencyNationality || "",
+//         start: residencyStart || null,
+//         duration: residencyDuration?._id || null,
+//         additionNumber: residencyAdditionNumber || "",
+//         issuingAuthority: residencyIssuingAuthority || "",
+//         insuranceNumber: residencyInsuranceNumber || "",
+//         type: residencyType || ""
+//       },
+//       workHoursPerWeek: workHoursPerWeek || 0,
+//       workplace,
+//       salary,
+//       contactInfo: contactInfo || {},
+//       bankInfo: bankInfo || {},
+//       user: user[0]._id ,
+//       insurance: selectedInsurance ? {
+//   insuranceId: selectedInsurance._id,
+//   name: selectedInsurance.name,
+//   employeePercentage: selectedInsurance.employeePercentage,
+//   companyPercentage: selectedInsurance.companyPercentage
+// } : null,
+//     }], { session });
+
+//     employee = employee[0];
+
+//     //  حساب نهاية العقد
+//     if (employee.contract.start && contractDuration) {
+//       const end = new Date(employee.contract.start);
+//       if (contractDuration.unit === "years") end.setFullYear(end.getFullYear() + contractDuration.duration);
+//       if (contractDuration.unit === "months") end.setMonth(end.getMonth() + contractDuration.duration);
+//       employee.contract.end = end;
+//     }
+
+//     //  حساب نهاية الإقامة
+//     if (employee.residency.start && residencyDuration) {
+//       const end = new Date(employee.residency.start);
+//       end.setFullYear(end.getFullYear() + residencyDuration.year);
+//       employee.residency.end = end;
+//     }
+//     // بعد إنشاء الموظف
+//     if (req.files && req.files.length > 0) {
+//       employee.documents = req.files.map(file => ({
+//         name: file.originalname,
+//         url: file.path,
+//       }));
+//       await employee.save({ session });
+//     }
+
+//     await employee.save({ session });
+
+//     //  إنشاء رصيد الإجازات
+
+//     const companyLeaves = await LeaveBalance.findOne({ employee: null }).session(session);
+//     if (!companyLeaves) {
+//       throw new Error("رصيد الإجازات الافتراضي للشركة غير محدد");
+//     }
+
+//     const currentYear = new Date().getFullYear();
+
+//     const totalLeaveBalance =
+//       companyLeaves.annual +
+//       companyLeaves.sick +
+//       companyLeaves.marriage +
+//       companyLeaves.emergency +
+//       companyLeaves.maternity +
+//       companyLeaves.unpaid;
+
+//     await LeaveBalance.create([{
+//       employee: employee._id,
+//       annual: companyLeaves.annual,
+//       sick: companyLeaves.sick,
+//       marriage: companyLeaves.marriage,
+//       emergency: companyLeaves.emergency,
+//       maternity: companyLeaves.maternity,
+//       unpaid: companyLeaves.unpaid,
+//       remaining: totalLeaveBalance,
+//       year: currentYear
+//     }], { session });
+
+//     await session.commitTransaction();
+//     session.endSession();
+
+//     //  Populate للعرض
+//     const populatedEmployee = await Employee.findById(employee._id)
+//       .populate("contract.duration")
+//       .populate("residency.duration");
+
+//     res.status(201).json({
+//       message: " تم إنشاء الموظف بنجاح",
+//       user: user[0],
+//       employee: populatedEmployee
+//     });
+
+//   } catch (error) {
+//     await session.abortTransaction();
+//     session.endSession();
+//     res.status(500).json({ message: "حدث خطأ أثناء إنشاء الموظف", error: error.message });
+//   }
+// };
+
+
+//  توليد الرقم الوظيفي
+
 exports.createEmployee = async (req, res) => {
   const session = await mongoose.startSession();
-  session.startTransaction();
 
   try {
+    session.startTransaction();
+
     const {
       name,
       email,
@@ -37,25 +213,28 @@ exports.createEmployee = async (req, res) => {
       salary,
       role,
       contactInfo,
-      bankInfo ,
-        insurance
+      bankInfo,
+      insurance
     } = req.body;
 
-    //  تحقق البريد
     const existingUser = await User.findOne({ email }).session(session);
     if (existingUser) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ message: `البريد ${email} مستخدم بالفعل` });
     }
-let selectedInsurance = null;
 
-if (insurance) {
-  selectedInsurance = await Insurance.findById(insurance).session(session);
+    let selectedInsurance = null;
+    if (insurance) {
+      selectedInsurance = await Insurance.findById(insurance).session(session);
 
-  if (!selectedInsurance) {
-    return res.status(404).json({ message: "التأمين غير موجود" });
-  }
-}
-    //  المدد
+      if (!selectedInsurance) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(404).json({ message: "التأمين غير موجود" });
+      }
+    }
+
     const contractDuration = contractDurationId
       ? await Contract.findById(contractDurationId).session(session)
       : null;
@@ -64,82 +243,89 @@ if (insurance) {
       ? await ResidencyYear.findById(residencyDurationId).session(session)
       : null;
 
-    //  إنشاء المستخدم
-    const user = await User.create([{ name, email, password, role: role || "EMPLOYEE" }], { session });
+    const user = await User.create(
+      [{ name, email, password, role: role || "EMPLOYEE" }],
+      { session }
+    );
 
-    //  توليد رقم الموظف
     const generatedEmpNo = await generateEmployeeNumber(session);
 
-    // إنشاء الموظف
-    let employee = await Employee.create([{
-      name,
-      jobTitle,
-      employeeNumber: generatedEmpNo,
-      department,
-      manager,
-      employmentType,
-      contract: {
-        start: contractStart || null,
-        duration: contractDuration?._id || null
-      },
-      residency: {
-        nationality: residencyNationality || "",
-        start: residencyStart || null,
-        duration: residencyDuration?._id || null,
-        additionNumber: residencyAdditionNumber || "",
-        issuingAuthority: residencyIssuingAuthority || "",
-        insuranceNumber: residencyInsuranceNumber || "",
-        type: residencyType || ""
-      },
-      workHoursPerWeek: workHoursPerWeek || 0,
-      workplace,
-      salary,
-      contactInfo: contactInfo || {},
-      bankInfo: bankInfo || {},
-      user: user[0]._id ,
-      insurance: selectedInsurance ? {
-  insuranceId: selectedInsurance._id,
-  name: selectedInsurance.name,
-  employeePercentage: selectedInsurance.employeePercentage,
-  companyPercentage: selectedInsurance.companyPercentage
-} : null,
-    }], { session });
+    let employeeArr = await Employee.create(
+      [{
+        name,
+        jobTitle,
+        employeeNumber: generatedEmpNo,
+        department,
+        manager,
+        employmentType,
+        contract: {
+          start: contractStart || null,
+          duration: contractDuration?._id || null
+        },
+        residency: {
+          nationality: residencyNationality || "",
+          start: residencyStart || null,
+          duration: residencyDuration?._id || null,
+          additionNumber: residencyAdditionNumber || "",
+          issuingAuthority: residencyIssuingAuthority || "",
+          insuranceNumber: residencyInsuranceNumber || "",
+          type: residencyType || ""
+        },
+        workHoursPerWeek: workHoursPerWeek || 0,
+        workplace,
+        salary,
+        contactInfo: contactInfo || {},
+        bankInfo: bankInfo || {},
+        user: user[0]._id,
+        insurance: selectedInsurance
+          ? {
+              insuranceId: selectedInsurance._id,
+              name: selectedInsurance.name,
+              employeePercentage: selectedInsurance.employeePercentage,
+              companyPercentage: selectedInsurance.companyPercentage
+            }
+          : null
+      }],
+      { session }
+    );
 
-    employee = employee[0];
+    let employee = employeeArr[0];
 
-    //  حساب نهاية العقد
+    // حساب العقد
     if (employee.contract.start && contractDuration) {
       const end = new Date(employee.contract.start);
-      if (contractDuration.unit === "years") end.setFullYear(end.getFullYear() + contractDuration.duration);
-      if (contractDuration.unit === "months") end.setMonth(end.getMonth() + contractDuration.duration);
+
+      if (contractDuration.unit === "years") {
+        end.setFullYear(end.getFullYear() + contractDuration.duration);
+      } else if (contractDuration.unit === "months") {
+        end.setMonth(end.getMonth() + contractDuration.duration);
+      }
+
       employee.contract.end = end;
     }
 
-    //  حساب نهاية الإقامة
+    // حساب الإقامة
     if (employee.residency.start && residencyDuration) {
       const end = new Date(employee.residency.start);
       end.setFullYear(end.getFullYear() + residencyDuration.year);
       employee.residency.end = end;
     }
-    // بعد إنشاء الموظف
+
+    // الملفات
     if (req.files && req.files.length > 0) {
       employee.documents = req.files.map(file => ({
         name: file.originalname,
-        url: file.path,
+        url: file.path
       }));
-      await employee.save({ session });
     }
 
     await employee.save({ session });
 
-    //  إنشاء رصيد الإجازات
-
+    // leave balance
     const companyLeaves = await LeaveBalance.findOne({ employee: null }).session(session);
     if (!companyLeaves) {
       throw new Error("رصيد الإجازات الافتراضي للشركة غير محدد");
     }
-
-    const currentYear = new Date().getFullYear();
 
     const totalLeaveBalance =
       companyLeaves.annual +
@@ -149,28 +335,30 @@ if (insurance) {
       companyLeaves.maternity +
       companyLeaves.unpaid;
 
-    await LeaveBalance.create([{
-      employee: employee._id,
-      annual: companyLeaves.annual,
-      sick: companyLeaves.sick,
-      marriage: companyLeaves.marriage,
-      emergency: companyLeaves.emergency,
-      maternity: companyLeaves.maternity,
-      unpaid: companyLeaves.unpaid,
-      remaining: totalLeaveBalance,
-      year: currentYear
-    }], { session });
+    await LeaveBalance.create(
+      [{
+        employee: employee._id,
+        annual: companyLeaves.annual,
+        sick: companyLeaves.sick,
+        marriage: companyLeaves.marriage,
+        emergency: companyLeaves.emergency,
+        maternity: companyLeaves.maternity,
+        unpaid: companyLeaves.unpaid,
+        remaining: totalLeaveBalance,
+        year: new Date().getFullYear()
+      }],
+      { session }
+    );
 
     await session.commitTransaction();
     session.endSession();
 
-    //  Populate للعرض
     const populatedEmployee = await Employee.findById(employee._id)
       .populate("contract.duration")
       .populate("residency.duration");
 
-    res.status(201).json({
-      message: " تم إنشاء الموظف بنجاح",
+    return res.status(201).json({
+      message: "تم إنشاء الموظف بنجاح",
       user: user[0],
       employee: populatedEmployee
     });
@@ -178,12 +366,15 @@ if (insurance) {
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-    res.status(500).json({ message: "حدث خطأ أثناء إنشاء الموظف", error: error.message });
+
+    return res.status(500).json({
+      message: "حدث خطأ أثناء إنشاء الموظف",
+      error: error.message
+    });
   }
 };
 
 
-//  توليد الرقم الوظيفي
 async function generateEmployeeNumber(session) {
   const counter = await Counter.findOneAndUpdate(
     { key: "employeeNumber" },
