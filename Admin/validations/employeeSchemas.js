@@ -70,7 +70,12 @@ const createEmployeeSchema = Joi.object({
     "string.length": "معرّف الفرع يجب أن يكون 24 حرف"
   }),
   role: Joi.string().valid('ADMIN', 'HR', 'EMPLOYEE', 'Manager').default('EMPLOYEE'),
-
+insurance: Joi.object({
+  insuranceId: Joi.string().hex().length(24).required(),
+  name: Joi.string().allow(""),
+  employeePercentage: Joi.number().min(0).max(100).allow(null),
+  companyPercentage: Joi.number().min(0).max(100).allow(null)
+}).optional(),
   // 💰 الراتب
   salary: Joi.object({
     base: Joi.number().min(0),
@@ -155,6 +160,12 @@ const updateEmployeeSchema = Joi.object({
   })
 ).optional()
  ,
+ insurance: Joi.object({
+  insuranceId: Joi.string().hex().length(24),
+  name: Joi.string().allow(""),
+  employeePercentage: Joi.number().min(0).max(100).allow(null),
+  companyPercentage: Joi.number().min(0).max(100).allow(null)
+}).optional() ,
   bankInfo: Joi.object({
     iban: Joi.string().allow(""),
     bankName: Joi.string().allow(""),
