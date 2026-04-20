@@ -5,7 +5,7 @@ const LeaveBalance = require('../models/leaveBalanceModel')
 const mongoose = require('mongoose')
 const Contract = require('../models/Contract');
 const ResidencyYear = require('../models/ResidencyYear')
-
+const Insurance = require("../models/InsuranceModel");
 const getAllEmployees = async (req, res) => {
   try {
     const employees = await Employee.find()
@@ -93,7 +93,8 @@ const createEmployee = async (req, res) => {
       workHoursPerWeek,
       workplace,
       salary,
-      role
+      role ,
+        insurance 
     } = req.body;
 
 
@@ -129,6 +130,15 @@ const createEmployee = async (req, res) => {
       }
     }
 
+    let selectedInsurance = null;
+
+if (insurance) {
+  selectedInsurance = await Insurance.findById(insurance).session(session);
+
+  if (!selectedInsurance) {
+    return res.status(404).json({ message: "التأمين غير موجود" });
+  }
+}
 
     const user = await User.create([{ name, email, password, role: role || "EMPLOYEE" }], { session });
 
@@ -156,7 +166,14 @@ const createEmployee = async (req, res) => {
       workHoursPerWeek: workHoursPerWeek || 0,
       workplace,
       salary,
-      user: user[0]._id
+      user: user[0]._id ,
+       insurance: selectedInsurance ? {
+    insuranceId: selectedInsurance._id,
+    name: selectedInsurance.name,
+    employeePercentage: selectedInsurance.employeePercentage,
+    companyPercentage: selectedInsurance.companyPercentage
+  } : null,
+
     }], { session });
 
     employee = employee[0];
@@ -544,7 +561,8 @@ const updateEmployee = async (req, res) => {
       workplace,
       salary,
       contactInfo,
-      bankInfo
+      bankInfo ,
+      insurance
     } = req.body;
 
     let employee = await Employee.findById(id)
@@ -558,7 +576,17 @@ const updateEmployee = async (req, res) => {
       session.endSession();
       return res.status(404).json({ message: "الموظف غير موجود" });
     }
+let selectedInsurance = null;
 
+if (insurance) {
+  selectedInsurance = await Insurance.findById(insurance);
+
+  if (!selectedInsurance) {
+    await session.abortTransaction();
+    session.endSession();
+    return res.status(404).json({ message: "التأمين غير موجود" });
+  }
+}
     // تحديث بيانات المستخدم
     if (employee.user) {
       if (name) employee.user.name = name;
@@ -590,6 +618,14 @@ const updateEmployee = async (req, res) => {
     if (residencyInsuranceNumber) employee.residency.insuranceNumber = residencyInsuranceNumber;
     if (residencyNationality) employee.residency.nationality = residencyNationality;
     if (residencyType) employee.residency.type = residencyType;
+    if (selectedInsurance) {
+  employee.insurance = {
+    insuranceId: selectedInsurance._id,
+    name: selectedInsurance.name,
+    employeePercentage: selectedInsurance.employeePercentage,
+    companyPercentage: selectedInsurance.companyPercentage
+  };
+}
 
     await employee.populate([
       { path: "contract.duration" },

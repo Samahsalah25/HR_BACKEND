@@ -9,7 +9,7 @@ const Task = require('../models/Task');
 const Request = require('../models/requestModel')
 const Counter = require("../models/counterSchema");
 const SalaryAdvance = require('../models/salaryAdvance')
-
+const Insurance = require("../models/InsuranceModel");
 exports.createEmployee = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -37,7 +37,8 @@ exports.createEmployee = async (req, res) => {
       salary,
       role,
       contactInfo,
-      bankInfo
+      bankInfo ,
+        insurance
     } = req.body;
 
     //  تحقق البريد
@@ -45,7 +46,15 @@ exports.createEmployee = async (req, res) => {
     if (existingUser) {
       return res.status(400).json({ message: `البريد ${email} مستخدم بالفعل` });
     }
+let selectedInsurance = null;
 
+if (insurance) {
+  selectedInsurance = await Insurance.findById(insurance).session(session);
+
+  if (!selectedInsurance) {
+    return res.status(404).json({ message: "التأمين غير موجود" });
+  }
+}
     //  المدد
     const contractDuration = contractDurationId
       ? await Contract.findById(contractDurationId).session(session)
@@ -87,7 +96,13 @@ exports.createEmployee = async (req, res) => {
       salary,
       contactInfo: contactInfo || {},
       bankInfo: bankInfo || {},
-      user: user[0]._id
+      user: user[0]._id ,
+      insurance: selectedInsurance ? {
+  insuranceId: selectedInsurance._id,
+  name: selectedInsurance.name,
+  employeePercentage: selectedInsurance.employeePercentage,
+  companyPercentage: selectedInsurance.companyPercentage
+} : null,
     }], { session });
 
     employee = employee[0];
@@ -245,229 +260,6 @@ exports.employeeOverview = async (req, res) => {
 
 
 
-// exports.createEmployee = async (req, res) => {
-//   const session = await mongoose.startSession();
-//   session.startTransaction();
-
-//   try {
-//     const {
-//       name,
-//       email,
-//       password,
-//       jobTitle,
-//       employeeNumber,
-//       department,
-//       manager,
-//       employmentType,
-//       contractStart,
-//       contractDurationId,
-//       residencyStart,
-//       residencyDurationId,
-//       residencyAdditionNumber,
-//       residencyIssuingAuthority,
-//       residencyInsuranceNumber,
-//       residencyNationality,
-//       residencyType,
-//       workHoursPerWeek,
-//       workplace,
-//       salary,
-//       role
-//     } = req.body;
-
-//     // 🔐 السماح فقط لـ HR
-//     // if (req.user.role !== "HR") {
-//     //   return res.status(403).json({ message: "ليس لديك صلاحية لإضافة موظف جديد" });
-//     // }
-
-//     // ✉️ تحقق من البريد
-//     const existingUser = await User.findOne({ email }).session(session);
-//     if (existingUser) {
-//       return res.status(400).json({ message: `البريد الإلكتروني ${email} مستخدم بالفعل` });
-//     }
-
-//     // 👤 تحقق من رقم الموظف
-//     const existingEmployee = await Employee.findOne({ employeeNumber }).session(session);
-//     if (existingEmployee) {
-//       return res.status(400).json({ message: `رقم الموظف ${employeeNumber} مستخدم بالفعل` });
-//     }
-
-//     // 🧾 المدد
-//     const contractDuration = contractDurationId
-//       ? await Contract.findById(contractDurationId).session(session)
-//       : null;
-
-//     const residencyDuration = residencyDurationId
-//       ? await ResidencyYear.findById(residencyDurationId).session(session)
-//       : null;
-
-//     // 👨‍💻 إنشاء المستخدم
-//     const user = await User.create([{ name, email, password, role: role || "EMPLOYEE" }], { session });
-
-//     // 👷 إنشاء الموظف
-//     let employee = await Employee.create([{
-//       name,
-//       jobTitle,
-//       employeeNumber,
-//       department,
-//       manager,
-//       employmentType,
-//       contract: {
-//         start: contractStart || null,
-//         duration: contractDuration?._id || null
-//       },
-//       residency: {
-//         nationality: residencyNationality || "",
-//         start: residencyStart || null,
-//         duration: residencyDuration?._id || null,
-//         additionNumber: residencyAdditionNumber || "",
-//         issuingAuthority: residencyIssuingAuthority || "",
-//         insuranceNumber: residencyInsuranceNumber || "",
-//         type: residencyType || ""
-//       },
-//       workHoursPerWeek: workHoursPerWeek || 0,
-//       workplace,
-//       salary,
-//       user: user[0]._id
-//     }], { session });
-
-//     employee = employee[0];
-
-//     // 📅 حساب نهاية العقد تلقائيًا
-//     if (employee.contract.start && contractDuration) {
-//       const end = new Date(employee.contract.start);
-//       if (contractDuration.unit === "years") {
-//         end.setFullYear(end.getFullYear() + contractDuration.duration);
-//       } else if (contractDuration.unit === "months") {
-//         end.setMonth(end.getMonth() + contractDuration.duration);
-//       }
-//       employee.contract.end = end;
-//     }
-
-//     // 📅 حساب نهاية الإقامة تلقائيًا
-//     if (employee.residency.start && residencyDuration) {
-//       const end = new Date(employee.residency.start);
-//       end.setFullYear(end.getFullYear() + residencyDuration.year);
-//       employee.residency.end = end;
-//     }
-
-//     await employee.save({ session });
-
-//     // 🕓 إنشاء رصيد الإجازات
-//     const companyLeaves = await LeaveBalance.findOne({ employee: null }).session(session);
-//     if (!companyLeaves) {
-//       throw new Error("رصيد الإجازات الافتراضي للشركة غير محدد");
-//     }
-
-//     const totalLeaveBalance =
-//       companyLeaves.annual +
-//       companyLeaves.sick +
-//       companyLeaves.marriage +
-//       companyLeaves.emergency +
-//       companyLeaves.maternity +
-//       companyLeaves.unpaid;
-
-//     await LeaveBalance.create([{
-//       employee: employee._id,
-//       annual: companyLeaves.annual,
-//       sick: companyLeaves.sick,
-//       marriage: companyLeaves.marriage,
-//       emergency: companyLeaves.emergency,
-//       maternity: companyLeaves.maternity,
-//       unpaid: companyLeaves.unpaid,
-//       remaining: totalLeaveBalance
-//     }], { session });
-
-//     await session.commitTransaction();
-//     session.endSession();
-
-//     // 🌟 Populate للعرض
-//     const populatedEmployee = await Employee.findById(employee._id)
-//       .populate("contract.duration")
-//       .populate("residency.duration");
-
-//     res.status(201).json({
-//       message: "✅ تم إنشاء الموظف بنجاح",
-//       user: user[0],
-//       employee: populatedEmployee
-//     });
-
-//   } catch (error) {
-//     await session.abortTransaction();
-//     session.endSession();
-//     console.error("❌ Error details:", error);
-//     res.status(500).json({
-//       message: "حدث خطأ أثناء إنشاء الموظف",
-//       error: error.message
-//     });
-//   }
-// };
-
-
-//هنجيت هنا علشان نختاره وقت الميتنج او وقت المهام
-//  exports.getEmployees = async (req, res) => {
-//   try {
-//     // هجيب الـ Employee اللي بيمثل اليوزر الحالي
-//     const currentEmp = await Employee.findOne({ user: req.user._id })
-//       .populate("department")
-//       .populate("workplace")
-//       .populate("user", "name email role");
-
-//     if (!currentEmp) {
-//       return res.status(404).json({ success: false, message: "الموظف غير موجود" });
-//     }
-
-//     let employees = [];
-
-//     if (req.user.role === "HR") {
-//       // HR يشوف الكل
-//       employees = await Employee.find()
-//         .populate("department", "name")
-//         .populate("workplace", "name location")
-//         .populate("manager", "name jobTitle")
-//         .populate("user", "name email role");
-//     } 
-//     else if (req.user.role === "Manager") {
-//       // Manager يشوف موظفين القسم + مدراء الأقسام التانية
-//       employees = await Employee.find({
-//         $or: [
-//           { department: currentEmp.department }, // موظفين قسمه
-//           { "user.role": "Manager" }             // مدراء
-//         ]
-//       })
-//         .populate("department", "name")
-//         .populate("workplace", "name location")
-//         .populate("manager", "name jobTitle")
-//         .populate("user", "name email role");
-//     } 
-//     else if (req.user.role === "EMPLOYEE") {
-//       // EMPLOYEE يشوف نفسه + زمايله في نفس القسم (مش HR/Manager)
-//       employees = await Employee.find({
-//         department: currentEmp.department
-//       })
-//         .populate("department", "name")
-//         .populate("workplace", "name location")
-//         .populate("manager", "name jobTitle")
-//         .populate("user", "name email role");
-
-//       // فلترة: استبعد HR & Manager
-//       employees = employees.filter(emp => 
-//         emp.user.role !== "HR" && emp.user.role !== "Manager"
-//       );
-//     }
-
-//     res.json({
-//       success: true,
-//       count: employees.length,
-//       data: employees
-//     });
-//   } catch (error) {
-//     res.status(500).json({
-//       success: false,
-//       message: "خطأ في استرجاع الموظفين",
-//       error: error.message
-//     });
-//   }
-// };
 
 exports.getEmployees = async (req, res) => {
   try {
@@ -918,76 +710,6 @@ exports.getMyTasks = async (req, res) => {
   }
 };
 
-
-
-// exports.getMyRequests = async (req, res) => {
-//   try {
-//     const userId = req.user._id;
-
-//     const employee = await Employee.findOne({ user: userId });
-//     if (!employee) return res.status(404).json({ error: "الموظف غير مرتبط بالحساب" });
-
-//     // الفلتر الأساسي
-//     let filter = { employee: employee._id };
-
-//     // فلتر حسب الفترة لو موجود
-//     if (req.query.period) {
-//       const periodDays = parseInt(req.query.period);
-//       const fromDate = new Date();
-//       fromDate.setDate(fromDate.getDate() - periodDays);
-//       filter.createdAt = { $gte: fromDate };
-//     }
-
-//     // فلتر حسب الحالة لو موجود
-//     if (req.query.status) {
-//       filter.status = req.query.status;
-//     }
-
-//     const requests = await Request.find(filter)
-//       .populate('employee', 'name jobTitle')
-//       .populate('decidedBy', 'name')
-//       .sort({ createdAt: -1 });
-
-//     let pendingCount = 0, approvedCount = 0, rejectedCount = 0, forwardedCount = 0;
-
-//     const formattedRequests = requests.map(reqItem => {
-//       if (reqItem.status === "قيد المراجعة") pendingCount++;
-//       else if (reqItem.status === "مقبول") approvedCount++;
-//       else if (reqItem.status === "مرفوض") rejectedCount++;
-//       else if (reqItem.status === "محول") forwardedCount++;
-
-//       return {
-//         _id: reqItem._id,
-//         employeeName: reqItem.employee.name,
-//         jobTitle: reqItem.employee.jobTitle,
-//         type: reqItem.type,
-//         status: reqItem.status,
-//         submittedAt: reqItem.createdAt.toISOString(), // إرسال بصيغة ISO
-//         decidedAt: reqItem.decidedAt ? reqItem.decidedAt.toISOString() : null, // تاريخ القبول/الرفض
-//         notes: reqItem.notes || [],
-//         attachments: reqItem.attachments || []
-//       };
-//     });
-
-//     res.json({
-//       counts: {
-//         pending: pendingCount,
-//         approved: approvedCount,
-//         rejected: rejectedCount,
-//         forwarded: forwardedCount
-//       },
-//       total: requests.length,
-//       requests: formattedRequests
-//     });
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({ error: "خطأ في السيرفر" });
-//   }
-// };
-
-
-
-// PATCH /api/employees/promote/:id
 exports.promoteToManager = async (req, res) => {
   try {
     const { id } = req.params;
