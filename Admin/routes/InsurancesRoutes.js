@@ -10,7 +10,7 @@ const {
   getInsuranceById,
   updateInsurance,
   deleteInsurance,
-} = require("../controllers/insuranceController");
+} = require("../controllers/InsuranceController");
 
 // ➤ إنشاء تأمين
 router.post(
