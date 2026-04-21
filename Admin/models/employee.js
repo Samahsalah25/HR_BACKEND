@@ -4,21 +4,20 @@ const employeeSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     jobTitle: { type: String },
+    // رققم الموظف السيستم بيكريته تلقائي مع الكريت
     employeeNumber: { type: String, unique: true },
 
     department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
     manager: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null },
 
     employmentType: { type: String, enum: ['Full-Time', 'Part-Time', 'Contract'] },
-
+//  العقد بيجي من جدول العقود +وقت الكريت بحسب البداية والنهايو بتاعت العقد
     contract: {
       start: { type: Date },
       duration: { type: mongoose.Schema.Types.ObjectId, ref: 'Contract' },
       end: { type: Date }
     },
-
-    residency: {
-      // nationality: { type: String },
+    // nationality: { type: String },
       nationality: {
   type: String,
   enum: [
@@ -56,6 +55,10 @@ const employeeSchema = new mongoose.Schema(
     "Other"
   ]
 } ,
+
+//   والالاقامة  بيجي من جدول الاقامات ...والبداية والنهايه بحسيهم في الكريت لما اخد قيمة العقد برضو  والباقي تيكست عادي بيضاف
+    residency: {
+  
       start: { type: Date },
       duration: { type: mongoose.Schema.Types.ObjectId, ref: 'ResidencyYear' },
       end: { type: Date },
@@ -64,8 +67,9 @@ const employeeSchema = new mongoose.Schema(
       insuranceNumber: { type: String },
       type: { type: String }
     },
-
+//  ساعات العمل الاسبوعيه تيكست عادي
     workHoursPerWeek: { type: Number },
+    //  الفرع التابع له الموظف id جاي من جدول الفروع
     workplace: { type: mongoose.Schema.Types.ObjectId, ref: "Branch" },
 
     //  الرواتب
@@ -90,6 +94,7 @@ const employeeSchema = new mongoose.Schema(
       swift: { type: String },
       accountNumber: { type: String } 
     },
+    //  الملف اللي هيرفعه الموظف الل غالبا فيه بياناه زي ملف pdf
     documents: [
   {
     name: { type: String },      
@@ -97,14 +102,18 @@ const employeeSchema = new mongoose.Schema(
     uploadedAt: { type: Date, default: Date.now }
   }
 ],
+
+//  حالة الموظف دا  لو اكتيف يبقي عقد شغال معانا غير نشط يبقي عقده انتهي
 status: {
   type: String,
   enum: ["active", "terminated"],
   default: "active"
 },
 
+//   ال  forign key الل ي جاي من اليوزر بنستخدمه كتير
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' } ,
     // التأمين
+    //   في الكريت بناخد بس ال  id وبنحسب قيمته من الكريت عادي
  insurance: {
   insuranceId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -118,6 +127,7 @@ status: {
   
   { timestamps: true }
 );
+
 
 // حساب الـ total قبل الحفظ
 employeeSchema.pre('save', function(next) {

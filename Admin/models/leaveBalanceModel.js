@@ -10,6 +10,7 @@ const leaveBalanceSchema = new mongoose.Schema({
   maternity: { type: Number, default: 90 },   // إجازة ولادة
   unpaid: { type: Number, default: 0 },   // إجازة غير مدفوعة
   remaining: { type: Number, default: 0 }, // الرصيد المتبقي
+  //  السنه اللي الاجازه دي لان الاجازات بتجدد كل سنه
   year: {
     type: Number,
     required: true,
