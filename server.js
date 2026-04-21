@@ -166,6 +166,7 @@ const ViolationPenaltyRoutes = require("./Admin/routes/ViolationPenaltyRoutes.js
 const empoyeeViolationRoutes = require("./Admin/routes/employeeViolationRoutes.js")
 const inventoryRoutes = require("./Admin/routes/inventoryRoute.js")
 const EndserviceRoutes = require("./Admin/routes/endServiceRoutes.js")
+const Insurance =require('./Admin/routes/InsurancesRoutes.js');
 //
 // DB & scripts
 const connectDB = require('./config/db.js');
@@ -251,6 +252,7 @@ app.use("/api/ViolationPenalty", ViolationPenaltyRoutes)
 app.use("/api/empoyeeViolation", empoyeeViolationRoutes)
 app.use("/api/inventory", inventoryRoutes)
 app.use("/api/end-service", EndserviceRoutes)
+app.use("/api/Insurance",Insurance )
 // ========= Socket.io =========
 const io = new Server(server, {
   cors: {
