@@ -43,7 +43,7 @@ router.get("/getAllApprovedCustodyRequests", authenticate, authorizeRoles('HR'),
 router.post('/', authenticate, authorizeRoles('HR', 'EMPLOYEE', 'Manager'), createRequest);
 
 // عرض الطلبات (الموظف : طلباته، HR/Admin : الكل + فلترة)
-router.get('/', getRequests);
+router.get('/', authenticate, getRequests);
 
 // هنا كل الطلبات بالفلتر الكل او المرفةض اة اة بس التابع للفرع بتاعي فقك  فلتر هنا حسب نوع الطلب ايه
 router.get('/bybranch', authenticate, authorizeRoles('HR'), getBranchRequests)

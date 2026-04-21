@@ -8,11 +8,21 @@ const ResidencyYear = require('../models/ResidencyYear')
 
 const getAllEmployees = async (req, res) => {
   try {
-    const employees = await Employee.find()
+    const requester = await Employee.findOne({ user: req.user._id });
+    if (!requester || requester.status !== 'active') {
+      return res.status(403).json({
+        message: 'عفواً، لا تملك صلاحية الوصول لهذه البيانات لأن حسابك غير نشط.'
+      });
+    }
+
+    // 2. فلترة الـ find عشان نجيب الـ active بس
+    const employees = await Employee.find({ status: 'active' }) // <-- التعديل هنا
       .populate('user', 'name role email')
       .populate('department', 'name')
       .populate('contract.duration')
       .populate('residency.duration');
+
+
 
     // فلترة الموظفين اللي رولهم Employee
     const filtered = employees.filter(emp =>
@@ -237,32 +247,96 @@ const createEmployee = async (req, res) => {
 
 
 // get contrcsts state
+// const getContractsStats = async (req, res) => {
+//   try {
+//     const today = new Date();
+//     const next30Days = new Date();
+//     next30Days.setDate(today.getDate() + 30);
+
+//     const employees = await Employee.find()
+//       .populate('contract.duration')
+//       .populate('residency.duration');
+
+//     // --- العقود ---
+//     const totalContracts = employees.filter(emp => emp.contract.end).length;
+//     const activeContracts = employees.filter(
+//       emp => emp.contract.end && emp.contract.end > today
+//     ).length;
+//     const expiringContracts = employees.filter(
+//       emp => emp.contract.end && emp.contract.end > today && emp.contract.end <= next30Days
+//     ).length;
+
+//     // --- الإقامات ---
+//     const totalResidencies = employees.filter(emp => emp.residency.end).length;
+//     const activeResidencies = employees.filter(
+//       emp => emp.residency.end && emp.residency.end > today
+//     ).length;
+//     const expiringResidencies = employees.filter(
+//       emp => emp.residency.end && emp.residency.end > today && emp.residency.end <= next30Days
+//     ).length;
+
+//     res.json({
+//       contracts: {
+//         total: totalContracts,
+//         active: activeContracts,
+//         expiringSoon: expiringContracts
+//       },
+//       residencies: {
+//         total: totalResidencies,
+//         active: activeResidencies,
+//         expiringSoon: expiringResidencies
+//       }
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: 'خطأ أثناء جلب الإحصائيات' });
+//   }
+// };
+
 const getContractsStats = async (req, res) => {
   try {
+    // 1. الأمان: التأكد إن اللي بيطلب البيانات موظف نشط
+    const requester = await Employee.findOne({ user: req.user._id });
+    if (!requester || requester.status !== 'active') {
+      return res.status(403).json({
+        message: 'عفواً، لا تملك صلاحية الوصول لهذه البيانات لأن حسابك غير نشط.'
+      });
+    }
+
     const today = new Date();
     const next30Days = new Date();
     next30Days.setDate(today.getDate() + 30);
 
-    const employees = await Employee.find()
+    // 2. هنجيب الموظفين الـ active فقط
+    // بنضيف شرط الـ status في الـ find عشان نفلتر من المنبع
+    const employees = await Employee.find({ status: 'active' })
       .populate('contract.duration')
       .populate('residency.duration');
 
-    // --- العقود ---
-    const totalContracts = employees.filter(emp => emp.contract.end).length;
+    // --- العقود (للموظفين النشطين بس) ---
+    const totalContracts = employees.filter(emp => emp.contract && emp.contract.end).length;
+
     const activeContracts = employees.filter(
-      emp => emp.contract.end && emp.contract.end > today
-    ).length;
-    const expiringContracts = employees.filter(
-      emp => emp.contract.end && emp.contract.end > today && emp.contract.end <= next30Days
+      emp => emp.contract && emp.contract.end && emp.contract.end > today
     ).length;
 
-    // --- الإقامات ---
-    const totalResidencies = employees.filter(emp => emp.residency.end).length;
-    const activeResidencies = employees.filter(
-      emp => emp.residency.end && emp.residency.end > today
+    const expiringContracts = employees.filter(
+      emp => emp.contract && emp.contract.end &&
+        emp.contract.end > today &&
+        emp.contract.end <= next30Days
     ).length;
+
+    // --- الإقامات (للموظفين النشطين بس) ---
+    const totalResidencies = employees.filter(emp => emp.residency && emp.residency.end).length;
+
+    const activeResidencies = employees.filter(
+      emp => emp.residency && emp.residency.end && emp.residency.end > today
+    ).length;
+
     const expiringResidencies = employees.filter(
-      emp => emp.residency.end && emp.residency.end > today && emp.residency.end <= next30Days
+      emp => emp.residency && emp.residency.end &&
+        emp.residency.end > today &&
+        emp.residency.end <= next30Days
     ).length;
 
     res.json({
