@@ -27,60 +27,14 @@ exports.register = async (req, res) => {
 };
 
 // @desc Login user
-exports.login = async (req, res) => {
-  try {
-    const { employeeNumber, password } = req.body;
-
-    const employee = await Employee.findOne({ employeeNumber }).populate('user');
-    if (!employee || !employee.user) {
-      return res.status(401).json({ message: 'الرقم التعريفي او كلمة المرور غير صحيحة' });
-    }
-    const user = employee.user;
-
-    const isMatch = await user.matchPassword(password);
-    if (!isMatch) return res.status(401).json({ message: 'الرقم التعريفي او كلمة المرور غير صحيحة' });
-
-    const SPECIAL_EMPLOYEE_ID = "692875d296f813993e273b5c";
-
-    let token;
-    if (user._id == SPECIAL_EMPLOYEE_ID) {
-      // 2 دقائق = "2m"
-      token = generateToken(user._id, user.role, "2m");
-      setTokenCookie(res, token, 2 * 60 * 1000);
-    } else {
-      token = generateToken(user._id, user.role);
-      setTokenCookie(res, token);
-    }
-
-
-    res.json({
-      _id: user._id,
-      name: user.name,
-      role: user.role,
-      employeeNumber: employee.employeeNumber
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-
 // exports.login = async (req, res) => {
 //   try {
 //     const { employeeNumber, password } = req.body;
 
 //     const employee = await Employee.findOne({ employeeNumber }).populate('user');
-
 //     if (!employee || !employee.user) {
 //       return res.status(401).json({ message: 'الرقم التعريفي او كلمة المرور غير صحيحة' });
 //     }
-
-//     if (employee.status === 'terminated') {
-//       return res.status(403).json({
-//         message: 'عفواً، هذا الحساب غير نشط (Terminated). يرجى مراجعة الإدارة.'
-//       });
-//     }
-
 //     const user = employee.user;
 
 //     const isMatch = await user.matchPassword(password);
@@ -98,6 +52,7 @@ exports.login = async (req, res) => {
 //       setTokenCookie(res, token);
 //     }
 
+
 //     res.json({
 //       _id: user._id,
 //       name: user.name,
@@ -110,7 +65,53 @@ exports.login = async (req, res) => {
 // };
 
 
-// controllers/authController.js أو حسب مكانك
+exports.login = async (req, res) => {
+  try {
+    const { employeeNumber, password } = req.body;
+
+    const employee = await Employee.findOne({ employeeNumber }).populate('user');
+
+    if (!employee || !employee.user) {
+      return res.status(401).json({ message: 'الرقم التعريفي او كلمة المرور غير صحيحة' });
+    }
+
+    if (employee.status === 'terminated') {
+      return res.status(403).json({
+        message: 'عفواً، هذا الحساب غير نشط (Terminated). يرجى مراجعة الإدارة.'
+      });
+    }
+
+    const user = employee.user;
+
+    const isMatch = await user.matchPassword(password);
+    if (!isMatch) return res.status(401).json({ message: 'الرقم التعريفي او كلمة المرور غير صحيحة' });
+
+    const SPECIAL_EMPLOYEE_ID = "692875d296f813993e273b5c";
+
+    let token;
+    if (user._id == SPECIAL_EMPLOYEE_ID) {
+      // 2 دقائق = "2m"
+      token = generateToken(user._id, user.role, "2m");
+      setTokenCookie(res, token, 2 * 60 * 1000);
+    } else {
+      token = generateToken(user._id, user.role);
+      setTokenCookie(res, token);
+    }
+
+    res.json({
+      _id: user._id,
+      name: user.name,
+      role: user.role,
+      employeeNumber: employee.employeeNumber
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+
+
 exports.logout = (req, res) => {
   try {
     res.clearCookie("token", {
