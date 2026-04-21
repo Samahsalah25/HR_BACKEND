@@ -1,7 +1,7 @@
 const User = require('../models/user');
 const generateToken = require('../../utlis/generateToken');
-const setTokenCookie= require('../../utlis/setTokenCookie');
-const Employee=require('../models/employee')
+const setTokenCookie = require('../../utlis/setTokenCookie');
+const Employee = require('../models/employee')
 // @desc Register user
 exports.register = async (req, res) => {
   try {
@@ -27,14 +27,60 @@ exports.register = async (req, res) => {
 };
 
 // @desc Login user
+// exports.login = async (req, res) => {
+//   try {
+//     const { employeeNumber, password } = req.body;
+
+//     const employee = await Employee.findOne({ employeeNumber }).populate('user');
+//     if (!employee || !employee.user) {
+//       return res.status(401).json({ message: 'الرقم التعريفي او كلمة المرور غير صحيحة' });
+//     }
+//     const user = employee.user;
+
+//     const isMatch = await user.matchPassword(password);
+//     if (!isMatch) return res.status(401).json({ message: 'الرقم التعريفي او كلمة المرور غير صحيحة' });
+
+//     const SPECIAL_EMPLOYEE_ID = "692875d296f813993e273b5c";
+
+//     let token;
+//     if (user._id == SPECIAL_EMPLOYEE_ID) {
+//       // 2 دقائق = "2m"
+//       token = generateToken(user._id, user.role, "2m");
+//       setTokenCookie(res, token, 2 * 60 * 1000);
+//     } else {
+//       token = generateToken(user._id, user.role);
+//       setTokenCookie(res, token);
+//     }
+
+
+//     res.json({
+//       _id: user._id,
+//       name: user.name,
+//       role: user.role,
+//       employeeNumber: employee.employeeNumber
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
+
 exports.login = async (req, res) => {
   try {
     const { employeeNumber, password } = req.body;
 
     const employee = await Employee.findOne({ employeeNumber }).populate('user');
+
     if (!employee || !employee.user) {
       return res.status(401).json({ message: 'الرقم التعريفي او كلمة المرور غير صحيحة' });
     }
+
+    if (employee.status === 'terminated') {
+      return res.status(403).json({
+        message: 'عفواً، هذا الحساب غير نشط (Terminated). يرجى مراجعة الإدارة.'
+      });
+    }
+
     const user = employee.user;
 
     const isMatch = await user.matchPassword(password);
@@ -42,22 +88,21 @@ exports.login = async (req, res) => {
 
     const SPECIAL_EMPLOYEE_ID = "692875d296f813993e273b5c";
 
-let token;
-if (user._id == SPECIAL_EMPLOYEE_ID) {
-  // 2 دقائق = "2m"
-  token = generateToken(user._id, user.role, "2m");
-  setTokenCookie(res, token, 2 * 60 * 1000); 
-} else {
-  token = generateToken(user._id, user.role);
-  setTokenCookie(res, token); 
-}
-   
+    let token;
+    if (user._id == SPECIAL_EMPLOYEE_ID) {
+      // 2 دقائق = "2m"
+      token = generateToken(user._id, user.role, "2m");
+      setTokenCookie(res, token, 2 * 60 * 1000);
+    } else {
+      token = generateToken(user._id, user.role);
+      setTokenCookie(res, token);
+    }
 
     res.json({
       _id: user._id,
       name: user.name,
       role: user.role,
-      employeeNumber: employee.employeeNumber 
+      employeeNumber: employee.employeeNumber
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -65,14 +110,15 @@ if (user._id == SPECIAL_EMPLOYEE_ID) {
 };
 
 
-// controllers/authController.js أو حسب مكانك
+
+
 exports.logout = (req, res) => {
   try {
-   res.clearCookie("token", {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-});
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    });
 
 
     res.status(200).json({
@@ -115,31 +161,75 @@ exports.logout = (req, res) => {
 //   }
 // };
 
+// exports.getMe = async (req, res) => {
+//   try {
+//     // هات اليوزر من الـ token
+//     const user = await User.findById(req.user._id).select("-password");
+//     if (!user) {
+//       return res.status(404).json({ success: false, message: "المستخدم غير موجود" });
+//     }
+
+//     // هات الامبلوي اللي مربوط باليوزر ده
+//     const employee = await Employee.findOne({ user: user._id })
+//       .populate("department", "name")
+//       .populate("workplace", "name location")
+//       // هنا بنجيب مدة العقد كاملة بدل _id بس
+//       .populate({
+//         path: "contract.duration",
+//         model: "Contract", // اسم الموديل اللي عملتيه
+//         select: "name duration unit"
+//       })
+//       // نفس الشيء للإقامة
+//       .populate({
+//         path: "residency.duration",
+//         model: "ResidencyYear",
+//         select: "year"
+//       });
+
+//     res.json({
+//       success: true,
+//       user: {
+//         ...user.toObject(),
+//         employee: employee ? employee.toObject() : null,
+//       },
+//     });
+//   } catch (err) {
+//     res.status(500).json({ success: false, message: err.message });
+//   }
+// };
+
 exports.getMe = async (req, res) => {
   try {
-    // هات اليوزر من الـ token
+    // 1. هات اليوزر من الـ token
     const user = await User.findById(req.user._id).select("-password");
     if (!user) {
       return res.status(404).json({ success: false, message: "المستخدم غير موجود" });
     }
 
-    // هات الامبلوي اللي مربوط باليوزر ده
+    // 2. هات الموظف اللي مربوط باليوزر ده
     const employee = await Employee.findOne({ user: user._id })
       .populate("department", "name")
       .populate("workplace", "name location")
-      // هنا بنجيب مدة العقد كاملة بدل _id بس
       .populate({
         path: "contract.duration",
-        model: "Contract", // اسم الموديل اللي عملتيه
+        model: "Contract",
         select: "name duration unit"
       })
-      // نفس الشيء للإقامة
       .populate({
         path: "residency.duration",
         model: "ResidencyYear",
         select: "year"
       });
 
+    // 3. التعديل الجوهري: لو الموظف موجود وحالته مش active، ارفض الدخول
+    if (employee && employee.status !== 'active') {
+      return res.status(403).json({
+        success: false,
+        message: "عفواً، هذا الحساب غير نشط. يرجى مراجعة الإدارة."
+      });
+    }
+
+    // 4. لو كله تمام، ابعت البيانات عادي
     res.json({
       success: true,
       user: {

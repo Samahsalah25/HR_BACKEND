@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const {getAllEmployees ,createEmployee ,getContractsStats  ,getAllContracts,getEmployeeById ,deleteEmployee ,getEmployeesByBranch ,updateEmployee ,getManagerss} = require('../controllers/hrController');
-const  authenticate = require('../middlesware/authenticate');
-const validate=require('../middlesware/validate');
-const authorizeRoles=require('../middlesware/roleMiddleware');
-const  {
+const { getAllEmployees, createEmployee, getContractsStats, getAllContracts, getEmployeeById, deleteEmployee, getEmployeesByBranch, updateEmployee, getManagerss } = require('../controllers/hrController');
+const authenticate = require('../middlesware/authenticate');
+const validate = require('../middlesware/validate');
+const authorizeRoles = require('../middlesware/roleMiddleware');
+const {
   createEmployeeSchema,
   updateEmployeeSchema
-}=require('../validations/employeeSchemas');
+} = require('../validations/employeeSchemas');
 // Login (يوزر يدخل)
 
 // cloudinary-config.js
@@ -50,15 +50,15 @@ const storage = new CloudinaryStorage({
   cloudinary,
   params: {
     folder: "employee-documents", // مجلد التخزين على Cloudinary
-   allowed_formats: [
-  "jpg", "jpeg", "png", "gif", "webp", // صور
-  "pdf", "docx", "doc", "txt", // مستندات
-  "mp4", "mov", "avi", // فيديو
-  "mp3", "wav", "aac", // صوت
-  "zip", "tar", "rar", // ملفات مضغوطة
-  "csv", "xls", "xlsx" // ملفات أخرى
-]
- // الصيغ المسموحة
+    allowed_formats: [
+      "jpg", "jpeg", "png", "gif", "webp", // صور
+      "pdf", "docx", "doc", "txt", // مستندات
+      "mp4", "mov", "avi", // فيديو
+      "mp3", "wav", "aac", // صوت
+      "zip", "tar", "rar", // ملفات مضغوطة
+      "csv", "xls", "xlsx" // ملفات أخرى
+    ]
+    // الصيغ المسموحة
   },
 });
 
@@ -83,17 +83,17 @@ const logUpload = (req, res, next) => {
 
 
 // جلب كل الموظفين اللي رولهم Employee
-router.get('/' , getAllEmployees);
-router.get('/managers' ,getManagerss)
-router.get('/getEmployeesByBranch' ,authenticate ,authorizeRoles('HR') ,getEmployeesByBranch)
+router.get('/', authenticate, getAllEmployees);
+router.get('/managers', getManagerss)
+router.get('/getEmployeesByBranch', authenticate, authorizeRoles('HR'), getEmployeesByBranch)
 
 // get contrcacts
 
-router.get('/getContractsStats' ,authenticate ,authorizeRoles('HR' ,'ADMIN'),getContractsStats) 
-router.get('/getAllContracts' ,getAllContracts)
-router.get('/getOneemployee/:id' , getEmployeeById)
-router.post('/' ,validate(createEmployeeSchema) ,createEmployee)
-router.delete('/deleteEmployee/:id' ,deleteEmployee)
+router.get('/getContractsStats', authenticate, authorizeRoles('HR', 'ADMIN'), getContractsStats)
+router.get('/getAllContracts', getAllContracts)
+router.get('/getOneemployee/:id', getEmployeeById)
+router.post('/', validate(createEmployeeSchema), createEmployee)
+router.delete('/deleteEmployee/:id', deleteEmployee)
 router.patch(
   "/updateemployee/:id",
   logUpload,  // الميدل وير الخاص باللوجات
@@ -108,5 +108,5 @@ router.patch(
   validate(updateEmployeeSchema),  // فحص البيانات
   updateEmployee  // المنطق النهائي بعد الرفع
 );
-                            
+
 module.exports = router;

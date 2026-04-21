@@ -116,7 +116,14 @@ const checkIn = async (req, res) => {
   try {
     const userId = req.user._id;
     const employee = await Employee.findOne({ user: userId }).populate("workplace");
+
     if (!employee) return res.status(404).json({ message: "الموظف غير موجود" });
+
+    if (employee.status !== 'active') {
+      return res.status(403).json({
+        message: "عفواً، لا يمكنك تسجيل الحضور لأن الحساب غير نشط (Terminated)."
+      });
+    }
 
     const branch = employee.workplace;
     if (!branch) return res.status(400).json({ message: "الفرع غير موجود" });
@@ -286,7 +293,11 @@ const checkOut = async (req, res) => {
     // جلب بيانات الموظف والفرع
     const employee = await Employee.findOne({ user: userId }).populate("workplace");
     if (!employee) return res.status(404).json({ message: "الموظف غير موجود" });
-
+    if (employee.status !== 'active') {
+      return res.status(403).json({
+        message: "عفواً، لا يمكنك تسجيل الانصراف لأن الحساب غير نشط (Terminated)."
+      });
+    }
     const branch = employee.workplace;
     if (!branch) return res.status(400).json({ message: "الفرع غير موجود" });
 
@@ -437,17 +448,177 @@ const getTodayAttendance = async (req, res) => {
 //    عدد الحاضرين هنا والنسب المئوية وكدا لكل الفروع
 
 
+// const dailyState = async (req, res) => {
+//   try {
+//     const today = new Date();
+//     const startOfDay = new Date(today);
+//     startOfDay.setHours(0, 0, 0, 0);
+//     const endOfDay = new Date(today);
+//     endOfDay.setHours(23, 59, 59, 999);
+
+//     // كل الموظفين
+//     // const employees = await Employee.find();
+//     const employees = await Employee.aggregate([
+//       {
+//         $lookup: {
+//           from: 'users',
+//           localField: 'user',
+//           foreignField: '_id',
+//           as: 'userDetails'
+//         }
+//       },
+//       {
+//         $unwind: '$userDetails'
+//       },
+//       {
+//         $match: {
+//           'userDetails.role': { $in: ['HR', 'EMPLOYEE'] }
+//         }
+//       }
+//     ])
+
+//     const totalEmployees = employees.length;
+
+//     // حضور النهاردة
+//     // const attendances = await Attendance.find({
+//     //   date: { $gte: startOfDay, $lte: endOfDay }
+//     // });
+
+//     const attendances = await Attendance.aggregate([
+//       {
+//         $match: {
+//           date: { $gte: startOfDay, $lte: endOfDay },
+
+//         }
+//       },
+//       {
+//         $lookup: {
+//           from: 'employees',
+//           localField: 'employee',
+//           foreignField: '_id',
+//           as: 'employeeInfo'
+//         }
+//       },
+//       { $unwind: '$employeeInfo' },
+//       {
+//         $lookup: {
+//           from: 'users',
+//           localField: 'employeeInfo.user',
+//           foreignField: '_id',
+//           as: 'userInfo'
+//         }
+//       },
+//       { $unwind: '$userInfo' },
+//       {
+//         $match: {
+//           'userInfo.role': { $in: ['HR', 'EMPLOYEE'] }
+//         }
+//       }
+//     ]);
+
+//     // اجازات النهاردة (مقبولة بس)
+
+//     // const leaves = await Request.find({
+//     //   type: "إجازة",
+//     //   status: "مقبول",
+//     //   "leave.startDate": { $lte: endOfDay },
+//     //   "leave.endDate": { $gte: startOfDay }
+//     // }).populate("employee");
+
+//     const leaves = await Request.aggregate([
+//       {
+//         $match: {
+//           type: "إجازة",
+//           status: "مقبول",
+//           "leave.startDate": { $lte: endOfDay },
+//           "leave.endDate": { $gte: startOfDay }
+//         }
+//       },
+//       {
+//         $lookup: {
+//           from: 'employees',
+//           localField: 'employee',
+//           foreignField: '_id',
+//           as: 'employeeInfo'
+//         }
+//       },
+//       { $unwind: '$employeeInfo' },
+//       {
+//         $lookup: {
+//           from: 'users',
+//           localField: 'employeeInfo.user',
+//           foreignField: '_id',
+//           as: 'userInfo'
+//         }
+//       },
+//       { $unwind: '$userInfo' },
+//       {
+//         $match: {
+//           'userInfo.role': { $in: ['HR', 'EMPLOYEE'] }
+//         }
+//       }
+//     ]);
+
+
+//     const leaveEmployeeIds = leaves
+//       .filter(l => l.employee) // تجاهل الطلبات اللي الموظف بتاعها اتحذف
+//       .map(l => l.employee._id.toString());
+
+//     // حساب الحالات
+//     const present = attendances.filter(
+//       a => a.status === "حاضر" || a.status === "متأخر"
+//     ).length;
+
+//     const late = attendances.filter(a => a.status === "متأخر").length;
+
+//     const absentWithoutExcuse = attendances.filter(
+//       a => a.status === "غائب" && !leaveEmployeeIds.includes(a.employee.toString())
+//     ).length;
+
+//     const absentWithExcuse = leaveEmployeeIds.length;
+
+//     // حساب النسب
+//     const percent = (count) =>
+//       totalEmployees ? ((count / totalEmployees) * 100).toFixed(2) : "0.00";
+
+//     res.json({
+//       totalEmployees,
+//       present,
+//       presentPercent: percent(present),
+//       late,
+//       latePercent: percent(late),
+//       absentWithExcuse,
+//       absentWithExcusePercent: percent(absentWithExcuse),
+//       absentWithoutExcuse,
+//       absentWithoutExcusePercent: percent(absentWithoutExcuse),
+//     });
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ error: "Server Error" });
+//   }
+// };
+
 const dailyState = async (req, res) => {
   try {
+
+    const requester = await Employee.findOne({ user: req.user._id });
+
+    if (!requester || requester.status !== 'active') {
+      return res.status(403).json({
+        message: 'عفواً، لا تملك صلاحية الوصول لهذه البيانات لأن حسابك غير نشط.'
+      });
+    }
+
     const today = new Date();
     const startOfDay = new Date(today);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(today);
     endOfDay.setHours(23, 59, 59, 999);
 
-    // كل الموظفين
-    // const employees = await Employee.find();
     const employees = await Employee.aggregate([
+      {
+        $match: { status: 'active' }
+      },
       {
         $lookup: {
           from: 'users',
@@ -456,29 +627,19 @@ const dailyState = async (req, res) => {
           as: 'userDetails'
         }
       },
-      {
-        $unwind: '$userDetails'
-      },
+      { $unwind: '$userDetails' },
       {
         $match: {
           'userDetails.role': { $in: ['HR', 'EMPLOYEE'] }
         }
       }
-    ])
+    ]);
 
     const totalEmployees = employees.length;
 
-    // حضور النهاردة
-    // const attendances = await Attendance.find({
-    //   date: { $gte: startOfDay, $lte: endOfDay }
-    // });
-
     const attendances = await Attendance.aggregate([
       {
-        $match: {
-          date: { $gte: startOfDay, $lte: endOfDay },
-
-        }
+        $match: { date: { $gte: startOfDay, $lte: endOfDay } }
       },
       {
         $lookup: {
@@ -489,6 +650,9 @@ const dailyState = async (req, res) => {
         }
       },
       { $unwind: '$employeeInfo' },
+      {
+        $match: { 'employeeInfo.status': 'active' }
+      },
       {
         $lookup: {
           from: 'users',
@@ -504,15 +668,6 @@ const dailyState = async (req, res) => {
         }
       }
     ]);
-
-    // اجازات النهاردة (مقبولة بس)
-
-    // const leaves = await Request.find({
-    //   type: "إجازة",
-    //   status: "مقبول",
-    //   "leave.startDate": { $lte: endOfDay },
-    //   "leave.endDate": { $gte: startOfDay }
-    // }).populate("employee");
 
     const leaves = await Request.aggregate([
       {
@@ -533,6 +688,9 @@ const dailyState = async (req, res) => {
       },
       { $unwind: '$employeeInfo' },
       {
+        $match: { 'employeeInfo.status': 'active' }
+      },
+      {
         $lookup: {
           from: 'users',
           localField: 'employeeInfo.user',
@@ -548,12 +706,10 @@ const dailyState = async (req, res) => {
       }
     ]);
 
-
     const leaveEmployeeIds = leaves
-      .filter(l => l.employee) // تجاهل الطلبات اللي الموظف بتاعها اتحذف
-      .map(l => l.employee._id.toString());
+      .filter(l => l.employee)
+      .map(l => l.employee.toString());
 
-    // حساب الحالات
     const present = attendances.filter(
       a => a.status === "حاضر" || a.status === "متأخر"
     ).length;
@@ -566,7 +722,7 @@ const dailyState = async (req, res) => {
 
     const absentWithExcuse = leaveEmployeeIds.length;
 
-    // حساب النسب
+    // حساب النسب المئوية
     const percent = (count) =>
       totalEmployees ? ((count / totalEmployees) * 100).toFixed(2) : "0.00";
 
@@ -581,6 +737,7 @@ const dailyState = async (req, res) => {
       absentWithoutExcuse,
       absentWithoutExcusePercent: percent(absentWithoutExcuse),
     });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server Error" });
@@ -588,6 +745,7 @@ const dailyState = async (req, res) => {
 };
 
 //  عدد الحاضرين والنسب المئوية لفرع معين
+
 const dailyStateBranch = async (req, res) => {
   try {
     const today = new Date();
@@ -666,30 +824,72 @@ const dailyStateBranch = async (req, res) => {
 
 //  هنا  جدول لحضور اليوم 
 
+// const dailyAttendanceTable = async (req, res) => {
+//   try {
+//     const today = new Date();
+//     const startOfDay = new Date(today);
+//     startOfDay.setHours(0, 0, 0, 0);
+//     const endOfDay = new Date(today);
+//     endOfDay.setHours(23, 59, 59, 999);
+
+//     // جلب الحضور اليوم مع اسم الموظف والقسم
+//     const attendances = await Attendance.find({
+//       date: { $gte: startOfDay, $lte: endOfDay }
+//     }).populate({
+//       path: "employee",
+//       select: "name department",
+//       populate: { path: "department", select: "name" }
+//     });
+
+//     // تجهيز الجدول
+//     const table = attendances.map(a => ({
+//       employeeName: a.employee.name,
+//       departmentName: a.employee.department ? a.employee.department.name : "غير محدد",
+//       status: a.status,
+//       lateMinutes: a.lateMinutes || 0,
+//     }));
+
+//     res.json({ table });
+//   } catch (err) {
+//     console.error("Error fetching daily attendance table:", err);
+//     res.status(500).json({ error: "Server Error" });
+//   }
+// };
+
 const dailyAttendanceTable = async (req, res) => {
   try {
+    // 1. الأمان: التأكد إن اللي بيطلب البيانات موظف نشط
+    const requester = await Employee.findOne({ user: req.user._id });
+    if (!requester || requester.status !== 'active') {
+      return res.status(403).json({
+        message: 'عفواً، حسابك غير نشط ولا تملك صلاحية الوصول لهذه البيانات.'
+      });
+    }
+
     const today = new Date();
     const startOfDay = new Date(today);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(today);
     endOfDay.setHours(23, 59, 59, 999);
 
-    // جلب الحضور اليوم مع اسم الموظف والقسم
+    // 2. جلب الحضور مع عمل Populate لحالة الموظف (status)
     const attendances = await Attendance.find({
       date: { $gte: startOfDay, $lte: endOfDay }
     }).populate({
       path: "employee",
-      select: "name department",
+      select: "name department status", // ضفنا status هنا عشان نفلتر بيها
       populate: { path: "department", select: "name" }
     });
 
-    // تجهيز الجدول
-    const table = attendances.map(a => ({
-      employeeName: a.employee.name,
-      departmentName: a.employee.department ? a.employee.department.name : "غير محدد",
-      status: a.status,
-      lateMinutes: a.lateMinutes || 0,
-    }));
+    // 3. تجهيز الجدول مع فلترة الموظفين الـ Active فقط
+    const table = attendances
+      .filter(a => a.employee && a.employee.status === 'active') // بنشيل أي موظف مش نشط
+      .map(a => ({
+        employeeName: a.employee.name,
+        departmentName: a.employee.department ? a.employee.department.name : "غير محدد",
+        status: a.status,
+        lateMinutes: a.lateMinutes || 0,
+      }));
 
     res.json({ table });
   } catch (err) {

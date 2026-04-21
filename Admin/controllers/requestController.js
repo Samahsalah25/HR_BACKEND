@@ -336,24 +336,122 @@ exports.createRequest = [
 //     res.status(500).json({ message: 'خطأ أثناء جلب الطلبات' });
 //   }
 // };
+// exports.getRequests = async (req, res) => {
+//   try {
+//     const { status = 'الكل', type } = req.query;
+
+//     /** 🔁 تحويل حالات السلف */
+//     const mapBorrowStatus = (status) => {
+//       switch (status) {
+//         case 'pending':
+//           return 'قيد المراجعة';
+//         case 'approved':
+//         case 'completed':
+//           return 'مقبول';
+//         case 'rejected':
+//           return 'مرفوض';
+//         case 'forwarded':
+//           return 'محول';
+//         default:
+//           return status;
+//       }
+//     };
+
+//     /** 1️⃣ الطلبات العادية */
+//     const requestQuery = {};
+//     if (status !== 'الكل') requestQuery.status = status;
+//     if (type) requestQuery.type = type;
+
+//     let requests = await Request.find(requestQuery)
+//       .sort({ createdAt: -1 })
+//       .populate({
+//         path: 'employee',
+//         select: 'name department jobTitle',
+//         populate: { path: 'department', select: 'name' }
+//       });
+
+//     requests = requests
+//       .filter(r => r.employee)
+//       .map(r => ({
+//         id: r._id,
+//         employeeName: r.employee.name,
+//         department: r.employee.department?.name || null,
+//         type: r.type || 'طلب',
+//         submittedAt: r.createdAt,
+//         status: r.status,
+//         decisionDate: r.decidedAt || null,
+//         __source: 'request'
+//       }));
+
+//     /** 2️⃣ السلف - تجيب بس لو مفيش type محدد */
+//     let borrows = [];
+//     if (!type) { // السلف تظهر فقط عند عرض الكل
+//       borrows = await SalaryAdvance.find()
+//         .sort({ createdAt: -1 })
+//         .populate({
+//           path: 'employee',
+//           select: 'name department jobTitle',
+//           populate: { path: 'department', select: 'name' }
+//         });
+
+//       borrows = borrows
+//         .filter(b => b.employee)
+//         .map(b => ({
+//           id: b._id,
+//           employeeName: b.employee.name,
+//           department: b.employee.department?.name || null,
+//           type: 'سلفة',
+//           submittedAt: b.createdAt,
+//           status: mapBorrowStatus(b.status),
+//           decisionDate: b.status === 'approved' ? b.approvedAt
+//             : (b.status === 'rejected' ? b.rejectedAt : null),
+//           __source: 'borrow'
+//         }));
+//     }
+
+//     /** 3️⃣ دمج الطلبات + السلف */
+//     let items = [...requests, ...borrows];
+
+//     /** 4️⃣ فلترة حسب التاب (قيد المراجعة / مقبول / مرفوض) */
+//     if (status !== 'الكل') {
+//       items = items.filter(item => item.status === status);
+//     }
+
+//     /** 5️⃣ ترتيب حسب التاريخ */
+//     items.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+
+//     res.json({
+//       total: items.length,
+//       items
+//     });
+
+//   } catch (e) {
+//     console.error(e);
+//     res.status(500).json({ message: 'خطأ أثناء جلب الطلبات' });
+//   }
+// };
+
 exports.getRequests = async (req, res) => {
   try {
+    // 1. التأكد إن اللي بيطلب البيانات موظف نشط (حماية الـ Endpoint)
+    const requester = await Employee.findOne({ user: req.user._id });
+    if (!requester || requester.status !== 'active') {
+      return res.status(403).json({
+        message: 'عفواً، حسابك غير نشط ولا تملك صلاحية الوصول لهذه البيانات.'
+      });
+    }
+
     const { status = 'الكل', type } = req.query;
 
     /** 🔁 تحويل حالات السلف */
     const mapBorrowStatus = (status) => {
       switch (status) {
-        case 'pending':
-          return 'قيد المراجعة';
+        case 'pending': return 'قيد المراجعة';
         case 'approved':
-        case 'completed':
-          return 'مقبول';
-        case 'rejected':
-          return 'مرفوض';
-        case 'forwarded':
-          return 'محول';
-        default:
-          return status;
+        case 'completed': return 'مقبول';
+        case 'rejected': return 'مرفوض';
+        case 'forwarded': return 'محول';
+        default: return status;
       }
     };
 
@@ -366,12 +464,13 @@ exports.getRequests = async (req, res) => {
       .sort({ createdAt: -1 })
       .populate({
         path: 'employee',
-        select: 'name department jobTitle',
+        select: 'name department jobTitle status', // ضفنا status هنا عشان نفلتر بيها
         populate: { path: 'department', select: 'name' }
       });
 
+    // التعديل: بنشيل الطلبات اللي الموظف بتاعها "مش نشط" أو "محذوف"
     requests = requests
-      .filter(r => r.employee)
+      .filter(r => r.employee && r.employee.status === 'active')
       .map(r => ({
         id: r._id,
         employeeName: r.employee.name,
@@ -383,19 +482,20 @@ exports.getRequests = async (req, res) => {
         __source: 'request'
       }));
 
-    /** 2️⃣ السلف - تجيب بس لو مفيش type محدد */
+    /** 2️⃣ السلف */
     let borrows = [];
-    if (!type) { // السلف تظهر فقط عند عرض الكل
+    if (!type) {
       borrows = await SalaryAdvance.find()
         .sort({ createdAt: -1 })
         .populate({
           path: 'employee',
-          select: 'name department jobTitle',
+          select: 'name department jobTitle status', // ضفنا status برضه
           populate: { path: 'department', select: 'name' }
         });
 
+      // التعديل: فلترة السلف للموظفين النشطين بس
       borrows = borrows
-        .filter(b => b.employee)
+        .filter(b => b.employee && b.employee.status === 'active')
         .map(b => ({
           id: b._id,
           employeeName: b.employee.name,
@@ -409,15 +509,13 @@ exports.getRequests = async (req, res) => {
         }));
     }
 
-    /** 3️⃣ دمج الطلبات + السلف */
+    /** 3️⃣ دمج + 4️⃣ فلترة حسب الحالة + 5️⃣ ترتيب */
     let items = [...requests, ...borrows];
 
-    /** 4️⃣ فلترة حسب التاب (قيد المراجعة / مقبول / مرفوض) */
     if (status !== 'الكل') {
       items = items.filter(item => item.status === status);
     }
 
-    /** 5️⃣ ترتيب حسب التاريخ */
     items.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
 
     res.json({
@@ -1374,7 +1472,7 @@ exports.forwardCustodyRequest = async (req, res) => {
     if (!isHRorAdmin(req.user)) {
       return res.status(403).json({ message: 'غير مسموح' });
     }
-    
+
     const {
       // ID المدير المحول إليه
       receivedDate,

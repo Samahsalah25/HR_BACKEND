@@ -461,8 +461,11 @@ exports.getEmployees = async (req, res) => {
       .populate("contract.duration", "_id name duration unit")
       .populate("user", "name email role");
 
-    if (!currentEmp) {
-      return res.status(404).json({ success: false, message: "الموظف غير موجود" });
+    if (!currentEmp || currentEmp.status !== 'active') {
+      return res.status(403).json({
+        success: false,
+        message: "عفواً، حسابك غير نشط ولا تملك صلاحية الوصول لهذه البيانات."
+      });
     }
 
     let employees = [];
