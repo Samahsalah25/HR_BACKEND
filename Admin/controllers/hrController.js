@@ -62,7 +62,16 @@ const getAllEmployees = async (req, res) => {
         contractDuration: contractDurationText,
         residencyStart: emp.residency.start,
         residencyEnd: emp.residency.end,
-        residencyDuration: residencyDurationText
+        residencyDuration: residencyDurationText ,
+        insurance: emp.insurance
+  ? {
+      insuranceId: emp.insurance.insuranceId?._id,
+      name: emp.insurance.name,
+      employeePercentage: emp.insurance.employeePercentage,
+      companyPercentage: emp.insurance.companyPercentage,
+    }
+  : null,
+        
       };
     });
 
@@ -645,7 +654,14 @@ const getEmployeeById = async (req, res) => {
       workHoursPerWeek: employee.workHoursPerWeek || "",
       workplace: employee.workplace?._id || null,
       workplaceName: employee.workplace?.name || "",
-
+insurance: employee.insurance
+  ? {
+      insuranceId: employee.insurance.insuranceId?._id,
+      name: employee.insurance.name,
+      employeePercentage: employee.insurance.employeePercentage,
+      companyPercentage: employee.insurance.companyPercentage,
+    }
+  : null,
       // العقد
       contractStart: employee.contract?.start || null,
       contractEnd: employee.contract?.end || null,
