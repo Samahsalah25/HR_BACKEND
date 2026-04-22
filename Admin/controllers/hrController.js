@@ -20,7 +20,7 @@ const getAllEmployees = async (req, res) => {
       .populate('user', 'name role email')
       .populate('department', 'name')
       .populate('contract.duration')
-      .populate('residency.duration');
+     
 
 
 
@@ -59,6 +59,14 @@ const getAllEmployees = async (req, res) => {
         residencyNationality: emp.residency?.nationality || "",
         contractStart: emp.contract.start,
         contractEnd: emp.contract.end,
+       insurance: emp.insurance
+  ? {
+      id: emp.insurance.insuranceId?._id,
+      name: emp.insurance.name,
+      employeePercentage: emp.insurance.employeePercentage,
+      companyPercentage: emp.insurance.companyPercentage,
+    }
+  : null,
         contractDuration: contractDurationText,
         residencyStart: emp.residency.start,
         residencyEnd: emp.residency.end,
