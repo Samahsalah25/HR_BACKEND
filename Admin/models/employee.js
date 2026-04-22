@@ -18,7 +18,15 @@ const employeeSchema = new mongoose.Schema(
       end: { type: Date }
     },
     // nationality: { type: String },
-      nationality: {
+  
+//   والالاقامة  بيجي من جدول الاقامات ...والبداية والنهايه بحسيهم في الكريت لما اخد قيمة العقد برضو  والباقي تيكست عادي بيضاف
+    residency: {
+  
+      start: { type: Date },
+      duration: { type: mongoose.Schema.Types.ObjectId, ref: 'ResidencyYear' },
+      end: { type: Date },
+      additionNumber: { type: String },
+          nationality: {
   type: String,
   enum: [
     "Egyptian",
@@ -56,13 +64,6 @@ const employeeSchema = new mongoose.Schema(
   ]
 } ,
 
-//   والالاقامة  بيجي من جدول الاقامات ...والبداية والنهايه بحسيهم في الكريت لما اخد قيمة العقد برضو  والباقي تيكست عادي بيضاف
-    residency: {
-  
-      start: { type: Date },
-      duration: { type: mongoose.Schema.Types.ObjectId, ref: 'ResidencyYear' },
-      end: { type: Date },
-      additionNumber: { type: String },
       issuingAuthority: { type: String },
       insuranceNumber: { type: String },
       type: { type: String }
